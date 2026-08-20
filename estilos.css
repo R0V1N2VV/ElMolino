@@ -1,0 +1,33 @@
+
+*{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+.titulo-principal{
+    font-family:Verdana, Geneva, Tahoma, sans-serif;
+    text-align: center;
+    font-size: 25px;
+    margin-top: 20px;
+}
+
+.pri-subtitulo{
+    font-size: 18px;
+    text-align: center;
+}
+
+.barra{
+    margin: 0;
+    background-color:#2ab6c5;
+}
+
+.imagenes{
+    margin-left: 30px;
+    margin-top: 30px;
+}
+
+.img{
+    border-radius: 40px;
+    gap: 10px;
+}
