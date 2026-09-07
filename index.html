@@ -1,37 +1,78 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es-AR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Conocé El Molino, un complejo recreativo para disfrutar del deporte, el descanso y los momentos compartidos.">
+    <meta name="theme-color" content="#006064">
     <link rel="stylesheet" href="estilos.css">
-    <title>Centro El Molino</title>
+    <title>El Molino | Complejo recreativo</title>
 </head>
-<body>
-<header>
+<body id="inicio">
+    <a class="saltar-contenido" href="#principal">Saltar al contenido</a>
 
-<div class="barra">
-    <nav>hola</nav>
-</div>
-</header>
+    <!-- Barra de navegación: enlaces a la misma página. -->
+    <header class="encabezado">
+        <div class="barra contenedor">
+            <a class="marca" href="#inicio" aria-label="El Molino, inicio">
+                <svg class="marca-icono" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+                    <path d="M24 24V5L15 8v12l9 4Zm0 0h19l-3-9H28l-4 9Zm0 0v19l9-3V28l-9-4Zm0 0H5l3 9h12l4-9Z" fill="currentColor"/>
+                    <circle cx="24" cy="24" r="4" fill="#E0F7FA"/>
+                </svg>
+                <span class="marca-texto">El Molino<span>COMPLEJO RECREATIVO</span></span>
+            </a>
+            <nav class="navegacion" aria-label="Navegación principal">
+                <a class="enlace-inicio" href="#inicio" aria-current="page">Inicio</a>
+                <a href="#el-complejo">El complejo</a>
+                <a href="#actividades">Actividades</a>
+            </nav>
+            <a class="boton boton-nav" href="#actividades">Conocé el lugar </span></a>
+        </div>
+    </header>
 
+    <main id="principal">
+     
+        <section class="principal-info contenedor" aria-labelledby="titulo-principal">
 
-<main>
+            <div class="presentacion" id="el-complejo">
+                <p class="etiqueta">BIENVENIDO A EL MOLINO</p>
+                <h1 class="titulo-principal" id="titulo-principal">Tu tiempo libre,<br><span>en su mejor lugar.</span></h1>
 
-<div class="principal-info">
-    
-        <h1 class="titulo-principal">Bienvenido al centro recreativo "El Molino"</h1>
-        <p class="pri-subtitulo">Aprende todo sobre nuestro centro</p>
+                <p class="pri-subtitulo">Deporte, descanso y momentos para compartir.<br class="salto-desktop"> Descubrí todo lo que nuestro complejo tiene para vos.</p>
 
-    <div class="imagenes">
+                <a class="boton boton-principal" href="#actividades">Explorá el complejo </span></a>
+            </div>
 
-        <img class="img" src="imgs/futb.jpg" width="400px" height="300px">
-        <img class="img" src="imgs/padel.jpg" width="400px" height="300px">
-        <img class="img" src="imgs/futb.jpg" width="400px" height="300px">
+           
+            <div class="imagenes" id="actividades" role="group" aria-label="Espacios deportivos de El Molino">
+                <figure class="foto foto-futbol">
+                    <img src="imgs/futb.jpg" alt="Vista aérea de canchas de fútbol rodeadas de árboles" width="596" height="335" fetchpriority="high">
+                    <figcaption><span class="categoria">AL AIRE LIBRE</span><span class="foto-titulo">Un lugar para jugar.</span><span class="foto-detalle">Fútbol y espacios deportivos</span></figcaption>
+                    
+                </figure>
+                <figure class="foto foto-padel">
+                    <img src="imgs/padel.jpg" alt="Cancha de pádel con piso azul y paredes de vidrio" width="1920" height="1080">
+                    <figcaption><span class="categoria">MOMENTOS COMPARTIDOS</span><span class="foto-titulo">El próximo partido,<br>con los tuyos.</span><span class="foto-detalle">Pádel</span></figcaption>
+                    
+                </figure>
+            </div>
+            <br><br><br><br><br>
+            <div class="complejo">
+                <h1> Nuestras complejo</h1>
+                <p>Tenemos una gran variaded de actividades, locales, alojamientos entre otras muchas otras cosas que coplementan con nuestro lugar.</p>
 
-    </div>
-
-</div>
-
-</main>
+            </div>
+<br>
+            <div>
+                <p>textotextotextotextotextotextotextotextotextotextotextotextotextotextotextotextotextotexto</p>
+            </div>
+<br>
+            <div class="comp">
+                <h1>Actividades </h1> <img src="">
+            </div>
+           
+        </section>
+    </main>
+    <footer class="pie contenedor"><span>El Molino · Complejo recreativo</span><a href="#inicio">Volver arriba <span aria-hidden="true">↑</span></a></footer>
 </body>
 </html>
