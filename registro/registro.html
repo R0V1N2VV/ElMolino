@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Registro | Complejo El Molino</title>
+  <link rel="stylesheet" href="../imgs/estilos/estilos.css">
+</head>
+<body class="registro-page">
+  <main class="registro-card">
+    <h1>Crear cuenta</h1>
+    <p>Registrate para consultar tus reservas y actividades.</p>
+
+    <form action="procesar_registro.php" method="post">
+      <div class="fila">
+        <div>
+          <label for="nombre">Nombre</label>
+          <input type="text" id="nombre" name="nombre" required>
+        </div>
+        <div>
+          <label for="apellido">Apellido</label>
+          <input type="text" id="apellido" name="apellido" required>
+        </div>
+      </div>
+
+      <label for="dni">DNI</label>
+      <input type="text" id="dni" name="dni" inputmode="numeric" required>
+
+      <label for="correo">Correo electrónico</label>
+      <input type="email" id="correo" name="correo" required>
+
+      <label for="telefono">Teléfono</label>
+      <input type="tel" id="telefono" name="telefono" required>
+
+      <label for="direccion">Domicilio</label>
+      <input type="text" id="direccion" name="direccion" required>
+
+      <label for="contrasena">Contraseña</label>
+      <input type="password" id="contrasena" name="contrasena" minlength="8" required>
+
+      <label for="repetir-contrasena">Repetir contraseña</label>
+      <input type="password" id="repetir-contrasena" name="repetir-contrasena" minlength="8" required>
+
+      <button type="submit">Registrarme</button>
+    </form>
+
+    <p class="login-link">¿Ya tenés una cuenta? <a href="login.html">Iniciá sesión</a></p>
+  </main>
+</body>
+</html>

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iniciar sesión | Complejo El Molino</title>
+  <link rel="stylesheet" href="../imgs/estilos/estilos.css">
+</head>
+<body class="pagina-inicio-sesion">
+  <main class="tarjeta-inicio-sesion">
+    <div class="simbolo-marca" aria-hidden="true"></div>
+    <p class="texto-destacado">COMPLEJO RECREATIVO</p>
+    <h1>El Molino</h1>
+    <p class="subtitulo">Acceso para personal autorizado</p>
+
+    <form class="formulario-inicio-sesion" action="login.php" method="post">
+      <label for="correo">Correo electrónico</label>
+      <input id="correo" name="correo" type="email" placeholder="Ingresá tu correo" required>
+
+      <label for="contrasena">Contraseña</label>
+      <input id="contrasena" name="contrasena" type="password" placeholder="Ingresá tu contraseña" required>
+
+      <boton type="submit">Iniciar sesión <span aria-hidden="true"></span></boton>
+    </form>
+
+    <p class="texto-ayuda">¿No tenés cuenta? <a href="registro.html">Registrate</a></p>
+  </main>
+</body>
+</html>
