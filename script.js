@@ -1,6 +1,27 @@
 const botonMenu = document.querySelector(".boton-menu");
 const navegacionPrincipal = document.querySelector(".navegacion-principal");
 const textoBotonMenu = botonMenu.querySelector(".solo-lector");
+const interruptorDislexia = document.querySelector(".interruptor-dislexia");
+const preferenciaDislexia = "modo-dislexia-el-molino";
+
+function cambiarModoDislexia(estaActivo) {
+    document.body.classList.toggle("modo-dislexia", estaActivo);
+    interruptorDislexia?.setAttribute("aria-checked", String(estaActivo));
+    interruptorDislexia?.setAttribute(
+        "aria-label",
+        estaActivo ? "Desactivar modo dislexia" : "Activar modo dislexia con tipografía Sarakanda"
+    );
+}
+
+if (interruptorDislexia) {
+    cambiarModoDislexia(localStorage.getItem(preferenciaDislexia) === "activo");
+
+    interruptorDislexia.addEventListener("click", () => {
+        const estaActivo = !document.body.classList.contains("modo-dislexia");
+        cambiarModoDislexia(estaActivo);
+        localStorage.setItem(preferenciaDislexia, estaActivo ? "activo" : "inactivo");
+    });
+}
 
 function cerrarMenu() {
     botonMenu.setAttribute("aria-expanded", "false");
