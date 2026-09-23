@@ -62,13 +62,13 @@ a {
     text-decoration: none;
 }
 
-boton,
+button,
 summary {
     font: inherit;
 }
 
 a:focus-visible,
-boton:focus-visible,
+button:focus-visible,
 summary:focus-visible {
     outline: 3px solid var(--naranja-medio);
     outline-offset: 4px;
@@ -515,17 +515,17 @@ h3 {
 /* =========================================================
    5. Alojamientos
    ========================================================= */
-.accommodations {
+.alojamientos {
     background: var(--crema);
 }
 
-.accommodations .encabezado-seccion {
+.alojamientos .encabezado-seccion {
     margin-inline: auto;
     text-align: center;
 }
 
-.accommodations .encabezado-seccion h2,
-.accommodations .encabezado-seccion > p:not(.texto-destacado) {
+.alojamientos .encabezado-seccion h2,
+.alojamientos .encabezado-seccion > p:not(.texto-destacado) {
     margin-inline: auto;
 }
 
@@ -570,7 +570,7 @@ h3 {
     font-weight: 700;
 }
 
-.section-note {
+.nota-seccion {
     margin-top: 28px;
     padding: 16px 20px;
     color: var(--verde-oscuro);
@@ -1176,8 +1176,8 @@ h3 {
     box-shadow: 0 0 0 3px rgba(0, 121, 107, 0.18);
 }
 
-.formulario-inicio-sesion boton,
-.tarjeta-registro boton {
+.formulario-inicio-sesion button,
+.tarjeta-registro button {
     min-height: 48px;
     margin-top: 12px;
     color: var(--blanco);
@@ -1189,8 +1189,8 @@ h3 {
     font-weight: 700;
 }
 
-.formulario-inicio-sesion boton:hover,
-.tarjeta-registro boton:hover {
+.formulario-inicio-sesion button:hover,
+.tarjeta-registro button:hover {
     background: var(--naranja-medio);
 }
 

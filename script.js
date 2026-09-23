@@ -1,37 +1,37 @@
-const menuButton = document.querySelector(".menu-button");
-const mainNav = document.querySelector(".main-nav");
-const menuLabel = menuButton.querySelector(".sr-only");
+const botonMenu = document.querySelector(".boton-menu");
+const navegacionPrincipal = document.querySelector(".navegacion-principal");
+const textoBotonMenu = botonMenu.querySelector(".solo-lector");
 
-function closeMenu() {
-    menuButton.setAttribute("aria-expanded", "false");
-    menuLabel.textContent = "Abrir menú";
-    mainNav.classList.remove("open");
-    document.body.classList.remove("menu-open");
+function cerrarMenu() {
+    botonMenu.setAttribute("aria-expanded", "false");
+    textoBotonMenu.textContent = "Abrir menú";
+    navegacionPrincipal.classList.remove("abierto");
+    document.body.classList.remove("menu-abierto");
 }
 
-menuButton.addEventListener("click", () => {
-    const isOpen = menuButton.getAttribute("aria-expanded") === "true";
+botonMenu.addEventListener("click", () => {
+    const estaAbierto = botonMenu.getAttribute("aria-expanded") === "true";
 
-    menuButton.setAttribute("aria-expanded", String(!isOpen));
-    menuLabel.textContent = isOpen ? "Abrir menú" : "Cerrar menú";
-    mainNav.classList.toggle("open", !isOpen);
-    document.body.classList.toggle("menu-open", !isOpen);
+    botonMenu.setAttribute("aria-expanded", String(!estaAbierto));
+    textoBotonMenu.textContent = estaAbierto ? "Abrir menú" : "Cerrar menú";
+    navegacionPrincipal.classList.toggle("abierto", !estaAbierto);
+    document.body.classList.toggle("menu-abierto", !estaAbierto);
 });
 
-mainNav.addEventListener("click", (event) => {
+navegacionPrincipal.addEventListener("click", (event) => {
     if (event.target.matches("a")) {
-        closeMenu();
+        cerrarMenu();
     }
 });
 
 document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
-        closeMenu();
+        cerrarMenu();
     }
 });
 
 window.addEventListener("resize", () => {
     if (window.innerWidth > 760) {
-        closeMenu();
+        cerrarMenu();
     }
 });
