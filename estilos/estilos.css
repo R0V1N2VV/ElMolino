@@ -886,7 +886,7 @@ h3 {
         height: 260px;
     }
 
-    .two-columns,
+.dos-columnas,
     .estructura-nosotros,
     .grilla-visita {
         grid-template-columns: 1fr;
@@ -1312,6 +1312,192 @@ h3 {
 .enlace-inicio-sesion a {
     color: var(--naranja-oscuro);
     font-weight: 700;
+}
+
+/* Flujo de registro y verificación */
+.tarjeta-pasos {
+    max-width: 540px;
+}
+
+.enlace-volver,
+.enlace-secundario {
+    display: inline-block;
+    color: var(--azul-medio);
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+.enlace-volver {
+    margin-bottom: 20px;
+}
+
+.enlace-secundario {
+    margin-top: 18px;
+    text-align: center;
+}
+
+.pasos-registro {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin: 26px 0;
+    padding: 0;
+    list-style: none;
+}
+
+.pasos-registro li {
+    display: grid;
+    justify-items: center;
+    gap: 6px;
+    color: var(--verde-medio);
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-align: center;
+}
+
+.pasos-registro span {
+    width: 30px;
+    height: 30px;
+    display: grid;
+    place-items: center;
+    color: var(--verde-medio);
+    background: var(--crema);
+    border: 1px solid var(--beige);
+    border-radius: 50%;
+}
+
+.pasos-registro .paso-activo,
+.pasos-registro .paso-completo {
+    color: var(--azul-oscuro);
+}
+
+.pasos-registro .paso-activo span {
+    color: var(--blanco);
+    background: var(--azul-medio);
+    border-color: var(--azul-medio);
+}
+
+.pasos-registro .paso-completo span {
+    color: var(--blanco);
+    background: var(--verde-medio);
+    border-color: var(--verde-medio);
+}
+
+.formulario-registro,
+.formulario-codigo {
+    display: grid;
+    gap: 10px;
+    margin-top: 24px;
+    text-align: left;
+}
+
+.formulario-registro label,
+.formulario-codigo label {
+    color: var(--verde-oscuro);
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+.formulario-registro input,
+.formulario-codigo input {
+    width: 100%;
+    min-height: 48px;
+    padding: 10px 14px;
+    color: var(--texto);
+    background: var(--blanco);
+    border: 1px solid var(--beige);
+    border-radius: 10px;
+    font: inherit;
+}
+
+.formulario-registro input:focus,
+.formulario-codigo input:focus {
+    outline: none;
+    border-color: var(--azul-medio);
+    box-shadow: 0 0 0 3px rgba(0, 121, 107, 0.18);
+}
+
+.formulario-registro button,
+.formulario-codigo button {
+    min-height: 48px;
+    margin-top: 12px;
+    color: var(--blanco);
+    background: var(--naranja-oscuro);
+    border: 0;
+    border-radius: 999px;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 700;
+}
+
+.resumen-registro {
+    padding: 14px;
+    color: var(--verde-oscuro);
+    background: var(--verde-claro);
+    border-radius: 10px;
+}
+
+.mensaje {
+    margin-top: 20px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    font-size: 0.9rem;
+}
+
+.mensaje-error {
+    color: #8B1E1E;
+    background: #FDECEC;
+    border: 1px solid #F3B6B6;
+}
+
+.mensaje-exito {
+    color: var(--verde-oscuro);
+    background: var(--verde-claro);
+    border: 1px solid var(--verde-suave);
+}
+
+.formulario-codigo input {
+    max-width: 260px;
+    justify-self: center;
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: 0.35em;
+    text-align: center;
+}
+
+.formulario-reenvio {
+    margin-top: 18px;
+    text-align: center;
+}
+
+.boton-enlace {
+    padding: 0;
+    color: var(--azul-medio);
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-decoration: underline;
+}
+
+.datos-cuenta {
+    display: grid;
+    gap: 4px;
+    margin: 26px 0;
+    padding: 16px;
+    color: var(--verde-oscuro);
+    background: var(--crema);
+    border-radius: 12px;
+    text-align: left;
+}
+
+.datos-cuenta span {
+    color: var(--verde-medio);
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
 }
 
 @media (max-width: 480px) {
