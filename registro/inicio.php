@@ -2,10 +2,9 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../vendor/autoload.php';
-
-spl_autoload_register(static function (string $clase): void {
-    $archivo = __DIR__ . '/clases/' . $clase . '.php';
-    if (is_file($archivo)) {
-        require_once $archivo;
-    }
-});
+require_once __DIR__ . '/../php/Conexion.php';
+require_once __DIR__ . '/../php/Sesion.php';
+require_once __DIR__ . '/../php/Utilidades.php';
+require_once __DIR__ . '/../php/Autenticacion.php';
+require_once __DIR__ . '/mailer.php';
+require_once __DIR__ . '/gestor_registro.php';

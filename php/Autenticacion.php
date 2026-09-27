@@ -3,10 +3,7 @@ declare(strict_types=1);
 
 final class Autenticacion
 {
-    public function __construct(private PDO $conexion)
-    {
-    }
-
+    public function __construct(private PDO $conexion) {}
     public function iniciarSesion(string $correo, string $contrasena): ?array
     {
         if (!filter_var($correo, FILTER_VALIDATE_EMAIL) || $contrasena === '') return null;

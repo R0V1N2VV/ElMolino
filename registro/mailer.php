@@ -10,8 +10,8 @@ final class Correo
 
     public function __construct()
     {
-        $archivo = __DIR__ . '/../mail_config.php';
-        $this->configuracion = file_exists($archivo) ? require $archivo : require __DIR__ . '/../mail_config.example.php';
+        $archivo = __DIR__ . '/mail_config.php';
+        $this->configuracion = file_exists($archivo) ? require $archivo : require __DIR__ . '/mail_config.example.php';
     }
 
     public function enviarCodigoRegistro(string $destinatario, string $nombre, string $codigo): void
@@ -19,7 +19,6 @@ final class Correo
         if (empty($this->configuracion['username']) || empty($this->configuracion['password']) || empty($this->configuracion['from_email'])) {
             throw new RuntimeException('Falta configurar la contraseña de aplicación en registro/mail_config.php.');
         }
-
         $mail = new PHPMailer(true);
         try {
             $mail->isSMTP();
@@ -37,7 +36,7 @@ final class Correo
             $mail->Body = '<p>Hola ' . Utilidades::escapar($nombre) . ',</p><p>Tu código para terminar el registro en El Molino es:</p><h2 style="letter-spacing:4px;">' . Utilidades::escapar($codigo) . '</h2><p>Este código vence en 15 minutos.</p>';
             $mail->AltBody = "Hola {$nombre},\n\nTu código para terminar el registro en El Molino es: {$codigo}\n\nEste código vence en 15 minutos.";
             $mail->send();
-        } catch (Exception $error) {
+        } catch (Exception) {
             throw new RuntimeException('No se pudo enviar el correo: ' . $mail->ErrorInfo);
         }
     }
