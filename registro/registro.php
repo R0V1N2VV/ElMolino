@@ -1,47 +1,114 @@
 <?php
 declare(strict_types=1);
 
-require_once __DIR__ . '/inicio.php';
+final class Registro
+{
+    public function __construct(private PDO $conexion, private Correo $correo)
+    {
+    }
 
-Sesion::iniciar();
-if (Sesion::usuario()) Utilidades::redirigir('cuenta.php');
+    public function validarDatos(array $entrada): array
+    {
+        $datos = [
+            'nombre' => trim((string) ($entrada['nombre'] ?? '')),
+            'apellido' => trim((string) ($entrada['apellido'] ?? '')),
+            'dni' => preg_replace('/\D+/', '', (string) ($entrada['dni'] ?? '')),
+            'telefono' => preg_replace('/\D+/', '', (string) ($entrada['telefono'] ?? '')),
+            'email' => strtolower(trim((string) ($entrada['email'] ?? ''))),
+            'direccion' => trim((string) ($entrada['direccion'] ?? '')),
+        ];
+        $errores = [];
+        foreach (['nombre' => 'nombre', 'apellido' => 'apellido', 'dni' => 'DNI', 'telefono' => 'teléfono', 'direccion' => 'domicilio'] as $campo => $etiqueta) {
+            if ($datos[$campo] === '') $errores[] = "Completá el campo {$etiqueta}.";
+        }
+        if (!filter_var($datos['email'], FILTER_VALIDATE_EMAIL)) $errores[] = 'Ingresá un correo electrónico válido.';
+        if (strlen($datos['dni']) < 7 || strlen($datos['dni']) > 8 || strlen($datos['telefono']) < 8 || strlen($datos['telefono']) > 15) $errores[] = 'Revisá el DNI y el teléfono ingresados.';
+        if (!$errores && $this->datosYaRegistrados($datos)) $errores[] = 'Ya existe una cuenta con esos datos.';
+        return ['datos' => $datos, 'errores' => $errores];
+    }
 
-$paso = (int) ($_GET['paso'] ?? 1);
-$paso = in_array($paso, [1, 2], true) ? $paso : 1;
-$errores = [];
-$datos = Sesion::obtener('datos_registro', []);
-$registro = new Registro(Conexion::obtener(), new Correo());
+    public function crearPendiente(array $datos, string $contrasena, string $repetirContrasena): array
+    {
+        $errores = [];
+        if (strlen($contrasena) < 8) $errores[] = 'La contraseña debe tener al menos 8 caracteres.';
+        if ($contrasena !== $repetirContrasena) $errores[] = 'Las contraseñas no coinciden.';
+        if ($errores) return ['errores' => $errores];
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (!Sesion::validarCsrf($_POST['token_csrf'] ?? null)) {
-        $errores[] = 'La sesión del formulario venció. Volvé a intentarlo.';
-    } elseif (($_POST['accion'] ?? '') === 'guardar_datos') {
+        $codigo = Utilidades::codigoVerificacion();
+        $pendiente = [...$datos, 'password_hash' => password_hash($contrasena, PASSWORD_DEFAULT), 'codigo_hash' => password_hash($codigo, PASSWORD_DEFAULT)];
         try {
-            $resultado = $registro->validarDatos($_POST);
-            $datos = $resultado['datos'];
-            $errores = $resultado['errores'];
-            if (!$errores) {
-                Sesion::guardar('datos_registro', $datos);
-                Utilidades::redirigir('registro.php?paso=2');
-            }
-        } catch (PDOException) { $errores[] = 'No se pudo consultar la base de datos. Verificá la conexión.'; }
-        $paso = 1;
-    } elseif (($_POST['accion'] ?? '') === 'enviar_codigo') {
-        if (!$datos) {
-            Utilidades::redirigir('registro.php');
+            $this->conexion->beginTransaction();
+            $this->conexion->prepare('DELETE FROM registro_pendiente WHERE email = :email OR dni = :dni')->execute(['email' => $datos['email'], 'dni' => $datos['dni']]);
+            $sql = 'INSERT INTO registro_pendiente (dni, nombre, apellido, telefono, email, direccion, password_hash, codigo_hash, vence_en) VALUES (:dni, :nombre, :apellido, :telefono, :email, :direccion, :password_hash, :codigo_hash, DATE_ADD(NOW(), INTERVAL 15 MINUTE))';
+            $this->conexion->prepare($sql)->execute($pendiente);
+            $id = (int) $this->conexion->lastInsertId();
+            $this->conexion->commit();
+            $this->correo->enviarCodigoRegistro($datos['email'], $datos['nombre'], $codigo);
+            return ['id' => $id, 'errores' => []];
+        } catch (Throwable $error) {
+            if ($this->conexion->inTransaction()) $this->conexion->rollBack();
+            if (isset($id)) $this->conexion->prepare('DELETE FROM registro_pendiente WHERE idRegistroPendiente = :id')->execute(['id' => $id]);
+            return ['errores' => [$error instanceof RuntimeException ? $error->getMessage() : 'No se pudo guardar el registro pendiente. Ejecutá BD/registro_pendiente.sql.']];
         }
+    }
 
-        $resultado = $registro->crearPendiente($datos, (string) ($_POST['contrasena'] ?? ''), (string) ($_POST['repetir_contrasena'] ?? ''));
-        $errores = $resultado['errores'];
-        if (!$errores) {
-            Sesion::guardar('registro_pendiente_id', $resultado['id']);
-            Sesion::eliminar('datos_registro');
-            Utilidades::redirigir('verificar.php');
+    public function verificar(int $id, string $codigo): array
+    {
+        $consulta = $this->conexion->prepare('SELECT * FROM registro_pendiente WHERE idRegistroPendiente = :id LIMIT 1');
+        $consulta->execute(['id' => $id]);
+        $pendiente = $consulta->fetch();
+        if (!$pendiente) return ['errores' => ['El registro pendiente ya no está disponible.'], 'usuario' => null];
+        if (strtotime($pendiente['vence_en']) < time()) return ['errores' => ['El código venció. Pedí uno nuevo para continuar.'], 'usuario' => null];
+        if ((int) $pendiente['intentos'] >= 5) return ['errores' => ['Superaste la cantidad de intentos. Pedí un código nuevo.'], 'usuario' => null];
+        if (!password_verify($codigo, $pendiente['codigo_hash'])) {
+            $this->conexion->prepare('UPDATE registro_pendiente SET intentos = intentos + 1 WHERE idRegistroPendiente = :id')->execute(['id' => $id]);
+            return ['errores' => ['El código no es correcto.'], 'usuario' => null];
         }
-        $paso = 2;
+        try {
+            $this->conexion->beginTransaction();
+            $this->conexion->prepare('INSERT INTO cliente (dni, nombre, apellido, telefono, email, direccion) VALUES (:dni, :nombre, :apellido, :telefono, :email, :direccion)')->execute([
+                'dni' => $pendiente['dni'],
+                'nombre' => $pendiente['nombre'],
+                'apellido' => $pendiente['apellido'],
+                'telefono' => $pendiente['telefono'],
+                'email' => $pendiente['email'],
+                'direccion' => $pendiente['direccion'],
+            ]);
+            $idCliente = (int) $this->conexion->lastInsertId();
+            $this->conexion->prepare('INSERT INTO usuarios (nombre, apellido, email, password_hash, rol) VALUES (:nombre, :apellido, :email, :password_hash, :rol)')->execute(['nombre' => $pendiente['nombre'], 'apellido' => $pendiente['apellido'], 'email' => $pendiente['email'], 'password_hash' => $pendiente['password_hash'], 'rol' => 'cliente']);
+            $idUsuario = (int) $this->conexion->lastInsertId();
+            $this->conexion->prepare('DELETE FROM registro_pendiente WHERE idRegistroPendiente = :id')->execute(['id' => $id]);
+            $this->conexion->commit();
+            return ['errores' => [], 'usuario' => ['id_usuario' => $idUsuario, 'id_cliente' => $idCliente, 'nombre' => $pendiente['nombre'], 'email' => $pendiente['email'], 'rol' => 'cliente']];
+        } catch (PDOException) {
+            if ($this->conexion->inTransaction()) $this->conexion->rollBack();
+            return ['errores' => ['No se pudo activar la cuenta. Es posible que esos datos ya estén registrados.'], 'usuario' => null];
+        }
+    }
+
+    public function reenviarCodigo(int $id): string
+    {
+        $consulta = $this->conexion->prepare('SELECT * FROM registro_pendiente WHERE idRegistroPendiente = :id LIMIT 1');
+        $consulta->execute(['id' => $id]);
+        $pendiente = $consulta->fetch();
+        if (!$pendiente) throw new RuntimeException('El registro pendiente ya no está disponible.');
+        if (strtotime($pendiente['actualizado_en']) > time() - 60) throw new RuntimeException('Esperá un minuto antes de pedir otro código.');
+        $codigo = Utilidades::codigoVerificacion();
+        $this->correo->enviarCodigoRegistro($pendiente['email'], $pendiente['nombre'], $codigo);
+        $this->conexion->prepare('UPDATE registro_pendiente SET codigo_hash = :codigo_hash, vence_en = DATE_ADD(NOW(), INTERVAL 15 MINUTE), intentos = 0 WHERE idRegistroPendiente = :id')->execute(['codigo_hash' => password_hash($codigo, PASSWORD_DEFAULT), 'id' => $id]);
+        return 'Te enviamos un nuevo código.';
+    }
+
+    private function datosYaRegistrados(array $datos): bool
+    {
+        $consulta = $this->conexion->prepare('SELECT 1 FROM cliente WHERE email = :email OR dni = :dni OR telefono = :telefono LIMIT 1');
+        $consulta->execute(['email' => $datos['email'], 'dni' => $datos['dni'], 'telefono' => $datos['telefono']]);
+        $usuario = $this->conexion->prepare('SELECT 1 FROM usuarios WHERE email = :email LIMIT 1');
+        $usuario->execute(['email' => $datos['email']]);
+        return (bool) ($consulta->fetch() || $usuario->fetch());
     }
 }
-?>
+
 <!DOCTYPE html>
 <html lang="es-AR">
 <head>
