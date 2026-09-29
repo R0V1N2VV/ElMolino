@@ -291,6 +291,14 @@ h3 {
     color: var(--naranja-oscuro);
 }
 
+.navegacion-principal .enlace-activo {
+    color: var(--verde-oscuro);
+    text-decoration: underline;
+    text-decoration-color: var(--verde-suave);
+    text-decoration-thickness: 3px;
+    text-underline-offset: 8px;
+}
+
 .interruptor-dislexia {
     display: inline-flex;
     min-height: 40px;
@@ -667,7 +675,10 @@ h3 {
 }
 
 .lista-actividades article {
+    height: 100%;
     min-height: 190px;
+    display: flex;
+    flex-direction: column;
     padding: 26px;
     background: var(--crema);
     border: 1px solid var(--beige);
@@ -680,6 +691,27 @@ h3 {
 
 .lista-actividades p {
     color: var(--verde-medio);
+}
+
+.lista-actividades article span {
+    margin-top: auto;
+    padding-top: 20px;
+    color: var(--azul-medio);
+    font-weight: 750;
+}
+
+.lista-actividades a {
+    border-radius: 14px;
+    transition: transform 180ms ease;
+}
+
+.lista-actividades a:hover {
+    transform: translateY(-4px);
+}
+
+.accion-seccion-actividades {
+    margin-top: 30px;
+    text-align: center;
 }
 
 /* =========================================================
@@ -886,7 +918,7 @@ h3 {
         height: 260px;
     }
 
-.dos-columnas,
+    .two-columns,
     .estructura-nosotros,
     .grilla-visita {
         grid-template-columns: 1fr;
@@ -1314,7 +1346,18 @@ h3 {
     font-weight: 700;
 }
 
-/* Flujo de registro y verificación */
+@media (max-width: 480px) {
+    .tarjeta-inicio-sesion,
+    .tarjeta-registro {
+        padding: 28px 22px;
+    }
+
+    .fila-formulario {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Flujo de registro, verificación y cuenta */
 .tarjeta-pasos {
     max-width: 540px;
 }
@@ -1500,13 +1543,1288 @@ h3 {
     text-transform: uppercase;
 }
 
-@media (max-width: 480px) {
-    .tarjeta-inicio-sesion,
-    .tarjeta-registro {
-        padding: 28px 22px;
+/* =========================================================
+   13. Página de actividades
+   ========================================================= */
+.pagina-actividades {
+    background: var(--blanco-calido);
+}
+
+.portada-actividades {
+    padding-block: 64px 72px;
+    background: linear-gradient(180deg, var(--crema), rgba(200, 230, 201, 0.72));
+}
+
+.titulo-portada-actividades {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 40px;
+}
+
+.titulo-portada-actividades h1 {
+    max-width: 760px;
+    font-size: clamp(2.5rem, 5vw, 4.3rem);
+}
+
+.titulo-portada-actividades p {
+    max-width: 680px;
+    margin-top: 18px;
+    color: var(--verde-medio);
+    font-size: 1.08rem;
+}
+
+.carrusel-categorias {
+    display: grid;
+    grid-template-columns: 48px minmax(0, 1fr) 48px;
+    align-items: center;
+    gap: 16px;
+    margin-top: 52px;
+}
+
+.ventana-carrusel {
+    overflow-x: auto;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+}
+
+.ventana-carrusel::-webkit-scrollbar {
+    display: none;
+}
+
+.pista-carrusel {
+    display: grid;
+    grid-auto-columns: minmax(220px, 1fr);
+    grid-auto-flow: column;
+    gap: 16px;
+}
+
+.control-carrusel {
+    width: 48px;
+    height: 48px;
+    color: var(--azul-oscuro);
+    background: var(--blanco-calido);
+    border: 1px solid var(--beige);
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1.35rem;
+    transition: transform 180ms ease, background-color 180ms ease;
+}
+
+.control-carrusel:hover {
+    background: var(--blanco);
+    transform: scale(1.06);
+}
+
+.item-carrusel-categoria {
+    min-height: 205px;
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    justify-content: center;
+    padding: 24px;
+    color: var(--verde-oscuro);
+    background: rgba(255, 255, 255, 0.76);
+    border: 1px solid rgba(46, 125, 50, 0.22);
+    border-radius: 18px;
+    cursor: pointer;
+    text-align: center;
+    transition: transform 180ms ease, background-color 180ms ease;
+}
+
+.item-carrusel-categoria:nth-child(3n + 2) {
+    background: rgba(224, 247, 250, 0.84);
+}
+
+.item-carrusel-categoria:hover {
+    background: var(--blanco);
+    transform: translateY(-5px);
+}
+
+.icono-categoria {
+    width: 72px;
+    height: 72px;
+    display: grid;
+    place-items: center;
+    margin-bottom: 14px;
+    background: var(--verde-claro);
+    border-radius: 50%;
+    font-size: 2rem;
+}
+
+.item-carrusel-categoria strong {
+    font-size: 1.2rem;
+}
+
+.item-carrusel-categoria small {
+    margin-top: 6px;
+    color: var(--verde-medio);
+    font-size: 0.82rem;
+}
+
+.seccion-tendencias {
+    background: var(--blanco-calido);
+}
+
+.encabezado-con-accion {
+    max-width: none;
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 32px;
+}
+
+.encabezado-con-accion > div > p:not(.texto-destacado) {
+    max-width: 650px;
+    margin-top: 18px;
+    color: var(--verde-medio);
+}
+
+.grilla-tendencias {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px;
+}
+
+.tarjeta-actividad {
+    overflow: hidden;
+    background: var(--blanco);
+    border: 1px solid var(--beige);
+    border-radius: 18px;
+    box-shadow: 0 12px 30px rgba(0, 77, 64, 0.07);
+}
+
+.tarjeta-actividad-destacada:first-child {
+    grid-column: span 1;
+}
+
+.visual-actividad {
+    height: 205px;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    background: linear-gradient(135deg, var(--verde-claro), var(--celeste));
+    font-size: 4rem;
+}
+
+.tarjeta-actividad:nth-child(3n + 2) .visual-actividad {
+    background: linear-gradient(135deg, var(--celeste), var(--crema));
+}
+
+.tarjeta-actividad:nth-child(3n) .visual-actividad {
+    background: linear-gradient(135deg, var(--beige), var(--verde-claro));
+}
+
+.visual-actividad img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.contenido-tarjeta-actividad {
+    display: flex;
+    min-height: 285px;
+    flex-direction: column;
+    padding: 24px;
+}
+
+.etiqueta-actividad {
+    margin-bottom: 8px;
+    color: var(--verde-medio);
+    font-size: 0.76rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.contenido-tarjeta-actividad h3 {
+    margin-bottom: 10px;
+    font-size: 1.5rem;
+}
+
+.contenido-tarjeta-actividad > p:not(.etiqueta-actividad) {
+    color: var(--verde-medio);
+}
+
+.datos-breves-actividad {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px 14px;
+    margin-top: 18px;
+    color: var(--azul-medio);
+    font-size: 0.86rem;
+    font-weight: 700;
+}
+
+.datos-breves-actividad span + span::before {
+    content: "·";
+    margin-right: 14px;
+}
+
+.enlace-actividad {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: auto;
+    padding-top: 22px;
+    color: var(--azul-oscuro);
+    font-weight: 800;
+}
+
+.enlace-actividad:hover {
+    color: var(--verde-medio);
+}
+
+.seccion-categorias {
+    background: var(--crema);
+}
+
+.grilla-categorias {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.tarjeta-categoria {
+    display: grid;
+    grid-template-columns: 72px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 18px;
+    padding: 24px;
+    color: var(--texto);
+    background: var(--blanco-calido);
+    border: 1px solid var(--beige);
+    border-radius: 14px;
+    cursor: pointer;
+    text-align: left;
+    transition: transform 180ms ease, border-color 180ms ease;
+}
+
+.tarjeta-categoria:hover {
+    border-color: var(--verde-suave);
+    transform: translateY(-3px);
+}
+
+.tarjeta-categoria .icono-categoria {
+    width: 60px;
+    height: 60px;
+    margin: 0;
+    font-size: 1.7rem;
+}
+
+.tarjeta-categoria strong,
+.tarjeta-categoria small,
+.tarjeta-categoria em {
+    display: block;
+}
+
+.tarjeta-categoria strong {
+    color: var(--azul-oscuro);
+    font-size: 1.2rem;
+}
+
+.tarjeta-categoria small {
+    margin-top: 3px;
+    color: var(--verde-medio);
+    font-size: 0.88rem;
+}
+
+.tarjeta-categoria em {
+    margin-top: 7px;
+    color: var(--azul-medio);
+    font-size: 0.78rem;
+    font-style: normal;
+    font-weight: 700;
+}
+
+.flecha-categoria {
+    color: var(--verde-medio);
+    font-size: 1.5rem;
+}
+
+.seccion-listado-actividades {
+    background: var(--blanco-calido);
+}
+
+.pagina-categoria-actividades {
+    background: var(--blanco-calido);
+}
+
+.cabecera-categoria-actividades {
+    padding-block: 42px 58px;
+    background: linear-gradient(180deg, var(--crema), rgba(200, 230, 201, 0.72));
+}
+
+.cabecera-categoria-actividades .volver-actividades {
+    margin-bottom: 34px;
+}
+
+.titulo-categoria-actividades {
+    display: flex;
+    align-items: center;
+    gap: 26px;
+}
+
+.titulo-categoria-actividades h1 {
+    font-size: clamp(2.8rem, 6vw, 4.8rem);
+}
+
+.titulo-categoria-actividades p:last-child {
+    margin-top: 10px;
+    color: var(--verde-medio);
+    font-size: 1.08rem;
+}
+
+.icono-categoria-grande {
+    width: 104px;
+    height: 104px;
+    flex: 0 0 104px;
+    margin: 0;
+    background: var(--blanco-calido);
+    border: 1px solid var(--beige);
+    font-size: 3rem;
+}
+
+.encabezado-listado,
+.encabezado-listado-admin {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 30px;
+    margin-bottom: 30px;
+}
+
+.encabezado-listado h2,
+.encabezado-listado-admin h2 {
+    font-size: clamp(2rem, 4vw, 3rem);
+}
+
+#contador-resultados {
+    margin-top: 8px;
+    color: var(--verde-medio);
+}
+
+.campo-ordenar,
+.panel-filtros label,
+.buscador-actividades > label,
+.formulario-actividad label {
+    color: var(--verde-oscuro);
+    font-size: 0.86rem;
+    font-weight: 750;
+}
+
+.campo-ordenar select,
+.panel-filtros select,
+.formulario-actividad input,
+.formulario-actividad select,
+.formulario-actividad textarea {
+    width: 100%;
+    margin-top: 7px;
+    padding: 12px 14px;
+    color: var(--texto);
+    background: var(--blanco);
+    border: 1px solid var(--beige);
+    border-radius: 10px;
+    font: inherit;
+}
+
+.campo-ordenar select:focus,
+.panel-filtros select:focus,
+.campo-busqueda input:focus,
+.formulario-actividad input:focus,
+.formulario-actividad select:focus,
+.formulario-actividad textarea:focus {
+    outline: 3px solid rgba(0, 121, 107, 0.17);
+    border-color: var(--azul-medio);
+}
+
+.buscador-actividades {
+    max-width: 720px;
+    margin-bottom: 28px;
+}
+
+.campo-busqueda {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    margin-top: 8px;
+    padding-inline: 16px;
+    background: var(--blanco);
+    border: 1px solid var(--beige);
+    border-radius: 12px;
+}
+
+.campo-busqueda span {
+    color: var(--azul-medio);
+    font-size: 1.5rem;
+}
+
+.campo-busqueda input {
+    min-height: 52px;
+    padding: 10px 12px;
+    color: var(--texto);
+    background: transparent;
+    border: 0;
+    font: inherit;
+}
+
+.campo-busqueda input:focus {
+    outline: 0;
+}
+
+.campo-busqueda:focus-within {
+    outline: 3px solid rgba(0, 121, 107, 0.17);
+    border-color: var(--azul-medio);
+}
+
+.estructura-listado-actividades {
+    display: grid;
+    grid-template-columns: 250px minmax(0, 1fr);
+    align-items: start;
+    gap: 28px;
+}
+
+.panel-filtros {
+    position: sticky;
+    top: 104px;
+    display: grid;
+    gap: 20px;
+    padding: 24px;
+    background: var(--crema);
+    border: 1px solid var(--beige);
+    border-radius: 14px;
+}
+
+.titulo-filtros {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--beige);
+}
+
+.titulo-filtros h3 {
+    font-size: 1.08rem;
+}
+
+.titulo-filtros button,
+.encabezado-listado-admin > button {
+    color: var(--azul-medio);
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 800;
+}
+
+.resultados-actividades {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+}
+
+.sin-resultados {
+    grid-column: 1 / -1;
+    padding: 72px 24px;
+    color: var(--verde-medio);
+    background: var(--crema);
+    border-radius: 16px;
+    text-align: center;
+}
+
+.sin-resultados > span {
+    display: block;
+    margin-bottom: 10px;
+    font-size: 2.5rem;
+}
+
+.sin-resultados h3 {
+    margin-bottom: 6px;
+}
+
+/* =========================================================
+   14. Ficha de una actividad
+   ========================================================= */
+.pagina-detalle-actividad {
+    min-height: 70vh;
+    padding-block: 48px 96px;
+    background: var(--blanco-calido);
+}
+
+.volver-actividades {
+    display: inline-block;
+    margin-bottom: 30px;
+    color: var(--azul-medio);
+    font-weight: 750;
+}
+
+.grilla-detalle-actividad {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    align-items: start;
+    gap: 46px;
+}
+
+.visual-detalle-actividad {
+    height: min(430px, 45vw);
+    margin-bottom: 34px;
+    border-radius: 22px;
+    box-shadow: var(--sombra);
+    font-size: 7rem;
+}
+
+.contenido-detalle-actividad h1 {
+    max-width: 780px;
+    font-size: clamp(2.5rem, 5vw, 4.15rem);
+}
+
+.bajada-detalle {
+    max-width: 720px;
+    margin-top: 16px;
+    color: var(--verde-medio);
+    font-size: 1.15rem;
+}
+
+.bloque-texto-actividad {
+    margin-top: 38px;
+    padding-top: 30px;
+    border-top: 1px solid var(--beige);
+}
+
+.bloque-texto-actividad h2 {
+    margin-bottom: 12px;
+    font-size: clamp(1.65rem, 3vw, 2.25rem);
+}
+
+.bloque-texto-actividad p {
+    max-width: 760px;
+    color: var(--verde-medio);
+}
+
+.panel-informacion-actividad {
+    position: sticky;
+    top: 108px;
+    padding: 28px;
+    background: var(--crema);
+    border: 1px solid var(--beige);
+    border-radius: 18px;
+}
+
+.panel-informacion-actividad dl {
+    margin-block: 8px 24px;
+}
+
+.panel-informacion-actividad dl > div {
+    padding-block: 15px;
+    border-bottom: 1px solid var(--beige);
+}
+
+.panel-informacion-actividad dt {
+    color: var(--verde-oscuro);
+    font-weight: 800;
+}
+
+.panel-informacion-actividad dd {
+    margin-top: 3px;
+    color: var(--verde-medio);
+}
+
+.boton-ancho {
+    width: 100%;
+    cursor: pointer;
+}
+
+.boton-ancho:disabled {
+    cursor: default;
+    opacity: 0.72;
+    transform: none;
+}
+
+.mensaje-inscripcion {
+    margin-top: 14px;
+    color: var(--verde-medio);
+    font-size: 0.82rem;
+}
+
+.pie-pagina-simple {
+    padding-top: 0;
+}
+
+.pie-pagina-simple a:hover {
+    color: var(--blanco);
+}
+
+/* =========================================================
+   15. Administración de actividades
+   ========================================================= */
+.pagina-administracion {
+    min-height: calc(100vh - 82px);
+    background: var(--blanco-calido);
+}
+
+.cabecera-administracion {
+    padding-block: 58px;
+    background: linear-gradient(180deg, var(--crema), var(--verde-claro));
+}
+
+.encabezado-admin {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 36px;
+}
+
+.encabezado-admin h1 {
+    font-size: clamp(2.6rem, 5vw, 4.2rem);
+}
+
+.encabezado-admin > div > p:last-child {
+    margin-top: 12px;
+    color: var(--verde-medio);
+}
+
+.aviso-administracion {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    z-index: 150;
+    max-width: min(380px, calc(100% - 48px));
+    padding: 14px 20px;
+    color: var(--blanco);
+    background: var(--verde-oscuro);
+    border-radius: 12px;
+    box-shadow: var(--sombra);
+}
+
+.panel-formulario-actividad {
+    padding-block: 64px;
+    background: var(--crema);
+}
+
+.encabezado-formulario-admin {
+    display: flex;
+    align-items: start;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 32px;
+}
+
+.encabezado-formulario-admin h2 {
+    font-size: clamp(2rem, 4vw, 3rem);
+}
+
+.boton-cerrar-panel {
+    width: 44px;
+    height: 44px;
+    color: var(--azul-oscuro);
+    background: var(--blanco-calido);
+    border: 1px solid var(--beige);
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1.8rem;
+    line-height: 1;
+}
+
+.formulario-actividad {
+    display: grid;
+    gap: 22px;
+}
+
+.bloque-formulario-admin {
+    padding: 28px;
+    background: var(--blanco-calido);
+    border: 1px solid var(--beige);
+    border-radius: 16px;
+}
+
+.bloque-formulario-admin h3 {
+    margin-bottom: 22px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--beige);
+}
+
+.grilla-campos-admin {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+}
+
+.formulario-actividad label {
+    display: block;
+}
+
+.formulario-actividad textarea {
+    min-height: 110px;
+    resize: vertical;
+}
+
+.campo-doble {
+    grid-column: 1 / -1;
+}
+
+.vista-imagen {
+    min-height: 112px;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    color: var(--verde-medio);
+    background: var(--crema);
+    border: 1px dashed var(--verde-suave);
+    border-radius: 12px;
+    font-size: 0.82rem;
+    text-align: center;
+}
+
+.vista-imagen img {
+    width: 100%;
+    height: 150px;
+    object-fit: cover;
+}
+
+.opcion-tendencia {
+    display: flex !important;
+    align-items: center;
+    gap: 12px;
+    padding: 14px;
+    background: var(--verde-claro);
+    border-radius: 10px;
+}
+
+.opcion-tendencia input {
+    width: 20px;
+    height: 20px;
+    margin: 0;
+}
+
+.acciones-formulario-admin {
+    display: flex;
+    gap: 14px;
+}
+
+.boton-neutral {
+    color: var(--azul-oscuro);
+    background: var(--blanco);
+    border: 1px solid var(--beige);
+    cursor: pointer;
+}
+
+.listado-administracion {
+    padding-block: 72px 96px;
+}
+
+.lista-administracion {
+    display: grid;
+    gap: 10px;
+}
+
+.fila-actividad-admin {
+    display: grid;
+    grid-template-columns: 54px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 18px;
+    background: var(--blanco);
+    border: 1px solid var(--beige);
+    border-radius: 12px;
+}
+
+.miniatura-admin {
+    width: 48px;
+    height: 48px;
+    display: grid;
+    place-items: center;
+    background: var(--verde-claro);
+    border-radius: 10px;
+    font-size: 1.5rem;
+}
+
+.fila-actividad-admin strong,
+.fila-actividad-admin small {
+    display: block;
+}
+
+.fila-actividad-admin strong {
+    color: var(--azul-oscuro);
+}
+
+.fila-actividad-admin small {
+    margin-top: 3px;
+    color: var(--verde-medio);
+}
+
+.acciones-admin {
+    display: flex;
+    gap: 8px;
+}
+
+.acciones-admin button {
+    min-height: 38px;
+    padding: 8px 13px;
+    color: var(--azul-oscuro);
+    background: var(--crema);
+    border: 1px solid var(--beige);
+    border-radius: 8px;
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 750;
+}
+
+.acciones-admin .boton-eliminar {
+    color: #8a2c20;
+    background: #fff1ee;
+    border-color: #f0c2ba;
+}
+
+.nota-administracion {
+    margin-top: 24px;
+    padding: 16px 20px;
+    color: var(--verde-medio);
+    background: var(--crema);
+    border-left: 4px solid var(--verde-suave);
+    border-radius: 8px;
+    font-size: 0.88rem;
+}
+
+@media (max-width: 1020px) {
+    .grilla-tendencias {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .fila-formulario {
+    .grilla-tendencias .tarjeta-actividad:last-child {
+        grid-column: 1 / -1;
+    }
+
+    .grilla-tendencias .tarjeta-actividad:last-child {
+        display: grid;
+        grid-template-columns: 0.9fr 1.1fr;
+    }
+
+    .grilla-tendencias .tarjeta-actividad:last-child .visual-actividad {
+        height: 100%;
+        min-height: 260px;
+    }
+
+    .grilla-detalle-actividad {
+        grid-template-columns: minmax(0, 1fr) 310px;
+        gap: 28px;
+    }
+}
+
+@media (max-width: 760px) {
+    .navegacion-principal .enlace-activo {
+        text-decoration: none;
+        border-left: 4px solid var(--verde-suave);
+        padding-left: 12px;
+    }
+
+    .portada-actividades {
+        padding-block: 46px 56px;
+    }
+
+    .cabecera-categoria-actividades {
+        padding-block: 32px 44px;
+    }
+
+    .titulo-categoria-actividades {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 18px;
+    }
+
+    .icono-categoria-grande {
+        width: 82px;
+        height: 82px;
+        flex-basis: 82px;
+        font-size: 2.35rem;
+    }
+
+    .titulo-portada-actividades,
+    .encabezado-con-accion,
+    .encabezado-admin,
+    .encabezado-listado,
+    .encabezado-listado-admin {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .titulo-portada-actividades h1 {
+        font-size: clamp(2.25rem, 11vw, 3.15rem);
+    }
+
+    .carrusel-categorias {
+        grid-template-columns: minmax(0, 1fr);
+        margin-top: 38px;
+    }
+
+    .control-carrusel {
+        display: none;
+    }
+
+    .pista-carrusel {
+        grid-auto-columns: 78%;
+    }
+
+    .grilla-tendencias,
+    .grilla-categorias,
+    .resultados-actividades,
+    .grilla-campos-admin {
         grid-template-columns: 1fr;
     }
+
+    .grilla-tendencias .tarjeta-actividad:last-child {
+        grid-column: auto;
+        display: block;
+    }
+
+    .grilla-tendencias .tarjeta-actividad:last-child .visual-actividad {
+        height: 205px;
+        min-height: auto;
+    }
+
+    .estructura-listado-actividades {
+        grid-template-columns: 1fr;
+    }
+
+    .panel-filtros,
+    .panel-informacion-actividad {
+        position: static;
+    }
+
+    .grilla-detalle-actividad {
+        grid-template-columns: 1fr;
+    }
+
+    .panel-informacion-actividad {
+        grid-row: 1;
+    }
+
+    .visual-detalle-actividad {
+        height: 250px;
+    }
+
+    .pagina-detalle-actividad {
+        padding-block: 34px 72px;
+    }
+
+    .campo-doble {
+        grid-column: auto;
+    }
+
+    .fila-actividad-admin {
+        grid-template-columns: 48px minmax(0, 1fr);
+    }
+
+    .acciones-admin {
+        grid-column: 1 / -1;
+        justify-content: flex-end;
+    }
+}
+
+@media (max-width: 480px) {
+    .tarjeta-categoria {
+        grid-template-columns: 54px minmax(0, 1fr);
+        padding: 18px;
+    }
+
+    .tarjeta-categoria .icono-categoria {
+        width: 50px;
+        height: 50px;
+        font-size: 1.45rem;
+    }
+
+    .flecha-categoria {
+        display: none;
+    }
+
+    .contenido-tarjeta-actividad,
+    .panel-informacion-actividad,
+    .bloque-formulario-admin {
+        padding: 22px;
+    }
+
+    .acciones-formulario-admin {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .fila-actividad-admin {
+        padding: 14px;
+    }
+}
+
+/* =========================================================
+   16. Fotografías y composición de categorías
+   ========================================================= */
+.item-carrusel-categoria {
+    position: relative;
+    min-height: 265px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-start;
+    overflow: hidden;
+    padding: 24px;
+    color: var(--blanco);
+    background: var(--verde-oscuro);
+    border: 0;
+    border-radius: 12px;
+    text-align: left;
+    isolation: isolate;
+}
+
+.item-carrusel-categoria::after,
+.tarjeta-categoria::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: linear-gradient(180deg, rgba(7, 39, 31, 0.04) 25%, rgba(7, 39, 31, 0.9) 100%);
+}
+
+.item-carrusel-categoria:nth-child(3n + 2),
+.item-carrusel-categoria:hover {
+    background: var(--verde-oscuro);
+}
+
+.imagen-categoria {
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 420ms ease;
+}
+
+.item-carrusel-categoria:hover .imagen-categoria,
+.tarjeta-categoria:hover .imagen-categoria {
+    transform: scale(1.045);
+}
+
+.contenido-categoria {
+    display: block;
+}
+
+.item-carrusel-categoria strong,
+.item-carrusel-categoria small {
+    display: block;
+    color: var(--blanco);
+}
+
+.item-carrusel-categoria strong {
+    font-size: 1.5rem;
+    line-height: 1.15;
+}
+
+.item-carrusel-categoria small {
+    max-width: 230px;
+    margin-top: 7px;
+    font-size: 0.86rem;
+    line-height: 1.4;
+    opacity: 0.88;
+}
+
+.seccion-categorias {
+    background: #edf4ec;
+}
+
+.grilla-categorias {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+}
+
+.tarjeta-categoria {
+    position: relative;
+    min-height: 300px;
+    display: flex;
+    align-items: flex-end;
+    overflow: hidden;
+    padding: 28px;
+    color: var(--blanco);
+    background: var(--verde-oscuro);
+    border: 0;
+    border-radius: 10px;
+    text-align: left;
+    isolation: isolate;
+}
+
+.tarjeta-categoria:nth-child(1),
+.tarjeta-categoria:nth-child(5) {
+    grid-column: span 2;
+}
+
+.tarjeta-categoria:hover {
+    border-color: transparent;
+    transform: translateY(-3px);
+}
+
+.contenido-tarjeta-categoria {
+    position: relative;
+    z-index: 1;
+}
+
+.tarjeta-categoria strong,
+.tarjeta-categoria small,
+.tarjeta-categoria em {
+    color: var(--blanco);
+}
+
+.tarjeta-categoria strong {
+    font-size: clamp(1.55rem, 2.6vw, 2.25rem);
+    line-height: 1.08;
+}
+
+.tarjeta-categoria small {
+    max-width: 430px;
+    margin-top: 8px;
+    font-size: 0.94rem;
+    line-height: 1.4;
+    opacity: 0.9;
+}
+
+.tarjeta-categoria em {
+    margin-top: 12px;
+    font-size: 0.76rem;
+    letter-spacing: 0.04em;
+    opacity: 0.72;
+    text-transform: uppercase;
+}
+
+.flecha-categoria {
+    position: absolute;
+    right: 26px;
+    bottom: 25px;
+    z-index: 2;
+    color: var(--blanco);
+    font-size: 1.75rem;
+}
+
+.tarjeta-actividad {
+    border-radius: 12px;
+    box-shadow: 0 10px 24px rgba(0, 77, 64, 0.08);
+}
+
+.visual-actividad {
+    background: var(--crema);
+}
+
+.cabecera-categoria-actividades {
+    background: var(--crema);
+}
+
+.titulo-categoria-actividades {
+    display: grid;
+    grid-template-columns: minmax(320px, 0.9fr) minmax(0, 1.1fr);
+    align-items: center;
+    gap: 52px;
+}
+
+.imagen-cabecera-categoria {
+    overflow: hidden;
+    height: 330px;
+    border-radius: 10px;
+    box-shadow: var(--sombra);
+}
+
+.imagen-cabecera-categoria img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.campo-busqueda {
+    display: block;
+}
+
+.campo-busqueda input {
+    width: 100%;
+}
+
+.miniatura-admin {
+    overflow: hidden;
+    background: var(--crema);
+    font-size: 0;
+}
+
+.miniatura-admin img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+@media (max-width: 760px) {
+    .grilla-categorias {
+        grid-template-columns: 1fr;
+    }
+
+    .tarjeta-categoria,
+    .tarjeta-categoria:nth-child(1),
+    .tarjeta-categoria:nth-child(5) {
+        min-height: 260px;
+        grid-column: auto;
+        padding: 24px;
+    }
+
+    .titulo-categoria-actividades {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 28px;
+    }
+
+    .imagen-cabecera-categoria {
+        height: 250px;
+    }
+
+    .flecha-categoria {
+        display: block;
+        right: 22px;
+        bottom: 20px;
+    }
+}
+
+/* Ajustes finales para los formularios PHP de actividades */
+.formulario-filtros-actividades {
+    display: contents;
+}
+
+.campo-busqueda {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    padding: 6px;
+}
+
+.campo-busqueda .boton {
+    align-self: center;
+    min-height: 42px;
+}
+
+.titulo-filtros a {
+    color: var(--azul-medio);
+    font-size: 0.82rem;
+    font-weight: 750;
+}
+
+.acciones-admin form {
+    margin: 0;
+}
+
+.acciones-admin > a {
+    min-height: 38px;
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 13px;
+    color: var(--azul-oscuro);
+    background: var(--crema);
+    border: 1px solid var(--beige);
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 750;
+}
+
+.boton-cerrar-panel {
+    display: grid;
+    place-items: center;
 }
