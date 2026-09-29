@@ -1,0 +1,251 @@
+<?php
+declare(strict_types=1);
+require_once __DIR__ . '/php/Sesion.php';
+require_once __DIR__ . '/php/Actividad.php';
+require_once __DIR__ . '/php/Vista.php';
+Sesion::iniciar();
+$usuario = Sesion::usuario();
+?>
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Conocé El Molino, un complejo recreativo con alojamientos, deportes y espacios para compartir.">
+    <meta name="theme-color" content="#004D40">
+    <link rel="stylesheet" href="estilos/estilos.css?v=<?= (int) filemtime(__DIR__ . '/estilos/estilos.css') ?>">
+    <script src="script.js?v=<?= (int) filemtime(__DIR__ . '/script.js') ?>" defer></script>
+    <title>El Molino | Complejo recreativo</title>
+</head>
+<body id="inicio">
+    <a class="enlace-saltar" href="#contenido">Saltar al contenido</a>
+
+    <header class="encabezado">
+        <div class="contenedor barra-navegacion">
+            <a class="marca" href="#inicio" aria-label="El Molino, inicio">
+                <span class="simbolo-marca" aria-hidden="true">EM</span>
+                <span class="nombre-marca">El Molino<small>Complejo recreativo</small></span>
+            </a>
+
+            <button class="boton-menu" type="button" aria-expanded="false" aria-controls="navegacion-principal">
+                <span></span>
+                <span></span>
+                <span></span>
+                <span class="solo-lector">Abrir menú</span>
+            </button>
+
+            <nav class="navegacion-principal" id="navegacion-principal" aria-label="Navegación principal">
+                <a href="#inicio">Inicio</a>
+                <a href="#nosotros">Quiénes somos</a>
+                <a href="#alojamientos">Alojamientos</a>
+                <a href="actividades.php">Actividades</a>
+                <a href="#espacios">Espacios</a>
+                <button class="interruptor-dislexia" type="button" role="switch" aria-checked="false" aria-label="Activar modo dislexia con tipografía Sarakanda">
+                    <span>Modo dislexia</span>
+                    <span class="pista-interruptor" aria-hidden="true">
+                        <span class="circulo-interruptor"></span>
+                    </span>
+                </button>
+            </nav>
+
+            <?= Vista::accesoCuenta($usuario) ?>
+        </div>
+    </header>
+
+    <main id="contenido">
+        <section class="portada">
+            <div class="contenedor grilla-portada">
+                <div class="texto-portada">
+                    <p class="texto-destacado">Bienvenido a El Molino</p>
+                    <h1>Descanso, deporte y tiempo para compartir.</h1>
+                    <p class="descripcion-portada">El Molino es un complejo recreativo con alojamientos, canchas y espacios para pasar el día o quedarse unos días.</p>
+                    <div class="acciones-portada">
+                        <a class="boton boton-principal" href="#nosotros">Conocer el lugar</a>
+                        <a class="enlace-texto" href="#alojamientos">Ver alojamientos <span aria-hidden="true">→</span></a>
+                    </div>
+                </div>
+
+                <div class="imagen-portada" aria-label="Instalaciones deportivas de El Molino">
+                    <figure class="foto-portada foto-portada-principal">
+                        <img src="imgs/futb.jpg" alt="Vista aérea de las canchas de fútbol de El Molino" width="596" height="335">
+                        <figcaption>Canchas y espacios al aire libre</figcaption>
+                    </figure>
+                </div>
+            </div>
+        </section>
+
+        <section class="seccion nosotros" id="nosotros">
+            <div class="contenedor">
+                <div class="encabezado-seccion encabezado-seccion-centrado">
+                    <p class="texto-destacado">Quiénes somos</p>
+                    <h2>¿Qué es El Molino?</h2>
+                </div>
+
+                <div class="estructura-nosotros">
+                    <div class="texto-nosotros">
+                        <p class="texto-principal">Es un complejo recreativo para descansar, hacer deporte y compartir.</p>
+                        <p>Cuenta con habitaciones, cabañas y departamentos, además de canchas y distintos espacios para disfrutar durante la visita.</p>
+
+                        <div class="lista-valores">
+                            <article class="tarjeta-valor">
+                                <span aria-hidden="true">✓</span>
+                                <div><h3>Descanso</h3><p>Opciones de alojamiento para quedarse y descansar.</p></div>
+                            </article>
+                            <article class="tarjeta-valor">
+                                <span aria-hidden="true">✓</span>
+                                <div><h3>Movimiento</h3><p>Canchas y actividades recreativas para distintas edades.</p></div>
+                            </article>
+                            <article class="tarjeta-valor">
+                                <span aria-hidden="true">✓</span>
+                                <div><h3>Encuentro</h3><p>Un lugar para venir en familia, con amigos o en grupo.</p></div>
+                            </article>
+                        </div>
+
+                        <div class="proposito">
+                            <h3>Nuestro propósito</h3>
+                            <p>Ofrecer un lugar cómodo y tranquilo, con varias actividades para que cada persona pueda disfrutarlo a su manera.</p>
+                        </div>
+                    </div>
+
+                    <figure class="foto-nosotros">
+                        <img src="imgs/padel.jpg" alt="Cancha de pádel de El Molino" width="1920" height="1080" loading="lazy">
+                    </figure>
+                </div>
+            </div>
+        </section>
+
+        <section class="seccion alojamientos" id="alojamientos">
+            <div class="contenedor">
+                <div class="encabezado-seccion">
+                    <p class="texto-destacado">Alojamientos</p>
+                    <h2>Elegí la estadía que va con vos.</h2>
+                    <p>El complejo contempla diferentes alternativas para descansar entre actividades.</p>
+                </div>
+
+                <div class="grilla-alojamientos">
+                    <article class="tarjeta-alojamiento">
+                        <h3>Habitaciones</h3>
+                        <p>Una alternativa práctica para descansar y seguir disfrutando del complejo.</p>
+                        <p class="por-confirmar">Capacidad y servicios: a confirmar.</p>
+                    </article>
+                    <article class="tarjeta-alojamiento">
+                        <h3>Cabañas</h3>
+                        <p>Un espacio propio para compartir la estadía y volver después de cada actividad.</p>
+                        <p class="por-confirmar">Capacidad y equipamiento: a confirmar.</p>
+                    </article>
+                    <article class="tarjeta-alojamiento">
+                        <h3>Departamentos</h3>
+                        <p>Una opción para organizar los días con mayor independencia dentro del complejo.</p>
+                        <p class="por-confirmar">Distribución y servicios: a confirmar.</p>
+                    </article>
+                </div>
+
+                <p class="nota-seccion">Las tarifas, características y disponibilidad se publicarán cuando la información esté confirmada.</p>
+            </div>
+        </section>
+
+        <section class="seccion actividades" id="actividades">
+            <div class="contenedor">
+                <div class="encabezado-seccion encabezado-seccion-centrado">
+                    <p class="texto-destacado">Actividades</p>
+                    <h2>Cada día puede tener un plan diferente.</h2>
+                    <p>Las propuestas del complejo combinan deporte y recreación. Los horarios, cupos y responsables se informarán en cada actividad.</p>
+                </div>
+
+                <div class="lista-actividades">
+                    <a href="categoria-actividades.php?categoria=deportes"><article><h3>Deportes</h3><p>Fútbol, básquet, natación y propuestas para disfrutar en equipo.</p><span>Ver actividades →</span></article></a>
+                    <a href="categoria-actividades.php?categoria=bienestar"><article><h3>Bienestar</h3><p>Yoga y actividades tranquilas para disfrutar el entorno.</p><span>Ver actividades →</span></article></a>
+                    <a href="categoria-actividades.php?categoria=talleres"><article><h3>Talleres</h3><p>Propuestas creativas para distintas edades y momentos del día.</p><span>Ver actividades →</span></article></a>
+                </div>
+                <div class="accion-seccion-actividades">
+                    <a class="boton boton-principal" href="actividades.php">Explorar todas las actividades</a>
+                </div>
+            </div>
+        </section>
+
+        <section class="seccion espacios" id="espacios">
+            <div class="contenedor">
+                <div class="encabezado-seccion two-columns">
+                    <div>
+                        <p class="texto-destacado">Espacios</p>
+                        <h2>Todo lo necesario, dentro del complejo.</h2>
+                    </div>
+                    <p class="introduccion-seccion">Además de los alojamientos y las actividades, El Molino cuenta con espacios para comer, reunirse y disfrutar del tiempo libre.</p>
+                </div>
+
+                <div class="grilla-espacios">
+                    <article><h3>Piscina</h3><p>Un espacio para refrescarse y sumar otro momento de recreación.</p></article>
+                    <article><h3>Restaurante</h3><p>Una propuesta para hacer una pausa y compartir una comida.</p></article>
+                    <article><h3>Cafetería</h3><p>Un lugar para conversar y descansar entre actividades.</p></article>
+                    <article><h3>Salón de eventos</h3><p>Un espacio destinado a reuniones y encuentros.</p></article>
+                    <article><h3>Gimnasio</h3><p>Una opción para mantener el movimiento durante la estadía.</p></article>
+                    <article><h3>Área infantil</h3><p>Un sector recreativo pensado para los más chicos.</p></article>
+                </div>
+            </div>
+        </section>
+
+        <section class="seccion visita" id="visita">
+            <div class="contenedor grilla-visita">
+                <div class="texto-visita">
+                    <p class="texto-destacado">Tu visita</p>
+                    <h2>Información para organizar tu estadía.</h2>
+                    <p>Antes de reservar, definí las fechas, la cantidad de personas y el tipo de alojamiento. El precio dependerá de esas condiciones y de la temporada.</p>
+                    <a class="boton boton-secundario" href="#alojamientos">Revisar alojamientos</a>
+                </div>
+
+                <div class="preguntas-frecuentes" aria-label="Preguntas frecuentes">
+                    <details>
+                        <summary>¿Qué opciones de alojamiento hay?</summary>
+                        <p>El proyecto contempla habitaciones, cabañas y departamentos con distintas capacidades y servicios.</p>
+                    </details>
+                    <details>
+                        <summary>¿Ya se puede reservar desde la web?</summary>
+                        <p>La reserva en línea todavía no está habilitada. Se incorporará junto con la consulta de disponibilidad y precios.</p>
+                    </details>
+                    <details>
+                        <summary>¿Las actividades están incluidas?</summary>
+                        <p>La estadía contempla actividades de uso libre y también puede incluir propuestas pagas con inscripción previa.</p>
+                    </details>
+                    <details>
+                        <summary>¿Dónde veo horarios y cupos?</summary>
+                        <p>La información detallada de cada actividad se publicará cuando esté confirmada.</p>
+                    </details>
+                </div>
+            </div>
+        </section>
+
+        <section class="cierre">
+            <div class="contenedor contenido-cierre">
+                <div>
+                    <p class="texto-destacado">El Molino</p>
+                    <h2>Te esperamos para disfrutar del complejo.</h2>
+                </div>
+                <a class="boton boton-claro" href="#inicio">Volver al inicio</a>
+            </div>
+        </section>
+    </main>
+
+    <footer class="pie-pagina">
+        <div class="contenedor grilla-pie">
+            <div>
+                <a class="marca marca-pie" href="#inicio">
+                    <span class="simbolo-marca" aria-hidden="true">EM</span>
+                    <span class="nombre-marca">El Molino<small>Complejo recreativo</small></span>
+                </a>
+                <p>Deporte, descanso y recreación en un mismo lugar.</p>
+            </div>
+            <nav aria-label="Enlaces del pie de página">
+                <a href="#nosotros">Quiénes somos</a>
+                <a href="#alojamientos">Alojamientos</a>
+                <a href="actividades.php">Actividades</a>
+                <a href="#espacios">Espacios</a>
+                <a href="registro/registro.php">Crear cuenta</a>
+            </nav>
+        </div>
+        <div class="contenedor pie-inferior">
+            <span>El Molino · Complejo recreativo</span>
+            <span>Información sujeta a confirmación</span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -4,7 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/inicio.php';
 
 Sesion::iniciar();
-if (Sesion::usuario()) Utilidades::redirigir('cuenta.php');
+if ($usuarioActual = Sesion::usuario()) Utilidades::redirigir(Autorizacion::destinoInicial($usuarioActual));
 
 $errores = [];
 $correo = '';
@@ -25,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $errores[] = 'El correo o la contraseña no son correctos.';
             } else {
                 Sesion::iniciarUsuario($usuario);
-                Utilidades::redirigir('cuenta.php');
+                Utilidades::redirigir(Autorizacion::destinoInicial($usuario));
             }
         } catch (PDOException $e) {
             $errores[] = 'No se pudo consultar la base de datos. Verificá la conexión.';
@@ -39,11 +39,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Iniciar sesión | El Molino</title>
-    <link rel="stylesheet" href="../estilos/estilos.css">
+    <link rel="stylesheet" href="../estilos/estilos.css?v=<?= (int) filemtime(__DIR__ . '/../estilos/estilos.css') ?>">
 </head>
 <body class="pagina-inicio-sesion">
     <main class="tarjeta-inicio-sesion">
-        <a class="enlace-volver" href="../index.html">← Volver al inicio</a>
+        <a class="enlace-volver" href="../index.php">← Volver al inicio</a>
         <div class="simbolo-marca" aria-hidden="true">EM</div>
         <p class="texto-destacado">CENTRO RECREATIVO</p>
         <h1>Bienvenido</h1>

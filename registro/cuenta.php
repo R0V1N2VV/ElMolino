@@ -17,7 +17,7 @@ $mensaje = Sesion::tomarMensaje();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mi cuenta | El Molino</title>
-    <link rel="stylesheet" href="../estilos/estilos.css">
+    <link rel="stylesheet" href="../estilos/estilos.css?v=<?= (int) filemtime(__DIR__ . '/../estilos/estilos.css') ?>">
 </head>
 <body class="pagina-inicio-sesion">
     <main class="tarjeta-inicio-sesion">
@@ -32,7 +32,10 @@ $mensaje = Sesion::tomarMensaje();
             <span>Correo</span>
             <strong><?= Utilidades::escapar($usuario['email']) ?></strong>
         </div>
-        <a class="boton boton-principal" href="../index.html">Ir al complejo</a>
+        <?php if (Autorizacion::esCoordinador($usuario)): ?>
+            <a class="boton boton-principal" href="../administrar-actividades.php">Gestionar actividades</a>
+        <?php endif; ?>
+        <a class="boton boton-principal" href="../index.php">Ir al complejo</a>
         <form method="post" action="cerrar_sesion.php" class="formulario-reenvio">
             <input type="hidden" name="token_csrf" value="<?= Utilidades::escapar(Sesion::tokenCsrf()) ?>">
             <button class="boton-enlace" type="submit">Cerrar sesión</button>
