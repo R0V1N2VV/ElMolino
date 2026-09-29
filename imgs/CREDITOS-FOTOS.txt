@@ -1,0 +1,22 @@
+FOTOGRAFÍAS DE CATEGORÍAS
+
+Las siguientes fotografías se descargaron desde Unsplash y se utilizan bajo la Licencia de Unsplash:
+
+- caminatas.jpg — Alex Moliski
+  https://unsplash.com/photos/M9wFsA0mLOw
+
+- bienestar.jpg — Vitaly Gariev
+  https://unsplash.com/photos/qgK7izTlg5g
+
+- talleres.jpg — Maiar Shalaby
+  https://unsplash.com/photos/Nf3lG26oCrs
+
+- espectaculos.jpg — Compagnons
+  https://unsplash.com/photos/HB6BIqegLaw
+
+- naturaleza.jpg — niccolo foscarini
+  https://unsplash.com/photos/XrYI47SG4os
+
+Licencia: https://unsplash.com/license
+
+Las fotografías futb.jpg y padel.jpg ya formaban parte del proyecto original.
