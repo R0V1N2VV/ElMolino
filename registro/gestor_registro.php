@@ -54,11 +54,11 @@ final class Registro
 
     public function verificar(int $id, string $codigo): array
     {
-        $consulta = $this->conexion->prepare('SELECT * FROM registro_pendiente WHERE idRegistroPendiente = :id LIMIT 1');
+        $consulta = $this->conexion->prepare('SELECT *, (vence_en <= NOW()) AS codigo_vencido FROM registro_pendiente WHERE idRegistroPendiente = :id LIMIT 1');
         $consulta->execute(['id' => $id]);
         $pendiente = $consulta->fetch();
         if (!$pendiente) return ['errores' => ['El registro pendiente ya no está disponible.'], 'usuario' => null];
-        if (strtotime($pendiente['vence_en']) < time()) return ['errores' => ['El código venció. Pedí uno nuevo para continuar.'], 'usuario' => null];
+        if ((bool) $pendiente['codigo_vencido']) return ['errores' => ['El código venció. Pedí uno nuevo para continuar.'], 'usuario' => null];
         if ((int) $pendiente['intentos'] >= 5) return ['errores' => ['Superaste la cantidad de intentos. Pedí un código nuevo.'], 'usuario' => null];
         if (!password_verify($codigo, $pendiente['codigo_hash'])) {
             $this->conexion->prepare('UPDATE registro_pendiente SET intentos = intentos + 1 WHERE idRegistroPendiente = :id')->execute(['id' => $id]);
@@ -81,11 +81,11 @@ final class Registro
 
     public function reenviarCodigo(int $id): string
     {
-        $consulta = $this->conexion->prepare('SELECT * FROM registro_pendiente WHERE idRegistroPendiente = :id LIMIT 1');
+        $consulta = $this->conexion->prepare('SELECT *, (actualizado_en > DATE_SUB(NOW(), INTERVAL 60 SECOND)) AS espera_reenvio FROM registro_pendiente WHERE idRegistroPendiente = :id LIMIT 1');
         $consulta->execute(['id' => $id]);
         $pendiente = $consulta->fetch();
         if (!$pendiente) throw new RuntimeException('El registro pendiente ya no está disponible.');
-        if (strtotime($pendiente['actualizado_en']) > time() - 60) throw new RuntimeException('Esperá un minuto antes de pedir otro código.');
+        if ((bool) $pendiente['espera_reenvio']) throw new RuntimeException('Esperá un minuto antes de pedir otro código.');
         $codigo = Utilidades::codigoVerificacion();
         $this->correo->enviarCodigoRegistro($pendiente['email'], $pendiente['nombre'], $codigo);
         $this->conexion->prepare('UPDATE registro_pendiente SET codigo_hash = :codigo_hash, vence_en = DATE_ADD(NOW(), INTERVAL 15 MINUTE), intentos = 0 WHERE idRegistroPendiente = :id')->execute(['codigo_hash' => password_hash($codigo, PASSWORD_DEFAULT), 'id' => $id]);
