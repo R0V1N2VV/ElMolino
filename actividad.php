@@ -11,6 +11,7 @@ try {
     $error = 'No encontramos la actividad solicitada.';
 }
 $usuario = class_exists('Sesion') ? Sesion::usuario() : null;
+$mensaje = class_exists('Sesion') ? Sesion::tomarMensaje() : null;
 ?>
 <!DOCTYPE html>
 <html lang="es-AR">
@@ -23,6 +24,7 @@ $usuario = class_exists('Sesion') ? Sesion::usuario() : null;
     <header class="encabezado"><div class="contenedor barra-navegacion"><a class="marca" href="index.php" aria-label="El Molino, inicio"><span class="simbolo-marca" aria-hidden="true">EM</span><span class="nombre-marca">El Molino<small>Complejo recreativo</small></span></a><button class="boton-menu" type="button" aria-expanded="false" aria-controls="navegacion-principal"><span></span><span></span><span></span><span class="solo-lector">Abrir menú</span></button><nav class="navegacion-principal" id="navegacion-principal" aria-label="Navegación principal"><a href="index.php">Inicio</a><a href="index.php#nosotros">Quiénes somos</a><a href="index.php#alojamientos">Alojamientos</a><a class="enlace-activo" href="actividades.php">Actividades</a><a href="index.php#espacios">Espacios</a><button class="interruptor-dislexia" type="button" role="switch" aria-checked="false" aria-label="Activar modo dislexia con tipografía Sarakanda"><span>Modo dislexia</span><span class="pista-interruptor" aria-hidden="true"><span class="circulo-interruptor"></span></span></button></nav><?= class_exists('Vista') ? Vista::accesoCuenta($usuario) : '<a class="boton boton-chico boton-encabezado" href="registro/login.php">Iniciar sesión</a>' ?></div></header>
 
     <main id="contenido" class="pagina-detalle-actividad"><div class="contenedor">
+        <?php if ($mensaje): ?><div class="aviso-administracion mensaje-<?= Vista::escapar($mensaje['tipo']) ?>" role="status"><strong>Listo.</strong><span><?= Vista::escapar($mensaje['texto']) ?></span></div><?php endif; ?>
         <?php if ($error): ?>
             <div class="sin-resultados"><h1><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></h1><p><a href="actividades.php">Volver a actividades</a></p></div>
         <?php elseif ($actividad): ?>
@@ -32,10 +34,10 @@ $usuario = class_exists('Sesion') ? Sesion::usuario() : null;
                     <div class="visual-actividad visual-detalle-actividad"><img src="<?= Vista::escapar($actividad->imagen) ?>" alt="" loading="lazy"></div>
                     <p class="etiqueta-actividad"><?= Vista::escapar($actividad->categoriaNombre) ?></p><h1><?= Vista::escapar($actividad->nombre) ?></h1><p class="bajada-detalle"><?= Vista::escapar($actividad->descripcionCorta) ?></p>
                     <section class="bloque-texto-actividad"><h2>Un plan para disfrutar a tu ritmo</h2><p><?= Vista::escapar($actividad->descripcion) ?></p></section>
-                    <section class="bloque-texto-actividad"><h2>¿Qué necesitás?</h2><p><?= Vista::escapar($actividad->requisitos) ?></p></section>
-                    <section class="bloque-texto-actividad"><h2>Importante</h2><p><?= Vista::escapar($actividad->importante) ?></p></section>
+                    <?php if ($actividad->requisitos !== ''): ?><section class="bloque-texto-actividad"><h2>¿Qué necesitás?</h2><p><?= Vista::escapar($actividad->requisitos) ?></p></section><?php endif; ?>
+                    <?php if ($actividad->importante !== ''): ?><section class="bloque-texto-actividad"><h2>Importante</h2><p><?= Vista::escapar($actividad->importante) ?></p></section><?php endif; ?>
                 </div>
-                <aside class="panel-informacion-actividad" aria-label="Información práctica"><p class="texto-destacado">Información práctica</p><dl><div><dt>Días y horarios</dt><dd><?= Vista::escapar($actividad->dias) ?> · <?= Vista::escapar($actividad->horario) ?></dd></div><div><dt>Sector</dt><dd><?= Vista::escapar($actividad->sector) ?></dd></div><div><dt>Duración</dt><dd><?= Vista::escapar($actividad->duracion) ?></dd></div><div><dt>Responsable</dt><dd><?= Vista::escapar($actividad->responsable) ?></dd></div><div><dt>Cupos</dt><dd>Hasta <?= $actividad->cupo ?> personas</dd></div><div><dt>Modalidad</dt><dd><?= Vista::escapar(Vista::precio($actividad)) ?></dd></div></dl><button class="boton boton-principal boton-ancho" type="button" disabled>Consultar lugar</button><p class="mensaje-inscripcion">La inscripción en línea se habilitará junto con el sistema de reservas.</p></aside>
+                <aside class="panel-informacion-actividad" aria-label="Información práctica"><p class="texto-destacado">Información práctica</p><dl><div><dt>Días y horarios</dt><dd><?= Vista::escapar($actividad->dias) ?> · <?= Vista::escapar($actividad->horario) ?></dd></div><div><dt>Sector</dt><dd><?= Vista::escapar($actividad->sector) ?></dd></div><div><dt>Responsable</dt><dd><?= Vista::escapar($actividad->responsable) ?></dd></div><div><dt>Cupos</dt><dd>Hasta <?= $actividad->cupo ?> personas</dd></div><div><dt>Modalidad</dt><dd><?= Vista::escapar(Vista::precio($actividad)) ?></dd></div></dl><button class="boton boton-principal boton-ancho" type="button" disabled>Consultar lugar</button><p class="mensaje-inscripcion">La inscripción en línea se habilitará junto con el sistema de reservas.</p></aside>
             </div>
         <?php endif; ?>
     </div></main>

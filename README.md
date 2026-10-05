@@ -8,7 +8,7 @@ Sitio del Complejo Recreativo El Molino.
 - `actividades.php`: portada con carrusel, tendencias y todas las categorías.
 - `categoria-actividades.php?categoria=deportes`: menú de una categoría con sus actividades y filtros.
 - `actividad.php?id=futbol-recreativo`: ficha de una actividad.
-- `administrar-actividades.php`: panel protegido del coordinador de actividades.
+- `administrar-actividades.php`: panel protegido donde el coordinador crea categorías y administra actividades.
 
 ## Actividades
 
@@ -17,6 +17,12 @@ La sección está desarrollada en PHP orientado a objetos. Las entidades, las fu
 El sitio incluye 6 categorías y 10 actividades predeterminadas. Si la conexión o la estructura de actividades todavía no están disponibles, el catálogo público usa automáticamente esos datos en modo de solo lectura, por lo que la página no queda vacía. El contenido es el mismo que se carga en MySQL mediante el archivo de actualización.
 
 El archivo `BD/actualizacion_actividades.sql` amplía la base, carga las categorías y actividades existentes y permite conectarlas con PHP y MySQL. El panel valida la sesión y exige el rol `coordinador_actividades`.
+
+Cuando el coordinador inicia sesión, encuentra el botón `Agregar categoría` en la sección pública de categorías y en su panel. Cada categoría también ofrece `Agregar actividad`, que abre el formulario con esa categoría ya seleccionada. Las categorías nuevas solicitan nombre, descripción e imagen.
+
+El formulario de actividades utiliza dos desplegables `Desde` / `Hasta` con intervalos de 15 minutos. La duración y el momento del día se calculan a partir del horario y no se solicitan por separado. El precio solo aparece cuando el coordinador indica que la actividad es paga; si está incluida, se guarda automáticamente en cero. Los textos "Qué llevar" e "Información importante" son opcionales y permanecen dentro de un bloque desplegable.
+
+Después de guardar, el sistema comprueba que la actividad esté publicada y abre directamente su ficha para que el coordinador pueda verla inmediatamente. Si la base rechaza el alta, el formulario conserva los datos y muestra el problema dentro de la página.
 
 Para que el coordinador pueda agregar, editar o eliminar actividades, es obligatorio ejecutar `BD/actualizacion_actividades.sql` una sola vez. Mientras esa actualización no esté instalada, el panel informa que el catálogo predeterminado es de solo lectura.
 

@@ -11,6 +11,7 @@ try {
     $error = 'No se pudieron cargar las actividades. Verificá la conexión y la base de datos.';
 }
 $usuario = class_exists('Sesion') ? Sesion::usuario() : null;
+$esCoordinador = class_exists('Autorizacion') && Autorizacion::esCoordinador($usuario);
 ?>
 <!DOCTYPE html>
 <html lang="es-AR">
@@ -64,7 +65,7 @@ $usuario = class_exists('Sesion') ? Sesion::usuario() : null;
         </div></section>
 
         <section class="seccion seccion-categorias" id="categorias"><div class="contenedor">
-            <div class="encabezado-seccion"><p class="texto-destacado">Todas las categorías</p><h2>Encontrá una actividad para vos.</h2><p>Elegí una categoría para ver todas las propuestas, horarios y modalidades disponibles.</p></div>
+            <div class="encabezado-seccion encabezado-con-accion"><div><p class="texto-destacado">Todas las categorías</p><h2>Encontrá una actividad para vos.</h2><p>Elegí una categoría para ver todas las propuestas, horarios y modalidades disponibles.</p></div><?php if ($esCoordinador): ?><a class="boton boton-principal" href="administrar-actividades.php?nueva_categoria=1#formulario-categoria">Agregar categoría</a><?php endif; ?></div>
             <div class="grilla-categorias">
                 <?php foreach ($categorias as $categoria): ?>
                     <a class="tarjeta-categoria" href="categoria-actividades.php?categoria=<?= rawurlencode($categoria->slug) ?>">

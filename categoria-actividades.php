@@ -12,6 +12,8 @@ try {
     $error = 'No se pudo cargar esta categoría. Verificá la conexión y la base de datos.';
 }
 $usuario = class_exists('Sesion') ? Sesion::usuario() : null;
+$mensaje = class_exists('Sesion') ? Sesion::tomarMensaje() : null;
+$esCoordinador = class_exists('Autorizacion') && Autorizacion::esCoordinador($usuario);
 $tituloCategoria = $categoria?->nombre ?? 'Actividades';
 ?>
 <!DOCTYPE html>
@@ -25,9 +27,10 @@ $tituloCategoria = $categoria?->nombre ?? 'Actividades';
     <header class="encabezado"><div class="contenedor barra-navegacion"><a class="marca" href="index.php" aria-label="El Molino, inicio"><span class="simbolo-marca" aria-hidden="true">EM</span><span class="nombre-marca">El Molino<small>Complejo recreativo</small></span></a><button class="boton-menu" type="button" aria-expanded="false" aria-controls="navegacion-principal"><span></span><span></span><span></span><span class="solo-lector">Abrir menú</span></button><nav class="navegacion-principal" id="navegacion-principal" aria-label="Navegación principal"><a href="index.php">Inicio</a><a href="index.php#nosotros">Quiénes somos</a><a href="index.php#alojamientos">Alojamientos</a><a class="enlace-activo" href="actividades.php" aria-current="page">Actividades</a><a href="index.php#espacios">Espacios</a><button class="interruptor-dislexia" type="button" role="switch" aria-checked="false" aria-label="Activar modo dislexia con tipografía Sarakanda"><span>Modo dislexia</span><span class="pista-interruptor" aria-hidden="true"><span class="circulo-interruptor"></span></span></button></nav><?= class_exists('Vista') ? Vista::accesoCuenta($usuario) : '<a class="boton boton-chico boton-encabezado" href="registro/login.php">Iniciar sesión</a>' ?></div></header>
 
     <main id="contenido" class="pagina-categoria-actividades">
+        <?php if ($mensaje): ?><div class="aviso-administracion mensaje-<?= Vista::escapar($mensaje['tipo']) ?>" role="status"><?= Vista::escapar($mensaje['texto']) ?></div><?php endif; ?>
         <?php if ($error): ?><div class="aviso-administracion" role="alert"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></div><?php endif; ?>
         <?php if ($categoria): ?>
-        <section class="cabecera-categoria-actividades"><div class="contenedor"><a class="volver-actividades" href="actividades.php#categorias">← Volver a todas las categorías</a><div class="titulo-categoria-actividades"><figure class="imagen-cabecera-categoria"><img src="<?= Vista::escapar($categoria->imagen) ?>" alt="Imagen de la categoría <?= Vista::escapar($categoria->nombre) ?>"></figure><div><p class="texto-destacado">Categoría</p><h1><?= Vista::escapar($categoria->nombre) ?></h1><p><?= Vista::escapar($categoria->descripcion) ?></p></div></div></div></section>
+        <section class="cabecera-categoria-actividades"><div class="contenedor"><a class="volver-actividades" href="actividades.php#categorias">← Volver a todas las categorías</a><div class="titulo-categoria-actividades"><figure class="imagen-cabecera-categoria"><img src="<?= Vista::escapar($categoria->imagen) ?>" alt="Imagen de la categoría <?= Vista::escapar($categoria->nombre) ?>"></figure><div><p class="texto-destacado">Categoría</p><h1><?= Vista::escapar($categoria->nombre) ?></h1><p><?= Vista::escapar($categoria->descripcion) ?></p><?php if ($esCoordinador): ?><a class="boton boton-principal boton-agregar-en-categoria" href="administrar-actividades.php?nuevo=1&amp;categoria=<?= rawurlencode($categoria->slug) ?>#formulario">Agregar actividad en esta categoría</a><?php endif; ?></div></div></div></section>
 
         <section class="seccion seccion-listado-actividades"><div class="contenedor">
             <form method="get" class="formulario-filtros-actividades">
