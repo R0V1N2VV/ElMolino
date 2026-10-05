@@ -3,15 +3,44 @@ declare(strict_types=1);
 
 $actividad = null;
 $error = null;
+$errorInscripcion = null;
+$estaInscripto = false;
 try {
     require_once __DIR__ . '/php/inicio_actividades.php';
     $actividad = $controladorActividades->detalle((string) ($_GET['id'] ?? ''));
+    $usuario = Sesion::usuario();
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        if (!$controladorInscripciones) {
+            throw new RuntimeException('Las inscripciones todavía no están habilitadas. Ejecutá la actualización de actividades en la base de datos.');
+        }
+        $mensajeInscripcion = $controladorInscripciones->procesar($_POST, $usuario, $actividad);
+        Sesion::guardarMensaje('exito', $mensajeInscripcion);
+        Utilidades::redirigir('actividad.php?id=' . rawurlencode($actividad->slug));
+    }
+
+    if ($repositorioInscripciones && (int) ($usuario['id_cliente'] ?? 0) > 0) {
+        $estaInscripto = $repositorioInscripciones->estaInscripto($actividad->id, (int) $usuario['id_cliente']);
+    }
 } catch (Throwable $excepcion) {
-    http_response_code(404);
-    $error = 'No encontramos la actividad solicitada.';
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && $actividad) {
+        $errorInscripcion = $excepcion instanceof InvalidArgumentException || $excepcion instanceof RuntimeException
+            ? $excepcion->getMessage()
+            : 'No se pudo completar la inscripción. Volvé a intentarlo.';
+    } else {
+        http_response_code(404);
+        $error = 'No encontramos la actividad solicitada.';
+    }
 }
 $usuario = class_exists('Sesion') ? Sesion::usuario() : null;
+if ($actividad && isset($repositorioInscripciones) && $repositorioInscripciones && (int) ($usuario['id_cliente'] ?? 0) > 0) {
+    try {
+        $estaInscripto = $repositorioInscripciones->estaInscripto($actividad->id, (int) $usuario['id_cliente']);
+    } catch (Throwable) {
+    }
+}
 $mensaje = class_exists('Sesion') ? Sesion::tomarMensaje() : null;
+$esCoordinador = class_exists('Autorizacion') && Autorizacion::esCoordinador($usuario);
 ?>
 <!DOCTYPE html>
 <html lang="es-AR">
@@ -25,10 +54,11 @@ $mensaje = class_exists('Sesion') ? Sesion::tomarMensaje() : null;
 
     <main id="contenido" class="pagina-detalle-actividad"><div class="contenedor">
         <?php if ($mensaje): ?><div class="aviso-administracion mensaje-<?= Vista::escapar($mensaje['tipo']) ?>" role="status"><strong>Listo.</strong><span><?= Vista::escapar($mensaje['texto']) ?></span></div><?php endif; ?>
+        <?php if ($errorInscripcion): ?><div class="aviso-administracion mensaje-error" role="alert"><strong>No se pudo completar.</strong><span><?= Vista::escapar($errorInscripcion) ?></span></div><?php endif; ?>
         <?php if ($error): ?>
             <div class="sin-resultados"><h1><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></h1><p><a href="actividades.php">Volver a actividades</a></p></div>
         <?php elseif ($actividad): ?>
-            <a class="volver-actividades" href="categoria-actividades.php?categoria=<?= rawurlencode($actividad->categoria) ?>">← Volver a <?= Vista::escapar($actividad->categoriaNombre) ?></a>
+            <div class="barra-detalle-acciones"><a class="volver-actividades" href="categoria-actividades.php?categoria=<?= rawurlencode($actividad->categoria) ?>">← Volver a <?= Vista::escapar($actividad->categoriaNombre) ?></a><?= Vista::botonModoEdicion($usuario, 'administrar-actividades.php?editar=' . $actividad->id . '#formulario', 'Editar actividad') ?></div>
             <div class="grilla-detalle-actividad">
                 <div class="contenido-detalle-actividad">
                     <div class="visual-actividad visual-detalle-actividad"><img src="<?= Vista::escapar($actividad->imagen) ?>" alt="" loading="lazy"></div>
@@ -37,7 +67,40 @@ $mensaje = class_exists('Sesion') ? Sesion::tomarMensaje() : null;
                     <?php if ($actividad->requisitos !== ''): ?><section class="bloque-texto-actividad"><h2>¿Qué necesitás?</h2><p><?= Vista::escapar($actividad->requisitos) ?></p></section><?php endif; ?>
                     <?php if ($actividad->importante !== ''): ?><section class="bloque-texto-actividad"><h2>Importante</h2><p><?= Vista::escapar($actividad->importante) ?></p></section><?php endif; ?>
                 </div>
-                <aside class="panel-informacion-actividad" aria-label="Información práctica"><p class="texto-destacado">Información práctica</p><dl><div><dt>Días y horarios</dt><dd><?= Vista::escapar($actividad->dias) ?> · <?= Vista::escapar($actividad->horario) ?></dd></div><div><dt>Sector</dt><dd><?= Vista::escapar($actividad->sector) ?></dd></div><div><dt>Responsable</dt><dd><?= Vista::escapar($actividad->responsable) ?></dd></div><div><dt>Cupos</dt><dd>Hasta <?= $actividad->cupo ?> personas</dd></div><div><dt>Modalidad</dt><dd><?= Vista::escapar(Vista::precio($actividad)) ?></dd></div></dl><button class="boton boton-principal boton-ancho" type="button" disabled>Consultar lugar</button><p class="mensaje-inscripcion">La inscripción en línea se habilitará junto con el sistema de reservas.</p></aside>
+                <aside class="panel-informacion-actividad" aria-label="Información práctica">
+                    <p class="texto-destacado">Información práctica</p>
+                    <dl>
+                        <div><dt>Días y horarios</dt><dd><?= Vista::escapar($actividad->dias) ?> · <?= Vista::escapar($actividad->horario) ?></dd></div>
+                        <div><dt>Sector</dt><dd><?= Vista::escapar($actividad->sector) ?></dd></div>
+                        <div><dt>Responsable</dt><dd><?= Vista::escapar($actividad->responsable) ?></dd></div>
+                        <div><dt>Cupos</dt><dd><strong><?= $actividad->cuposDisponibles() ?></strong> de <?= $actividad->cupo ?> lugares disponibles</dd></div>
+                        <div><dt>Valor</dt><dd><?= Vista::escapar(Vista::precio($actividad)) ?></dd></div>
+                    </dl>
+                    <?php if ($actividad->estaCompleta() && !$estaInscripto): ?>
+                        <button class="boton boton-neutral boton-ancho" type="button" disabled>Actividad completa</button>
+                        <p class="mensaje-inscripcion">No quedan lugares disponibles.</p>
+                    <?php elseif ($estaInscripto): ?>
+                        <div class="estado-inscripcion-activa"><strong>Ya estás inscripto</strong><span>Tu lugar está reservado.</span></div>
+                        <form method="post" class="formulario-inscripcion" onsubmit="return confirm('¿Querés cancelar tu inscripción?')">
+                            <input type="hidden" name="token_csrf" value="<?= Vista::escapar(Sesion::tokenCsrf()) ?>">
+                            <input type="hidden" name="accion" value="cancelar_inscripcion">
+                            <button class="boton boton-neutral boton-ancho" type="submit">Cancelar inscripción</button>
+                        </form>
+                    <?php elseif ($usuario && (int) ($usuario['id_cliente'] ?? 0) > 0): ?>
+                        <form method="post" class="formulario-inscripcion">
+                            <input type="hidden" name="token_csrf" value="<?= Vista::escapar(Sesion::tokenCsrf()) ?>">
+                            <input type="hidden" name="accion" value="inscribirse">
+                            <button class="boton boton-principal boton-ancho" type="submit">Inscribirme</button>
+                        </form>
+                        <?php if ($actividad->modalidad === 'inscripcion'): ?><p class="mensaje-inscripcion">Actividad paga: <?= Vista::escapar(Vista::precio($actividad)) ?> por persona.</p><?php else: ?><p class="mensaje-inscripcion">Actividad incluida, sin costo adicional.</p><?php endif; ?>
+                    <?php elseif ($usuario): ?>
+                        <button class="boton boton-neutral boton-ancho" type="button" disabled>Inscripción no disponible</button>
+                        <p class="mensaje-inscripcion">Esta cuenta no tiene un perfil de cliente asociado.</p>
+                    <?php else: ?>
+                        <a class="boton boton-principal boton-ancho" href="registro/login.php?actividad=<?= rawurlencode($actividad->slug) ?>">Iniciar sesión para inscribirme</a>
+                        <p class="mensaje-inscripcion">Necesitás una cuenta para reservar tu lugar.</p>
+                    <?php endif; ?>
+                </aside>
             </div>
         <?php endif; ?>
     </div></main>

@@ -43,7 +43,7 @@ $esCoordinador = class_exists('Autorizacion') && Autorizacion::esCoordinador($us
         <section class="portada-actividades">
             <div class="contenedor">
                 <p class="texto-destacado">Actividades</p>
-                <div class="titulo-portada-actividades"><div><h1>Elegí cómo querés disfrutar tu día.</h1><p>Deporte, naturaleza, talleres y propuestas para compartir durante tu estadía.</p></div><a class="boton boton-secundario" href="#categorias">Ver todas las categorías</a></div>
+                <div class="titulo-portada-actividades"><div><h1>Elegí cómo querés disfrutar tu día.</h1><p>Deporte, naturaleza, talleres y propuestas para compartir durante tu estadía.</p></div><div class="acciones-portada-actividades"><?= Vista::botonModoEdicion($usuario) ?><a class="boton boton-secundario" href="#categorias">Ver todas las categorías</a></div></div>
                 <div class="carrusel-categorias" aria-label="Categorías destacadas">
                     <button class="control-carrusel" id="carrusel-anterior" type="button" aria-label="Ver categorías anteriores">←</button>
                     <div class="ventana-carrusel" id="pista-carrusel"><div class="pista-carrusel">
