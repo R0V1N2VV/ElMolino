@@ -4,12 +4,15 @@ declare(strict_types=1);
 final class Autorizacion
 {
     private const ROL_COORDINADOR = 'coordinador_actividades';
+    private const ROL_COORDINADOR_APP = 'COORDINADOR';
 
     private function __construct() {}
 
     public static function esCoordinador(?array $usuario): bool
     {
-        return is_array($usuario) && ($usuario['rol'] ?? '') === self::ROL_COORDINADOR;
+        if (!is_array($usuario)) return false;
+        $rol = (string) ($usuario['rol'] ?? '');
+        return $rol === self::ROL_COORDINADOR || $rol === self::ROL_COORDINADOR_APP;
     }
 
     public static function exigirCoordinador(?array $usuario): void

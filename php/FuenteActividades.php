@@ -21,6 +21,8 @@ interface FuenteActividades
 
     public function guardarCategoria(array $datos): int;
 
+    public function eliminarCategoria(int $id): void;
+
     public function guardar(array $datos, ?int $idUsuario): int;
 
     public function eliminar(int $id): void;

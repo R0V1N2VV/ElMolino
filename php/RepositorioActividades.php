@@ -9,7 +9,10 @@ final class RepositorioActividades implements FuenteActividades
                a.momentoDia, a.Duracion, a.sector, a.responsable, a.cupoMax,
                a.edadRecomendada, a.modalidad, a.precio, a.tendencia, a.imagen,
                c.slug AS categoria, c.nombre AS categoriaNombre,
-               COALESCE(NULLIF(a.imagen, ''), c.imagen) AS imagenFinal
+               COALESCE(NULLIF(a.imagen, ''), c.imagen) AS imagenFinal,
+               (SELECT COUNT(*)
+                  FROM inscripcionActividad ia
+                 WHERE ia.idActividad = a.idActividad) AS cantidadInscriptos
           FROM Actividad a
           JOIN CategoriaActividad c ON c.idCategoria = a.idCategoria
     SQL;
@@ -131,6 +134,29 @@ final class RepositorioActividades implements FuenteActividades
             'imagen' => $datos['imagen'],
         ]);
         return (int) $this->conexion->lastInsertId();
+    }
+
+    public function eliminarCategoria(int $id): void
+    {
+        $consulta = $this->conexion->prepare(
+            'SELECT COUNT(*)
+               FROM Actividad
+              WHERE idCategoria = :idCategoria AND activa = 1'
+        );
+        $consulta->execute(['idCategoria' => $id]);
+        if ((int) $consulta->fetchColumn() > 0) {
+            throw new InvalidArgumentException(
+                'Esta categoría todavía tiene actividades. Eliminá o mové esas actividades antes de eliminarla.'
+            );
+        }
+
+        $eliminar = $this->conexion->prepare(
+            'UPDATE CategoriaActividad SET activa = 0 WHERE idCategoria = :idCategoria AND activa = 1'
+        );
+        $eliminar->execute(['idCategoria' => $id]);
+        if ($eliminar->rowCount() !== 1) {
+            throw new InvalidArgumentException('La categoría seleccionada no existe o ya fue eliminada.');
+        }
     }
 
     public function guardar(array $datos, ?int $idUsuario): int

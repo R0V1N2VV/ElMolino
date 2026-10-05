@@ -9,6 +9,8 @@ if ($usuarioActual = Sesion::usuario()) Utilidades::redirigir(Autorizacion::dest
 $errores = [];
 $correo = '';
 $mensaje = Sesion::tomarMensaje();
+$actividadDestino = trim((string) ($_POST['actividad'] ?? $_GET['actividad'] ?? ''));
+if (preg_match('/^[a-z0-9-]{1,100}$/', $actividadDestino) !== 1) $actividadDestino = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $correo = strtolower(trim((string) ($_POST['correo'] ?? '')));
@@ -25,6 +27,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $errores[] = 'El correo o la contraseña no son correctos.';
             } else {
                 Sesion::iniciarUsuario($usuario);
+                if ($actividadDestino !== '') {
+                    Utilidades::redirigir('../actividad.php?id=' . rawurlencode($actividadDestino));
+                }
                 Utilidades::redirigir(Autorizacion::destinoInicial($usuario));
             }
         } catch (PDOException $e) {
@@ -56,6 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php endif; ?>
         <form class="formulario-inicio-sesion" method="post">
             <input type="hidden" name="token_csrf" value="<?= Utilidades::escapar(Sesion::tokenCsrf()) ?>">
+            <?php if ($actividadDestino !== ''): ?><input type="hidden" name="actividad" value="<?= Utilidades::escapar($actividadDestino) ?>"><?php endif; ?>
             <label for="correo">Correo electrónico</label>
             <input id="correo" name="correo" type="email" value="<?= Utilidades::escapar($correo) ?>" autocomplete="email" required>
             <label for="contrasena">Contraseña</label>

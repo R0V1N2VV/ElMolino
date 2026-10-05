@@ -36,6 +36,14 @@ final class Vista
         $dias = self::escapar($actividad->dias);
         $horario = self::escapar($actividad->horario);
         $slug = rawurlencode($actividad->slug);
+        $precio = self::escapar(self::precio($actividad));
+        $disponibles = $actividad->cuposDisponibles();
+        $estadoCupo = self::escapar(
+            $disponibles === 0
+                ? 'Sin cupos disponibles'
+                : $disponibles . ($disponibles === 1 ? ' lugar disponible' : ' lugares disponibles')
+        );
+        $claseCupo = $disponibles === 0 ? ' sin-cupo' : '';
 
         return <<<HTML
             <article class="tarjeta-actividad{$clase}">
@@ -45,6 +53,7 @@ final class Vista
                     <h3>{$nombre}</h3>
                     <p>{$descripcion}</p>
                     <div class="datos-breves-actividad"><span>{$dias}</span><span>{$horario}</span></div>
+                    <div class="estado-tarjeta-actividad"><span>{$precio}</span><span class="{$claseCupo}">{$estadoCupo}</span></div>
                     <a class="enlace-actividad" href="actividad.php?id={$slug}">Ver actividad <span aria-hidden="true">→</span></a>
                 </div>
             </article>
@@ -57,5 +66,11 @@ final class Vista
             return '<a class="boton boton-chico boton-encabezado" href="' . self::escapar($prefijo . 'registro/cuenta.php') . '">Mi cuenta</a>';
         }
         return '<a class="boton boton-chico boton-encabezado" href="' . self::escapar($prefijo . 'registro/login.php') . '">Iniciar sesión</a>';
+    }
+
+    public static function botonModoEdicion(?array $usuario, string $destino = 'administrar-actividades.php', string $texto = 'Modo edición'): string
+    {
+        if (!Autorizacion::esCoordinador($usuario)) return '';
+        return '<a class="boton boton-chico boton-modo-edicion" href="' . self::escapar($destino) . '">' . self::escapar($texto) . '</a>';
     }
 }

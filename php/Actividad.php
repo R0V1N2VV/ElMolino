@@ -24,8 +24,19 @@ final class Actividad
         public string $modalidad,
         public float $precio,
         public bool $tendencia,
-        public string $imagen
+        public string $imagen,
+        public int $cantidadInscriptos = 0
     ) {}
+
+    public function cuposDisponibles(): int
+    {
+        return max(0, $this->cupo - $this->cantidadInscriptos);
+    }
+
+    public function estaCompleta(): bool
+    {
+        return $this->cuposDisponibles() === 0;
+    }
 
     public static function desdeFila(array $fila): self
     {
@@ -50,7 +61,8 @@ final class Actividad
             (string) ($fila['modalidad'] ?? 'incluida'),
             (float) ($fila['precio'] ?? 0),
             (bool) ($fila['tendencia'] ?? false),
-            (string) ($fila['imagenFinal'] ?? $fila['imagen'] ?? '')
+            (string) ($fila['imagenFinal'] ?? $fila['imagen'] ?? ''),
+            (int) ($fila['cantidadInscriptos'] ?? 0)
         );
     }
 }

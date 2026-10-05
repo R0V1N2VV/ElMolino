@@ -77,7 +77,22 @@ final class ControladorActividades
             return ['accion' => 'eliminar', 'mensaje' => 'Actividad eliminada.'];
         }
 
+        if ($accion === 'eliminar_categoria') {
+            $id = (int) ($entrada['id_categoria'] ?? 0);
+            if ($id <= 0) throw new InvalidArgumentException('La categoría seleccionada no es válida.');
+            $this->repositorio->eliminarCategoria($id);
+            return ['accion' => 'eliminar_categoria', 'mensaje' => 'Categoría eliminada.'];
+        }
+
         $datos = $this->validarActividad($entrada);
+        if ($datos['id'] > 0) {
+            $actividadActual = $this->repositorio->buscarPorSlug($datos['slug']);
+            if ($actividadActual && $datos['cupo'] < $actividadActual->cantidadInscriptos) {
+                throw new InvalidArgumentException(
+                    'El cupo no puede ser menor que la cantidad de personas ya inscriptas (' . $actividadActual->cantidadInscriptos . ').'
+                );
+            }
+        }
         if ($datos['id'] === 0) {
             $datos['slug'] = $this->crearSlugDisponible($datos['slug']);
         }

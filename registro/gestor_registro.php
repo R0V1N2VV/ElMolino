@@ -23,7 +23,7 @@ final class Registro
         if ($contrasena !== $repetirContrasena) $errores[] = 'Las contraseñas no coinciden.';
         if ($errores) return ['errores' => $errores];
         $codigo = Utilidades::codigoVerificacion();
-        $pendiente = [...$datos, 'password_hash' => password_hash($contrasena, PASSWORD_DEFAULT), 'codigo_hash' => password_hash($codigo, PASSWORD_DEFAULT)];
+        $pendiente = [...$datos, 'password_hash' => SeguridadPassword::crearHash($contrasena), 'codigo_hash' => password_hash($codigo, PASSWORD_DEFAULT)];
         try {
             $this->conexion->beginTransaction();
             $this->conexion->prepare('DELETE FROM registro_pendiente WHERE email = :email OR dni = :dni')->execute(['email' => $datos['email'], 'dni' => $datos['dni']]);

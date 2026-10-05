@@ -12,18 +12,25 @@ require_once __DIR__ . '/RepositorioActividades.php';
 require_once __DIR__ . '/CatalogoActividadesPredeterminadas.php';
 require_once __DIR__ . '/GestorImagenActividad.php';
 require_once __DIR__ . '/ControladorActividades.php';
+require_once __DIR__ . '/RepositorioInscripciones.php';
+require_once __DIR__ . '/ControladorInscripciones.php';
 require_once __DIR__ . '/Vista.php';
 
 Sesion::iniciar();
 
 $modoCatalogoPredeterminado = false;
+$repositorioInscripciones = null;
+$controladorInscripciones = null;
 try {
-    $fuenteActividades = new RepositorioActividades(Conexion::obtener());
+    $conexionActividades = Conexion::obtener();
+    $fuenteActividades = new RepositorioActividades($conexionActividades);
     $categoriasDisponibles = $fuenteActividades->listarCategorias();
     $fuenteActividades->listarTendencias(1);
     if ($categoriasDisponibles === []) {
         throw new RuntimeException('La base todavía no tiene categorías de actividades.');
     }
+    $repositorioInscripciones = new RepositorioInscripciones($conexionActividades);
+    $controladorInscripciones = new ControladorInscripciones($repositorioInscripciones);
 } catch (Throwable $excepcionBase) {
     $fuenteActividades = new CatalogoActividadesPredeterminadas();
     $modoCatalogoPredeterminado = true;
