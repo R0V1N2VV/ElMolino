@@ -19,6 +19,8 @@ interface FuenteActividades
     /** @return Actividad[] */
     public function listarAdministracion(): array;
 
+    public function guardarCategoria(array $datos): int;
+
     public function guardar(array $datos, ?int $idUsuario): int;
 
     public function eliminar(int $id): void;

@@ -56,3 +56,57 @@ window.addEventListener("resize", () => {
         cerrarMenu();
     }
 });
+
+const formularioActividad = document.querySelector(".formulario-actividad-redisenado");
+
+if (formularioActividad) {
+    const horaInicio = formularioActividad.querySelector('[name="hora_inicio"]');
+    const horaFin = formularioActividad.querySelector('[name="hora_fin"]');
+    const modalidad = formularioActividad.querySelector('[name="modalidad"]');
+    const campoPrecio = formularioActividad.querySelector("[data-campo-precio]");
+    const precio = formularioActividad.querySelector('[name="precio"]');
+
+    function minutosDesdeMedianoche(hora) {
+        const [horas, minutos] = hora.split(":").map(Number);
+        return horas * 60 + minutos;
+    }
+
+    function actualizarRangoHorario() {
+        if (!horaInicio?.value || !horaFin) return;
+
+        const inicioEnMinutos = minutosDesdeMedianoche(horaInicio.value);
+        let primeraOpcionPosterior = "";
+        let opcionSugerida = "";
+
+        for (const opcion of horaFin.options) {
+            const minutosOpcion = minutosDesdeMedianoche(opcion.value);
+            opcion.disabled = minutosOpcion <= inicioEnMinutos;
+            if (!opcion.disabled && primeraOpcionPosterior === "") primeraOpcionPosterior = opcion.value;
+            if (!opcion.disabled && minutosOpcion >= inicioEnMinutos + 60 && opcionSugerida === "") opcionSugerida = opcion.value;
+        }
+
+        if (!horaFin.value || horaFin.value <= horaInicio.value) {
+            horaFin.value = opcionSugerida || primeraOpcionPosterior;
+        }
+    }
+
+    function actualizarPrecio() {
+        if (!modalidad || !campoPrecio || !precio) return;
+        const esPaga = modalidad.value === "inscripcion";
+        campoPrecio.hidden = !esPaga;
+        precio.disabled = !esPaga;
+        precio.required = esPaga;
+        if (!esPaga) precio.value = "0";
+    }
+
+    horaInicio?.addEventListener("change", actualizarRangoHorario);
+    modalidad?.addEventListener("change", actualizarPrecio);
+    formularioActividad.addEventListener("submit", () => {
+        const botonGuardar = formularioActividad.querySelector('button[type="submit"]');
+        if (!botonGuardar) return;
+        botonGuardar.disabled = true;
+        botonGuardar.textContent = "Guardando actividad...";
+    });
+    actualizarRangoHorario();
+    actualizarPrecio();
+}

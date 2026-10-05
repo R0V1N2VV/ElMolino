@@ -947,6 +947,20 @@ h3 {
    11. Adaptación para celular
    ========================================================= */
 @media (max-width: 760px) {
+    .formulario-actividad-redisenado .bloque-formulario-admin {
+        padding: 24px;
+    }
+
+    .grupo-horario-admin {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+    }
+
+    .grupo-horario-admin > span {
+        padding: 0;
+        text-align: center;
+    }
+
     html {
         scroll-padding-top: 78px;
     }
@@ -1347,6 +1361,10 @@ h3 {
 }
 
 @media (max-width: 480px) {
+    .bloque-opcional-admin summary small {
+        display: none;
+    }
+
     .tarjeta-inicio-sesion,
     .tarjeta-registro {
         padding: 28px 22px;
@@ -2185,17 +2203,38 @@ h3 {
     color: var(--verde-medio);
 }
 
+.acciones-cabecera-admin {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
 .aviso-administracion {
-    position: fixed;
-    right: 24px;
-    bottom: 24px;
-    z-index: 150;
-    max-width: min(380px, calc(100% - 48px));
-    padding: 14px 20px;
-    color: var(--blanco);
-    background: var(--verde-oscuro);
+    width: min(100% - 40px, 1180px);
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 24px auto 0;
+    padding: 15px 18px;
+    color: var(--verde-oscuro);
+    background: #eef7ef;
+    border: 1px solid #b8d9bc;
     border-radius: 12px;
-    box-shadow: var(--sombra);
+    box-shadow: 0 8px 24px rgba(7, 58, 47, 0.06);
+    line-height: 1.45;
+    scroll-margin-top: 96px;
+}
+
+.aviso-administracion strong {
+    flex: 0 0 auto;
+}
+
+.aviso-administracion.mensaje-error {
+    color: #7b2520;
+    background: #fff3f1;
+    border-color: #e5b8b2;
 }
 
 .panel-formulario-actividad {
@@ -2232,6 +2271,12 @@ h3 {
     gap: 22px;
 }
 
+.formulario-actividad-redisenado {
+    max-width: 1000px;
+    margin-inline: auto;
+    gap: 26px;
+}
+
 .bloque-formulario-admin {
     padding: 28px;
     background: var(--blanco-calido);
@@ -2245,6 +2290,47 @@ h3 {
     border-bottom: 1px solid var(--beige);
 }
 
+.formulario-actividad-redisenado .bloque-formulario-admin {
+    padding: 32px;
+    border-radius: 20px;
+    box-shadow: 0 14px 34px rgba(7, 58, 47, 0.06);
+}
+
+.titulo-bloque-formulario {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 26px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--beige);
+}
+
+.titulo-bloque-formulario > span {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+    display: grid;
+    place-items: center;
+    color: var(--blanco);
+    background: var(--verde-oscuro);
+    border-radius: 50%;
+    font-weight: 800;
+}
+
+.titulo-bloque-formulario h3 {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    font-size: 1.25rem;
+}
+
+.titulo-bloque-formulario p {
+    margin-top: 5px;
+    color: var(--verde-medio);
+    font-size: 0.88rem;
+    line-height: 1.45;
+}
+
 .grilla-campos-admin {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2255,6 +2341,15 @@ h3 {
     display: block;
 }
 
+.formulario-actividad label > small {
+    display: block;
+    margin-top: 7px;
+    color: var(--verde-medio);
+    font-size: 0.76rem;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
 .formulario-actividad textarea {
     min-height: 110px;
     resize: vertical;
@@ -2262,6 +2357,83 @@ h3 {
 
 .campo-doble {
     grid-column: 1 / -1;
+}
+
+.grupo-horario-admin {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: end;
+    gap: 16px;
+    padding: 20px;
+    background: var(--verde-claro);
+    border: 1px solid rgba(46, 125, 50, 0.18);
+    border-radius: 14px;
+}
+
+.grupo-horario-admin > span {
+    padding-bottom: 14px;
+    color: var(--verde-medio);
+    font-size: 0.86rem;
+    font-weight: 750;
+}
+
+.grupo-horario-admin select {
+    min-height: 54px;
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+[data-campo-precio][hidden] {
+    display: none;
+}
+
+.bloque-opcional-admin {
+    background: rgba(255, 255, 255, 0.72);
+}
+
+.bloque-opcional-admin summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    color: var(--verde-oscuro);
+    cursor: pointer;
+    font-weight: 800;
+    list-style: none;
+}
+
+.bloque-opcional-admin summary::-webkit-details-marker {
+    display: none;
+}
+
+.bloque-opcional-admin summary::after {
+    content: "+";
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    display: grid;
+    place-items: center;
+    color: var(--blanco);
+    background: var(--verde-oscuro);
+    border-radius: 50%;
+    font-size: 1.3rem;
+}
+
+.bloque-opcional-admin[open] summary::after {
+    content: "−";
+}
+
+.bloque-opcional-admin summary small {
+    margin-left: auto;
+    color: var(--verde-medio);
+    font-size: 0.78rem;
+    font-weight: 550;
+}
+
+.bloque-opcional-admin[open] summary {
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--beige);
 }
 
 .vista-imagen {
@@ -2301,6 +2473,98 @@ h3 {
 .acciones-formulario-admin {
     display: flex;
     gap: 14px;
+}
+
+.acciones-formulario-fijas {
+    position: sticky;
+    bottom: 16px;
+    z-index: 20;
+    justify-content: flex-end;
+    padding: 16px;
+    background: rgba(250, 249, 245, 0.94);
+    border: 1px solid var(--beige);
+    border-radius: 16px;
+    box-shadow: var(--sombra);
+    backdrop-filter: blur(10px);
+}
+
+.boton-agregar-en-categoria {
+    display: inline-flex;
+    margin-top: 24px;
+}
+
+.categorias-administracion {
+    padding-block: 72px;
+    background: #edf4ec;
+}
+
+.grilla-categorias-admin {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.tarjeta-categoria-admin {
+    display: grid;
+    grid-template-columns: 112px minmax(0, 1fr);
+    gap: 20px;
+    padding: 18px;
+    background: var(--blanco-calido);
+    border: 1px solid var(--beige);
+    border-radius: 14px;
+}
+
+.tarjeta-categoria-admin > img {
+    width: 112px;
+    height: 112px;
+    object-fit: cover;
+    border-radius: 10px;
+}
+
+.tarjeta-categoria-admin strong,
+.tarjeta-categoria-admin small,
+.tarjeta-categoria-admin span {
+    display: block;
+}
+
+.tarjeta-categoria-admin strong {
+    color: var(--verde-oscuro);
+    font-size: 1.25rem;
+}
+
+.tarjeta-categoria-admin small {
+    margin-top: 5px;
+    color: var(--verde-medio);
+    line-height: 1.4;
+}
+
+.tarjeta-categoria-admin span {
+    margin-top: 8px;
+    color: var(--azul-medio);
+    font-size: 0.78rem;
+    font-weight: 750;
+    text-transform: uppercase;
+}
+
+.acciones-categoria-admin {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--beige);
+}
+
+.acciones-categoria-admin > a:first-child {
+    color: var(--verde-oscuro);
+    font-weight: 750;
+}
+
+.acciones-categoria-admin .boton {
+    padding: 10px 16px;
+    font-size: 0.86rem;
 }
 
 .boton-neutral {
@@ -2378,17 +2642,11 @@ h3 {
     border-color: #f0c2ba;
 }
 
-.nota-administracion {
-    margin-top: 24px;
-    padding: 16px 20px;
-    color: var(--verde-medio);
-    background: var(--crema);
-    border-left: 4px solid var(--verde-suave);
-    border-radius: 8px;
-    font-size: 0.88rem;
-}
-
 @media (max-width: 1020px) {
+    .grilla-categorias-admin {
+        grid-template-columns: 1fr;
+    }
+
     .grilla-tendencias {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -2450,6 +2708,16 @@ h3 {
         flex-direction: column;
     }
 
+    .acciones-cabecera-admin {
+        width: 100%;
+        align-items: stretch;
+        justify-content: flex-start;
+    }
+
+    .acciones-cabecera-admin .boton {
+        text-align: center;
+    }
+
     .titulo-portada-actividades h1 {
         font-size: clamp(2.25rem, 11vw, 3.15rem);
     }
@@ -2486,6 +2754,24 @@ h3 {
 
     .estructura-listado-actividades {
         grid-template-columns: 1fr;
+    }
+
+    .tarjeta-categoria-admin {
+        grid-template-columns: 88px minmax(0, 1fr);
+    }
+
+    .tarjeta-categoria-admin > img {
+        width: 88px;
+        height: 88px;
+    }
+
+    .acciones-categoria-admin {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .acciones-categoria-admin .boton {
+        text-align: center;
     }
 
     .panel-filtros,
@@ -2548,6 +2834,10 @@ h3 {
     .acciones-formulario-admin {
         align-items: stretch;
         flex-direction: column;
+    }
+
+    .acciones-formulario-fijas {
+        position: static;
     }
 
     .fila-actividad-admin {
@@ -2827,4 +3117,20 @@ h3 {
 .boton-cerrar-panel {
     display: grid;
     place-items: center;
+}
+
+@media (max-width: 760px) {
+    .formulario-actividad-redisenado .bloque-formulario-admin {
+        padding: 24px;
+    }
+
+    .grupo-horario-admin {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+    }
+
+    .grupo-horario-admin > span {
+        padding: 0;
+        text-align: center;
+    }
 }

@@ -107,6 +107,32 @@ final class RepositorioActividades implements FuenteActividades
         return $this->convertirActividades($consulta->fetchAll());
     }
 
+    public function guardarCategoria(array $datos): int
+    {
+        $existente = $this->conexion->prepare(
+            'SELECT idCategoria
+               FROM CategoriaActividad
+              WHERE slug = :slug OR nombre = :nombre
+              LIMIT 1'
+        );
+        $existente->execute(['slug' => $datos['slug'], 'nombre' => $datos['nombre']]);
+        if ($existente->fetchColumn()) {
+            throw new InvalidArgumentException('Ya existe una categoría con ese nombre.');
+        }
+
+        $consulta = $this->conexion->prepare(
+            'INSERT INTO CategoriaActividad (slug, nombre, descripcion, imagen, activa)
+             VALUES (:slug, :nombre, :descripcion, :imagen, 1)'
+        );
+        $consulta->execute([
+            'slug' => $datos['slug'],
+            'nombre' => $datos['nombre'],
+            'descripcion' => $datos['descripcion'],
+            'imagen' => $datos['imagen'],
+        ]);
+        return (int) $this->conexion->lastInsertId();
+    }
+
     public function guardar(array $datos, ?int $idUsuario): int
     {
         $idCategoria = $this->idCategoria((string) $datos['categoria']);
