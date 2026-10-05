@@ -35,7 +35,20 @@ final class Registro
         } catch (Throwable $error) {
             if ($this->conexion->inTransaction()) $this->conexion->rollBack();
             if (isset($id)) $this->conexion->prepare('DELETE FROM registro_pendiente WHERE idRegistroPendiente = :id')->execute(['id' => $id]);
-            return ['errores' => [$error instanceof RuntimeException ? $error->getMessage() : 'No se pudo guardar el registro pendiente. Ejecutá BD/registro_pendiente.sql.']];
+            if ($error instanceof RuntimeException) {
+                return ['errores' => [$error->getMessage()]];
+            }
+            error_log('Error al crear registro pendiente: ' . $error->getMessage());
+            $diagnostico = null;
+            if ($error instanceof PDOException) {
+                $info = $error->errorInfo ?? [];
+                $sqlState = (string) ($info[0] ?? $error->getCode());
+                $codigoMotor = (string) ($info[1] ?? 'sin código');
+                $diagnostico = "SQLSTATE {$sqlState}; código MySQL {$codigoMotor}";
+            } else {
+                $diagnostico = 'Error PHP: ' . get_class($error) . '; detalle: ' . $error->getMessage();
+            }
+            return ['errores' => ['No se pudo completar el registro. Revisá la configuración de la base de datos y el archivo de registro pendiente.'], 'diagnostico' => $diagnostico];
         }
     }
 

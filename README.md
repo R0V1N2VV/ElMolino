@@ -30,7 +30,7 @@ Las categorías utilizan fotografías guardadas dentro de `imgs/`. Los autores y
 
 ## Registro e inicio de sesión
 
-1. Importá la base principal y luego ejecutá `BD/registro_pendiente.sql` en la misma base (`s27_El Molino`). Esta tabla guarda temporalmente los datos y el código hasta verificar el correo.
+1. La base completa (`BD/s27_El_Molino_completa.sql`) ya incluye `registro_pendiente`. Si importás otra base, ejecutá `BD/registro_pendiente.sql` en `s27_El Molino`; también actualiza instalaciones anteriores de esa tabla.
 2. Completá `registro/mail_config.php` con los datos del correo emisor.
 3. Si tu MySQL no usa `root` sin contraseña, definí las variables de entorno `EL_MOLINO_DB_HOST`, `EL_MOLINO_DB_PUERTO`, `EL_MOLINO_DB_NOMBRE`, `EL_MOLINO_DB_USUARIO` y `EL_MOLINO_DB_CONTRASENA`.
 

@@ -7,6 +7,7 @@ Sesion::iniciar();
 if ($usuarioActual = Sesion::usuario()) Utilidades::redirigir(Autorizacion::destinoInicial($usuarioActual));
 
 $errores = [];
+$diagnostico = null;
 $datos = Sesion::obtener('registro_datos', []);
 $paso = isset($_GET['paso']) && (int) $_GET['paso'] === 1 ? 1 : ($datos ? 2 : 1);
 
@@ -37,6 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         (string) ($_POST['repetir_contrasena'] ?? '')
                     );
                     $errores = $resultado['errores'];
+                    $diagnostico = $resultado['diagnostico'] ?? null;
                     if (!$errores) {
                         Sesion::guardar('registro_pendiente_id', $resultado['id']);
                         Sesion::eliminar('registro_datos');
@@ -45,8 +47,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $paso = 2;
                 }
             }
-        } catch (PDOException) {
+        } catch (PDOException $error) {
             $errores[] = 'No se pudo consultar la base de datos. Verificá la conexión.';
+            $info = $error->errorInfo ?? [];
+            $diagnostico = 'SQLSTATE ' . (string) ($info[0] ?? $error->getCode()) . '; código MySQL ' . (string) ($info[1] ?? 'sin código');
         }
     }
 }
@@ -72,7 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <li><span>3</span> Verificación</li>
         </ol>
 
-        <?php if ($errores): ?><div class="mensaje mensaje-error" role="alert"><?= Utilidades::escapar(implode(' ', $errores)) ?></div><?php endif; ?>
+        <?php if ($errores): ?><div class="mensaje mensaje-error" role="alert"><?= Utilidades::escapar(implode(' ', $errores)) ?><?php if ($diagnostico): ?><br><small>Diagnóstico: <?= Utilidades::escapar($diagnostico) ?></small><?php endif; ?></div><?php endif; ?>
 
         <?php if ($paso === 1): ?>
             <form method="post" class="formulario-registro">
