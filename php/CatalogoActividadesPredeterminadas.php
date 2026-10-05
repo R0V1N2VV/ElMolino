@@ -93,6 +93,11 @@ final class CatalogoActividadesPredeterminadas implements FuenteActividades
         return $actividades;
     }
 
+    public function guardarCategoria(array $datos): int
+    {
+        throw new RuntimeException('Las categorías predeterminadas están en modo de solo lectura. Instalá la actualización de la base para guardar cambios.');
+    }
+
     public function guardar(array $datos, ?int $idUsuario): int
     {
         throw new RuntimeException('Las actividades predeterminadas están en modo de solo lectura. Instalá la actualización de la base para guardar cambios.');

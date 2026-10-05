@@ -53,41 +53,98 @@ final class ControladorActividades
         ];
     }
 
-    public function procesarGestion(array $entrada, array $archivos, array $usuario): string
+    public function procesarGestion(array $entrada, array $archivos, array $usuario): array
     {
         if (!Sesion::validarCsrf($entrada['token_csrf'] ?? null)) {
             throw new RuntimeException('La sesión del formulario venció. Volvé a intentarlo.');
         }
 
         $accion = (string) ($entrada['accion'] ?? 'guardar');
+        if ($accion === 'guardar_categoria') {
+            $datos = $this->validarCategoria($entrada);
+            $datos['imagen'] = $this->imagenes->guardar($archivos['imagen_categoria'] ?? null);
+            if ($datos['imagen'] === '') {
+                throw new InvalidArgumentException('Seleccioná una imagen para la categoría.');
+            }
+            $this->repositorio->guardarCategoria($datos);
+            return ['accion' => 'guardar_categoria', 'mensaje' => 'Categoría agregada.'];
+        }
+
         if ($accion === 'eliminar') {
             $id = (int) ($entrada['id'] ?? 0);
             if ($id <= 0) throw new InvalidArgumentException('La actividad seleccionada no es válida.');
             $this->repositorio->eliminar($id);
-            return 'Actividad eliminada.';
+            return ['accion' => 'eliminar', 'mensaje' => 'Actividad eliminada.'];
         }
 
         $datos = $this->validarActividad($entrada);
+        if ($datos['id'] === 0) {
+            $datos['slug'] = $this->crearSlugDisponible($datos['slug']);
+        }
         $datos['imagen'] = $this->imagenes->guardar($archivos['imagen'] ?? null, (string) ($entrada['imagen_actual'] ?? ''));
-        $this->repositorio->guardar($datos, isset($usuario['id_usuario']) ? (int) $usuario['id_usuario'] : null);
-        return $datos['id'] > 0 ? 'Actividad actualizada.' : 'Actividad agregada.';
+        try {
+            $idGuardado = $this->repositorio->guardar($datos, isset($usuario['id_usuario']) ? (int) $usuario['id_usuario'] : null);
+        } catch (PDOException $excepcion) {
+            error_log('No se pudo guardar la actividad: ' . $excepcion->getMessage());
+            throw new RuntimeException('No se pudo guardar la actividad en la base de datos. Verificá que esté instalada la actualización de actividades.');
+        }
+        if ($idGuardado <= 0) {
+            throw new RuntimeException('La actividad no pudo guardarse. Volvé a intentarlo.');
+        }
+        if (!$this->repositorio->buscarPorSlug($datos['slug'])) {
+            throw new RuntimeException('La actividad no pudo publicarse. Volvé a intentarlo.');
+        }
+        return [
+            'accion' => 'guardar',
+            'mensaje' => $datos['id'] > 0 ? 'Actividad actualizada.' : 'Actividad agregada.',
+            'slug' => $datos['slug'],
+            'categoria' => $datos['categoria'],
+        ];
+    }
+
+    private function validarCategoria(array $entrada): array
+    {
+        $nombre = trim((string) ($entrada['nombre_categoria'] ?? ''));
+        $descripcion = trim((string) ($entrada['descripcion_categoria'] ?? ''));
+        $slug = $this->crearSlug($nombre);
+
+        if ($nombre === '' || $descripcion === '' || $slug === '') {
+            throw new InvalidArgumentException('Completá el nombre y la descripción de la categoría.');
+        }
+        if (strlen($nombre) > 60 || strlen($descripcion) > 160) {
+            throw new InvalidArgumentException('El nombre o la descripción de la categoría son demasiado largos.');
+        }
+
+        return ['slug' => $slug, 'nombre' => $nombre, 'descripcion' => $descripcion];
     }
 
     private function validarActividad(array $entrada): array
     {
+        $nombre = trim((string) ($entrada['nombre'] ?? ''));
+        $slugGuardado = trim((string) ($entrada['slug'] ?? ''));
+        $horaInicio = trim((string) ($entrada['hora_inicio'] ?? ''));
+        $horaFin = trim((string) ($entrada['hora_fin'] ?? ''));
+
+        if (!$this->esHoraValida($horaInicio) || !$this->esHoraValida($horaFin)) {
+            throw new InvalidArgumentException('Seleccioná una hora de inicio y una hora de finalización válidas.');
+        }
+        if ($horaFin <= $horaInicio) {
+            throw new InvalidArgumentException('La hora de finalización debe ser posterior a la hora de inicio.');
+        }
+
         $datos = [
             'id' => (int) ($entrada['id'] ?? 0),
-            'slug' => $this->crearSlug((string) ($entrada['slug'] ?? $entrada['nombre'] ?? '')),
-            'nombre' => trim((string) ($entrada['nombre'] ?? '')),
+            'slug' => $this->crearSlug($slugGuardado !== '' ? $slugGuardado : $nombre),
+            'nombre' => $nombre,
             'categoria' => trim((string) ($entrada['categoria'] ?? '')),
             'descripcionCorta' => trim((string) ($entrada['descripcionCorta'] ?? '')),
             'descripcion' => trim((string) ($entrada['descripcion'] ?? '')),
             'requisitos' => trim((string) ($entrada['requisitos'] ?? '')),
             'importante' => trim((string) ($entrada['importante'] ?? '')),
             'dias' => trim((string) ($entrada['dias'] ?? '')),
-            'horario' => trim((string) ($entrada['horario'] ?? '')),
-            'momento' => $this->valorPermitido((string) ($entrada['momento'] ?? ''), ['manana', 'tarde', 'noche'], ''),
-            'duracion' => trim((string) ($entrada['duracion'] ?? '')),
+            'horario' => $horaInicio . ' a ' . $horaFin,
+            'momento' => $this->momentoDesdeHora($horaInicio),
+            'duracion' => '',
             'sector' => trim((string) ($entrada['sector'] ?? '')),
             'responsable' => trim((string) ($entrada['responsable'] ?? '')),
             'cupo' => (int) ($entrada['cupo'] ?? 0),
@@ -97,11 +154,40 @@ final class ControladorActividades
             'tendencia' => isset($entrada['tendencia']) ? 1 : 0,
         ];
 
-        foreach (['slug', 'nombre', 'categoria', 'descripcionCorta', 'descripcion', 'requisitos', 'importante', 'dias', 'horario', 'momento', 'duracion', 'sector', 'responsable', 'edad', 'modalidad'] as $campo) {
+        foreach (['slug', 'nombre', 'categoria', 'descripcionCorta', 'descripcion', 'dias', 'horario', 'momento', 'sector', 'responsable', 'edad', 'modalidad'] as $campo) {
             if ($datos[$campo] === '') throw new InvalidArgumentException('Completá todos los campos obligatorios.');
+        }
+        if ($datos['modalidad'] === 'incluida') {
+            $datos['precio'] = 0;
+        } elseif ($datos['precio'] <= 0) {
+            throw new InvalidArgumentException('Ingresá el precio de la actividad paga.');
         }
         if ($datos['cupo'] < 1 || $datos['cupo'] > 500) throw new InvalidArgumentException('El cupo debe estar entre 1 y 500 personas.');
         return $datos;
+    }
+
+    private function esHoraValida(string $hora): bool
+    {
+        return preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/', $hora) === 1;
+    }
+
+    private function momentoDesdeHora(string $hora): string
+    {
+        $horaNumerica = (int) substr($hora, 0, 2);
+        if ($horaNumerica < 12) return 'manana';
+        if ($horaNumerica < 19) return 'tarde';
+        return 'noche';
+    }
+
+    private function crearSlugDisponible(string $base): string
+    {
+        $slug = $base;
+        $sufijo = 2;
+        while ($this->repositorio->buscarPorSlug($slug)) {
+            $slug = $base . '-' . $sufijo;
+            $sufijo++;
+        }
+        return $slug;
     }
 
     private function crearSlug(string $texto): string
