@@ -26,7 +26,8 @@ No subas `config.properties` al repositorio: contiene credenciales y ya está ex
 - Alojamientos, espacios y acompañantes: consulta, edición y eliminación de registros existentes.
 - Reservas: consulta, edición y cancelación; valida fechas, capacidad y cruces, y conserva el registro cancelado.
 - Acompañantes por reserva: edición o eliminación de una asociación existente.
-- Actividades: consulta y edición desde la aplicación. La grilla muestra datos operativos, inscriptos frente al cupo, lugares disponibles y estado; los conteos se calculan desde `inscripcionActividad`. Las altas se realizan desde la página web.
+- Categorías: consulta las categorías creadas desde la página web.
+- Actividades: consulta y edición desde la aplicación. La grilla muestra la categoría, los datos operativos, inscriptos frente al cupo, lugares disponibles y estado; los conteos se calculan desde `inscripcionActividad`. Las altas se realizan desde la página web.
 - Inscripciones: consulta y alta desde la aplicación; comprueba el cupo y no gestiona asistencia.
 - Pagos: solo consulta.
 - Usuarios: gestión y asignación de roles por el administrador.
@@ -34,6 +35,12 @@ No subas `config.properties` al repositorio: contiene credenciales y ya está ex
 El menú muestra los módulos según el rol. Las pantallas de gestión tienen **Volver al menú**. Las relaciones entre módulos usan listas para elegir clientes, alojamientos, espacios, actividades y usuarios existentes.
 
 El proyecto debe usar las tablas del esquema MySQL entregado para El Molino. No vuelvas a importar ni ejecutar el volcado completo sobre una base que ya contiene información.
+
+La web y la app comparten una sola base. Las pantallas de categorías, actividades e inscripciones se actualizan automáticamente cada 10 segundos y al volver a enfocarlas; también se pueden refrescar con el botón **Actualizar**. Para que esto funcione, `config.properties` debe apuntar a la misma base configurada en `php/Conexion.php` del sitio.
+
+Los roles `coordinador_actividades` y `COORDINADOR` se aceptan tanto en la página como en la aplicación, por lo que cualquiera de los dos permite acceder a categorías, actividades e inscripciones.
+
+PHP y Java utilizan el mismo formato PBKDF2 para las contraseñas nuevas. Una cuenta web antigua se migra automáticamente al iniciar sesión correctamente en la página; luego puede ingresar también en la aplicación con la misma contraseña.
 
 Para cargar un alojamiento de demostración sin duplicarlo, ejecuta `sql/ejemplo_alojamiento.sql` en la base configurada. Luego abre **Alojamientos**, selecciona `D-ALOJ-01` y pulsa **Editar** para cambiar tipo, capacidad, precio por noche o estado. Al guardar, la aplicación actualiza MySQL y vuelve a consultar la lista.
 

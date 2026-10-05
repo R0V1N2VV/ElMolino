@@ -159,7 +159,7 @@ public class VentanaPrincipal extends JFrame {
 
     private List<Acceso> armarAccesos(String rol) {
         List<Acceso> accesos = new ArrayList<>();
-        switch (rol) {
+        switch (normalizarRol(rol)) {
             case "RECEPCION" -> {
                 accesos.add(modulo("Clientes", "Consultar y editar datos de clientes", null));
                 accesos.add(modulo("Alojamientos", "Consultar y actualizar alojamientos", GestionDAO.ALOJAMIENTOS));
@@ -176,6 +176,7 @@ public class VentanaPrincipal extends JFrame {
             }
             case "COORDINADOR" -> {
                 accesos.add(modulo("Espacios recreativos", "Consultar y actualizar espacios", GestionDAO.ESPACIOS));
+                accesos.add(modulo("Categorías", "Consultar las categorías publicadas en la página", GestionDAO.CATEGORIAS_ACTIVIDAD));
                 accesos.add(modulo("Actividades", "Consultar y actualizar actividades", GestionDAO.ACTIVIDADES));
                 accesos.add(modulo("Inscripciones", "Agregar y consultar inscripciones", GestionDAO.ACTIVIDAD_INSCRIPTOS));
             }
@@ -187,6 +188,7 @@ public class VentanaPrincipal extends JFrame {
                 accesos.add(modulo("Espacios recreativos", "Consultar y actualizar espacios", GestionDAO.ESPACIOS));
                 accesos.add(modulo("Reservas", "Consultar y actualizar reservas", GestionDAO.RESERVAS));
                 accesos.add(modulo("Pagos", "Consultar pagos registrados", GestionDAO.PAGOS));
+                accesos.add(modulo("Categorías", "Consultar las categorías publicadas en la página", GestionDAO.CATEGORIAS_ACTIVIDAD));
                 accesos.add(modulo("Actividades", "Consultar y actualizar actividades", GestionDAO.ACTIVIDADES));
                 accesos.add(modulo("Inscripciones", "Agregar y consultar inscripciones", GestionDAO.ACTIVIDAD_INSCRIPTOS));
                 accesos.add(modulo("Usuarios", "Crear cuentas, asignar roles y gestionar usuarios", GestionDAO.USUARIOS));
@@ -217,7 +219,7 @@ public class VentanaPrincipal extends JFrame {
     }
 
     private String nombreRol(String rol) {
-        return switch (rol) {
+        return switch (normalizarRol(rol)) {
             case "ADMINISTRADOR" -> "Administrador";
             case "RECEPCION" -> "Recepción";
             case "ADMINISTRACION" -> "Administración";
@@ -225,6 +227,12 @@ public class VentanaPrincipal extends JFrame {
             case "GERENCIA" -> "Gerencia";
             default -> rol;
         };
+    }
+
+    private String normalizarRol(String rol) {
+        if (rol == null) return "";
+        if ("coordinador_actividades".equalsIgnoreCase(rol)) return "COORDINADOR";
+        return rol.toUpperCase(java.util.Locale.ROOT);
     }
 
     private record Acceso(String titulo, String descripcion, Runnable accion) { }

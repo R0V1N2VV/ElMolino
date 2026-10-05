@@ -82,8 +82,16 @@ public final class GestionDAO {
             texto("ubicacion", "Ubicación", true), hora("horarioApertura", "Abre (HH:mm)"),
             hora("horarioCierre", "Cierra (HH:mm)"), booleano("requiereReserva", "Requiere reserva")));
 
+    public static final Modulo CATEGORIAS_ACTIVIDAD = new Modulo(
+            "Categorías de actividades", "CategoriaActividad", "idCategoria", List.of(
+            texto("nombre", "Categoría", true), texto("descripcion", "Descripción", true),
+            booleano("activa", "Activa")));
+
     public static final Modulo ACTIVIDADES = new Modulo("Actividades", "Actividad", "idActividad", List.of(
-            texto("nombre", "Nombre", true), texto("descripcionCorta", "Descripción breve", false),
+            texto("nombre", "Nombre", true),
+            relacionOpcional("idCategoria", "Categoría",
+                    "SELECT idCategoria, nombre FROM `CategoriaActividad` WHERE activa = 1 ORDER BY nombre"),
+            texto("descripcionCorta", "Descripción breve", false),
             texto("descripcion", "Descripción completa", true), texto("requisitos", "Requisitos", false),
             texto("informacionImportante", "Información importante", false),
             texto("horario", "Horario", true), texto("dias", "Días", false),
@@ -122,7 +130,8 @@ public final class GestionDAO {
     public static final Modulo USUARIOS = new Modulo("Usuarios", "usuarios", "idUsuario", List.of(
             texto("nombre", "Nombre", true), texto("apellido", "Apellido", true),
             new Campo("email", "Email", Tipo.TEXTO, true),
-            opcion("rol", "Rol", List.of("ADMINISTRADOR", "RECEPCION", "ADMINISTRACION", "COORDINADOR", "GERENCIA")),
+            opcion("rol", "Rol", List.of("cliente", "coordinador_actividades", "ADMINISTRADOR",
+                    "RECEPCION", "ADMINISTRACION", "COORDINADOR", "GERENCIA")),
             new Campo("password_hash", "Contraseña (dejar vacía para conservarla)", Tipo.CLAVE, false, false, List.of(), null)));
 
     private GestionDAO() { }
@@ -145,6 +154,7 @@ public final class GestionDAO {
 
     public static List<Object[]> listar(Modulo modulo) throws SQLException {
         if ("Actividad".equals(modulo.tabla())) return listarActividades();
+        if ("inscripcionActividad".equals(modulo.tabla())) return listarInscripciones();
         List<Campo> visibles = camposVisibles(modulo);
         String columnas = visibles.stream().map(c -> q(c.columna())).reduce((a, b) -> a + ", " + b).orElse("");
         String sql = "SELECT " + q(modulo.id()) + (columnas.isEmpty() ? "" : ", " + columnas)
@@ -166,7 +176,7 @@ public final class GestionDAO {
     }
 
     private static List<Object[]> listarActividades() throws SQLException {
-        String sql = "SELECT a.idActividad, a.nombre, a.descripcionCorta, a.horario, a.dias, a.momentoDia, "
+        String sql = "SELECT a.idActividad, a.nombre, c.nombre, a.descripcionCorta, a.horario, a.dias, a.momentoDia, "
                 + "a.Duracion, a.sector, a.responsable, a.edadRecomendada, a.modalidad, a.activa, e.nombre, a.cupoMax, "
                 + "COUNT(i.idInscripcion), GREATEST(a.cupoMax - COUNT(i.idInscripcion), 0), "
                 + "CASE WHEN COUNT(i.idInscripcion) >= a.cupoMax THEN 'Cupo lleno' "
@@ -174,24 +184,47 @@ public final class GestionDAO {
                 + "WHEN a.cupoMax - COUNT(i.idInscripcion) <= 2 THEN 'Últimos lugares' "
                 + "ELSE 'Disponible' END, a.precio, a.pago "
                 + "FROM `Actividad` a "
+                + "LEFT JOIN `CategoriaActividad` c ON c.idCategoria = a.idCategoria "
                 + "LEFT JOIN `EspacioRecreativo` e ON e.idEspacio = a.idEspacio "
                 + "LEFT JOIN `inscripcionActividad` i ON i.idActividad = a.idActividad "
-                + "GROUP BY a.idActividad, a.nombre, a.descripcionCorta, a.horario, a.dias, a.momentoDia, "
+                + "GROUP BY a.idActividad, a.nombre, c.nombre, a.descripcionCorta, a.horario, a.dias, a.momentoDia, "
                 + "a.Duracion, a.sector, a.responsable, a.edadRecomendada, a.modalidad, a.activa, "
                 + "e.nombre, a.cupoMax, a.precio, a.pago "
                 + "ORDER BY a.idActividad DESC";
         List<Object[]> filas = new ArrayList<>();
         try (Connection con = Conexion.obtener();
              PreparedStatement ps = con.prepareStatement(sql);
+            ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                int cupoMax = rs.getInt(15);
+                int inscriptos = rs.getInt(16);
+                filas.add(new Object[]{rs.getInt(1), rs.getString(2),
+                        rs.getString(3) == null ? "Sin categoría" : rs.getString(3), rs.getString(4),
+                        rs.getString(5), rs.getString(6), etiquetaMomentoDia(rs.getString(7)), rs.getString(8),
+                        rs.getString(9), rs.getString(10), etiquetaEdad(rs.getString(11)),
+                        etiquetaModalidad(rs.getString(12)), rs.getBoolean(13) ? "Sí" : "No",
+                        rs.getString(14) == null ? "Sin asignar" : rs.getString(14),
+                        inscriptos + " / " + cupoMax, rs.getInt(17), rs.getString(18),
+                        rs.getBigDecimal(19), rs.getString(20)});
+            }
+        }
+        return filas;
+    }
+
+    private static List<Object[]> listarInscripciones() throws SQLException {
+        String sql = "SELECT i.idInscripcion, "
+                + "CONCAT(c.apellido, ', ', c.nombre, ' - DNI ', c.dni), "
+                + "a.nombre, i.fechaInscripcion "
+                + "FROM `inscripcionActividad` i "
+                + "INNER JOIN `cliente` c ON c.idCliente = i.idCliente "
+                + "INNER JOIN `Actividad` a ON a.idActividad = i.idActividad "
+                + "ORDER BY i.idInscripcion DESC";
+        List<Object[]> filas = new ArrayList<>();
+        try (Connection con = Conexion.obtener();
+             PreparedStatement ps = con.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
-                int cupoMax = rs.getInt(14);
-                int inscriptos = rs.getInt(15);
-                filas.add(new Object[]{rs.getInt(1), rs.getString(2), rs.getString(3), rs.getString(4),
-                        rs.getString(5), etiquetaMomentoDia(rs.getString(6)), rs.getString(7), rs.getString(8),
-                        rs.getString(9), etiquetaEdad(rs.getString(10)), etiquetaModalidad(rs.getString(11)),
-                        rs.getBoolean(12) ? "Sí" : "No", rs.getString(13) == null ? "Sin asignar" : rs.getString(13),
-                        inscriptos + " / " + cupoMax, rs.getInt(16), rs.getString(17), rs.getBigDecimal(18), rs.getString(19)});
+                filas.add(new Object[]{rs.getInt(1), rs.getString(2), rs.getString(3), rs.getDate(4)});
             }
         }
         return filas;
@@ -306,14 +339,11 @@ public final class GestionDAO {
         if ("Actividad".equals(modulo.tabla())) {
             try (Connection con = Conexion.obtener();
                  PreparedStatement ps = con.prepareStatement(
-                         "SELECT COUNT(*) FROM inscripcionActividad WHERE idActividad = ?")) {
+                         "UPDATE Actividad SET activa = 0 WHERE idActividad = ?")) {
                 ps.setInt(1, id);
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (rs.next() && rs.getInt(1) > 0) {
-                        throw new SQLException("No se puede eliminar una actividad que tiene inscripciones.");
-                    }
-                }
+                if (ps.executeUpdate() == 0) throw new SQLException("No se encontró la actividad.");
             }
+            return;
         }
         String sql = "DELETE FROM " + q(modulo.tabla()) + " WHERE " + q(modulo.id()) + " = ?";
         try (Connection con = Conexion.obtener(); PreparedStatement ps = con.prepareStatement(sql)) {

@@ -39,6 +39,26 @@ ALTER TABLE Actividad
         FOREIGN KEY (idCategoria) REFERENCES CategoriaActividad(idCategoria)
         ON DELETE SET NULL ON UPDATE CASCADE;
 
+-- La base completa ya incluye esta tabla. Se deja también aquí para que las
+-- instalaciones anteriores puedan usar cupos e inscripciones.
+CREATE TABLE IF NOT EXISTS inscripcionActividad (
+    idInscripcion INT NOT NULL AUTO_INCREMENT,
+    idCliente INT NOT NULL,
+    idActividad INT NOT NULL,
+    fechaInscripcion DATE NOT NULL,
+    asistencia TINYINT(1) NOT NULL DEFAULT 0,
+    PRIMARY KEY (idInscripcion),
+    UNIQUE KEY uk_cliente_actividad (idCliente, idActividad),
+    KEY idx_inscripcion_cliente (idCliente),
+    KEY idx_inscripcion_actividad (idActividad),
+    CONSTRAINT fk_inscripcion_cliente
+        FOREIGN KEY (idCliente) REFERENCES cliente(idCliente)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_inscripcion_actividad
+        FOREIGN KEY (idActividad) REFERENCES Actividad(idActividad)
+        ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 INSERT INTO CategoriaActividad (slug, nombre, descripcion, imagen) VALUES
     ('caminatas', 'Caminatas', 'Senderos y recorridos guiados', 'imgs/caminatas.jpg'),
     ('deportes', 'Deportes', 'Fútbol, básquet, natación y más', 'imgs/futb.jpg'),

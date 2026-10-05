@@ -50,12 +50,15 @@ Cada rol ve distintas secciones en el menú.
 | Reservas | Consultar, editar y cancelar. |
 | Acompañantes por reserva | Editar o quitar una asociación. |
 | Pagos | Solo consultar. |
-| Actividades | Consultar y editar datos operativos, cupo, precio y disponibilidad calculada desde las inscripciones. Las altas se realizan desde la web. |
-| Inscripciones | Consultar y agregar. La asistencia no se cambia desde esta pantalla. |
+| Categorías | Consultar las categorías creadas o desactivadas desde la página. |
+| Actividades | Consultar y editar categoría, datos operativos, cupo, precio y disponibilidad calculada desde las inscripciones. Las altas se realizan desde la web. |
+| Inscripciones | Consultar con el nombre del cliente y de la actividad, y agregar. La asistencia no se cambia desde esta pantalla. |
 | Usuarios | El administrador puede crear usuarios y asignar roles. |
 | Informes | Ya no aparecen en el menú. |
 
 Los accesos dependen del rol: Recepción, Administración, Coordinación, Administrador o Gerencia. Gerencia no tiene secciones visibles por ahora, porque se quitó el acceso a informes.
+
+El rol web `coordinador_actividades` se trata como `COORDINADOR` dentro de la aplicación.
 
 ## 4. Cómo se configura un módulo
 
@@ -78,6 +81,10 @@ db.password=contraseña
 ```
 
 Usá `config.properties.example` como plantilla y completalo con los datos que te dieron. No compartas el archivo real: contiene la contraseña de la base.
+
+La página y la aplicación deben usar esos mismos datos de conexión. Las ventanas de categorías, actividades e inscripciones vuelven a consultar MySQL cada 10 segundos y cuando recuperan el foco, de modo que muestran los cambios realizados desde la web sin reiniciar la app.
+
+El sitio y la aplicación generan contraseñas PBKDF2 compatibles. Si una cuenta anterior todavía tiene un hash creado por PHP, el sitio lo verifica y lo migra automáticamente después de un ingreso correcto.
 
 ## 6. Ejecutar desde Eclipse
 

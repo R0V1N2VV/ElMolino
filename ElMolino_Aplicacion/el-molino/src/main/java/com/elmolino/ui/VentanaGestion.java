@@ -21,6 +21,7 @@ import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingWorker;
+import javax.swing.Timer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.BorderLayout;
 import java.awt.GridLayout;
@@ -29,6 +30,7 @@ import java.awt.event.WindowEvent;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,18 +52,21 @@ public class VentanaGestion extends JFrame {
     private final JButton btnNuevo = new JButton("Nuevo");
     private final JButton btnEditar = new JButton("Editar");
     private final JButton btnEliminar = new JButton("Eliminar");
+    private Timer actualizacionAutomatica;
+    private boolean cargando;
 
     public VentanaGestion(VentanaPrincipal principal, Modulo modulo) {
         super("El Molino - " + modulo.titulo());
         this.principal = principal;
         this.modulo = modulo;
         boolean pagosSoloLectura = "pago".equals(modulo.tabla());
+        boolean categoriasSoloLectura = "CategoriaActividad".equals(modulo.tabla());
         boolean soloAltaInscripcion = "inscripcionActividad".equals(modulo.tabla());
         boolean altaUsuarioAdmin = "usuarios".equals(modulo.tabla()) && esAdministrador();
         // Las altas se realizan desde la web. La app solo permite crear inscripciones
         // (para evitar inconsistencias) y usuarios administradores.
         btnNuevo.setVisible(soloAltaInscripcion || altaUsuarioAdmin);
-        if (pagosSoloLectura) {
+        if (pagosSoloLectura || categoriasSoloLectura) {
             btnNuevo.setVisible(false);
             btnEditar.setVisible(false);
             btnEliminar.setVisible(false);
@@ -76,10 +81,11 @@ public class VentanaGestion extends JFrame {
             btnEliminar.setVisible(false);
         }
         if ("reservas".equals(modulo.tabla())) btnEliminar.setText("Cancelar reserva");
+        if ("Actividad".equals(modulo.tabla())) btnEliminar.setText("Desactivar");
         this.visibles = GestionDAO.camposVisibles(modulo);
         String[] columnas;
         if (esModuloActividades()) {
-            columnas = new String[]{"ID", "Actividad", "Descripción breve", "Horario", "Días", "Momento",
+            columnas = new String[]{"ID", "Actividad", "Categoría", "Descripción breve", "Horario", "Días", "Momento",
                     "Duración", "Sector", "Responsable", "Edad", "Modalidad", "Activa", "Espacio",
                     "Inscriptos / cupo", "Disponibles", "Estado del cupo", "Precio", "Pago"};
         } else {
@@ -93,7 +99,7 @@ public class VentanaGestion extends JFrame {
         this.tabla = new JTable(modelo);
         if (esModuloActividades()) {
             tabla.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
-            int[] anchos = {55, 180, 200, 105, 115, 95, 95, 110, 135, 120, 110, 65, 150, 110, 90, 125, 95, 105};
+            int[] anchos = {55, 180, 125, 200, 105, 115, 95, 95, 110, 135, 120, 110, 65, 150, 110, 90, 125, 95, 105};
             for (int i = 0; i < anchos.length; i++) tabla.getColumnModel().getColumn(i).setPreferredWidth(anchos[i]);
         }
 
@@ -130,16 +136,33 @@ public class VentanaGestion extends JFrame {
         add(abajo, BorderLayout.SOUTH);
 
         addWindowListener(new WindowAdapter() {
+            @Override public void windowActivated(WindowEvent e) {
+                if (esModuloSincronizado()) cargar(false);
+            }
+
             @Override public void windowClosed(WindowEvent e) {
+                if (actualizacionAutomatica != null) actualizacionAutomatica.stop();
                 principal.setVisible(true);
                 principal.toFront();
             }
         });
         cargar();
+        if (esModuloSincronizado()) {
+            actualizacionAutomatica = new Timer(10_000, e -> {
+                if (isShowing()) cargar(false);
+            });
+            actualizacionAutomatica.start();
+        }
     }
 
     private void cargar() {
-        estado.setText("Cargando...");
+        cargar(true);
+    }
+
+    private void cargar(boolean mostrarCarga) {
+        if (cargando) return;
+        cargando = true;
+        if (mostrarCarga) estado.setText("Cargando...");
         btnNuevo.setEnabled(false);
         btnEditar.setEnabled(false);
         btnEliminar.setEnabled(false);
@@ -148,6 +171,7 @@ public class VentanaGestion extends JFrame {
                 return GestionDAO.listar(modulo);
             }
             @Override protected void done() {
+                cargando = false;
                 btnNuevo.setEnabled(btnNuevo.isVisible());
                 btnEditar.setEnabled(btnEditar.isVisible());
                 btnEliminar.setEnabled(btnEliminar.isVisible());
@@ -155,7 +179,8 @@ public class VentanaGestion extends JFrame {
                     List<Object[]> filas = get();
                     modelo.setRowCount(0);
                     for (Object[] fila : filas) modelo.addRow(fila);
-                    estado.setText(filas.size() + " registros");
+                    String hora = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"));
+                    estado.setText(filas.size() + " registros · sincronizado " + hora);
                 } catch (Exception ex) {
                     mostrarError("No se pudo cargar " + modulo.titulo().toLowerCase(), ex);
                 }
@@ -426,9 +451,12 @@ public class VentanaGestion extends JFrame {
             }
         }
         boolean esReserva = "reservas".equals(modulo.tabla());
+        boolean esActividad = esModuloActividades();
         String pregunta = esReserva
                 ? "¿Cancelar la reserva seleccionada? Se conservará el registro y sus pagos."
-                : "¿Eliminar el registro seleccionado?";
+                : esActividad
+                    ? "¿Desactivar la actividad seleccionada? Dejará de mostrarse en la página."
+                    : "¿Eliminar el registro seleccionado?";
         if (JOptionPane.showConfirmDialog(this, pregunta, "Confirmar acción",
                 JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE) != JOptionPane.YES_OPTION) return;
         new SwingWorker<Void, Void>() {
@@ -439,7 +467,9 @@ public class VentanaGestion extends JFrame {
             }
             @Override protected void done() {
                 try { get(); cargar(); }
-                catch (Exception ex) { mostrarError("No se pudo eliminar. Puede tener datos relacionados", ex); }
+                catch (Exception ex) { mostrarError(esActividad
+                        ? "No se pudo desactivar la actividad"
+                        : "No se pudo eliminar. Puede tener datos relacionados", ex); }
             }
         }.execute();
     }
@@ -465,6 +495,11 @@ public class VentanaGestion extends JFrame {
 
     private boolean esModuloActividades() {
         return "Actividad".equals(modulo.tabla());
+    }
+
+    private boolean esModuloSincronizado() {
+        return esModuloActividades() || "CategoriaActividad".equals(modulo.tabla())
+                || "inscripcionActividad".equals(modulo.tabla());
     }
 
     private boolean esEnumActividad(String columna) {
