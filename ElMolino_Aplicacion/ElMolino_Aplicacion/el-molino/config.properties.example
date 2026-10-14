@@ -1,0 +1,6 @@
+# Copia este archivo como config.properties y completa los datos de tu entorno.
+db.host=HOST_MYSQL
+db.port=3306
+db.name=NOMBRE_BASE
+db.user=USUARIO
+db.password=CONTRASENA
