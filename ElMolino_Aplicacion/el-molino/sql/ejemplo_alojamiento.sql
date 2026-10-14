@@ -1,12 +1,9 @@
--- Tres alojamientos ficticios para probar la grilla de packs.
--- Antes de usar datos reales, reemplazá estos nombres, capacidades y precios.
+-- Alojamiento de ejemplo para probar el módulo Alojamientos.
+-- Puede ejecutarse más de una vez: no duplica el número de demostración.
 INSERT INTO `alojamientos` (`numero`, `tipo`, `capacidad`, `precioPorNoche`, `estado`)
-SELECT ejemplos.numero, ejemplos.tipo, ejemplos.capacidad, ejemplos.precio, 'Disponible'
-FROM (
-    SELECT 'D-ALOJ-01' AS numero, 'Cabaña' AS tipo, 4 AS capacidad, 85000.00 AS precio
-    UNION ALL SELECT 'D-ALOJ-02', 'Habitación', 2, 55000.00
-    UNION ALL SELECT 'D-ALOJ-03', 'Departamento', 6, 125000.00
-) AS ejemplos
+SELECT 'D-ALOJ-01', 'Cabaña', 4, 85000.00, 'Disponible'
 WHERE NOT EXISTS (
-    SELECT 1 FROM `alojamientos` existente WHERE existente.`numero` = ejemplos.numero
+    SELECT 1
+    FROM `alojamientos`
+    WHERE `numero` = 'D-ALOJ-01'
 );

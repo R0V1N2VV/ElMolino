@@ -138,6 +138,7 @@ CREATE TABLE IF NOT EXISTS `inscripcionActividad` (
   `idInscripcion` INT NOT NULL AUTO_INCREMENT,
   `idCliente` INT NOT NULL,
   `idActividad` INT NOT NULL,
+  `participaTitular` TINYINT(1) NOT NULL DEFAULT 1,
   `fechaInscripcion` DATE NOT NULL,
   `asistencia` TINYINT(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (`idInscripcion`),
@@ -150,6 +151,28 @@ CREATE TABLE IF NOT EXISTS `inscripcionActividad` (
   CONSTRAINT `fk_inscripcion_actividad`
     FOREIGN KEY (`idActividad`) REFERENCES `Actividad` (`idActividad`)
     ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Cada acompañante seleccionado ocupa un lugar adicional en la actividad.
+CREATE TABLE IF NOT EXISTS inscripcionActividadAcompanante (
+    idInscripcionAcompanante INT NOT NULL AUTO_INCREMENT,
+    idClienteTitular INT NOT NULL,
+    `idAcompañante` INT NOT NULL,
+    idActividad INT NOT NULL,
+    fechaInscripcion DATE NOT NULL,
+    asistencia TINYINT(1) NOT NULL DEFAULT 0,
+    PRIMARY KEY (idInscripcionAcompanante),
+    UNIQUE KEY uk_acompanante_actividad (`idAcompañante`, idActividad),
+    KEY idx_inscripcion_acomp_titular (idClienteTitular),
+    KEY idx_inscripcion_acomp_actividad (idActividad),
+    KEY idx_inscripcion_acomp_titular_actividad (idClienteTitular, idActividad),
+    CONSTRAINT fk_inscripcion_acomp_persona
+        FOREIGN KEY (`idAcompañante`) REFERENCES `acompañante`(`idAcompañante`)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_inscripcion_acomp_inscripcion
+        FOREIGN KEY (idClienteTitular, idActividad)
+        REFERENCES inscripcionActividad(idCliente, idActividad)
+        ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS `pago` (

@@ -113,6 +113,7 @@ CREATE TABLE `inscripcionActividad` (
   `idInscripcion` int NOT NULL,
   `idCliente` int NOT NULL,
   `idActividad` int NOT NULL,
+  `participaTitular` tinyint(1) NOT NULL DEFAULT '1',
   `fechaInscripcion` date NOT NULL,
   `asistencia` tinyint(1) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

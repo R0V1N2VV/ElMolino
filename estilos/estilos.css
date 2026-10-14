@@ -134,7 +134,7 @@ summary:focus-visible {
 .texto-destacado {
     margin-bottom: 14px;
     color: var(--azul-medio);
-    font-size: 0.88rem;
+    font-size: 23px;
     font-weight: 750;
     letter-spacing: 0.04em;
 }
@@ -1112,6 +1112,510 @@ h3 {
     .grilla-pie {
         grid-template-columns: 1fr;
         gap: 38px;
+    }
+}
+
+/* =========================================================
+   Ajustes de identidad, cuenta y estadía
+   ========================================================= */
+.boton {
+    border-radius: 9px;
+    transition: background-color 160ms ease, border-color 160ms ease;
+}
+
+.boton:hover {
+    transform: none;
+}
+
+.marca-logo {
+    width: 68px;
+    height: 68px;
+    justify-content: center;
+    overflow: hidden;
+    flex: 0 0 68px;
+}
+
+.logo-molino,
+.logo-acceso img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    clip-path: circle(44% at 50% 50%);
+}
+
+.marca-logo.marca-pie {
+    width: 92px;
+    height: 92px;
+}
+
+.menu-usuario {
+    position: relative;
+    z-index: 120;
+    flex-shrink: 0;
+}
+
+.boton-usuario {
+    min-height: 42px;
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 12px;
+    color: var(--azul-oscuro);
+    background: transparent;
+    border: 1px solid #91c9c2;
+    border-radius: 9px;
+    cursor: pointer;
+    font: inherit;
+    font-size: .88rem;
+    font-weight: 700;
+}
+
+.boton-usuario:hover,
+.boton-usuario[aria-expanded="true"] {
+    background: var(--crema);
+    border-color: var(--azul-medio);
+}
+
+.icono-usuario {
+    position: relative;
+    width: 17px;
+    height: 17px;
+    border: 1.7px solid currentColor;
+    border-radius: 50%;
+}
+
+.icono-usuario::before {
+    content: "";
+    position: absolute;
+    top: 3px;
+    left: 5px;
+    width: 4px;
+    height: 4px;
+    border: 1.4px solid currentColor;
+    border-radius: 50%;
+}
+
+.icono-usuario::after {
+    content: "";
+    position: absolute;
+    right: 3px;
+    bottom: 2px;
+    left: 3px;
+    height: 4px;
+    border: 1.4px solid currentColor;
+    border-bottom: 0;
+    border-radius: 7px 7px 0 0;
+}
+
+.flecha-menu-usuario {
+    width: 7px;
+    height: 7px;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    transform: translateY(-2px) rotate(45deg);
+}
+
+.boton-usuario[aria-expanded="true"] .flecha-menu-usuario {
+    transform: translateY(2px) rotate(225deg);
+}
+
+.panel-usuario {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    width: min(290px, calc(100vw - 28px));
+    padding: 8px;
+    background: var(--blanco);
+    border: 1px solid var(--beige);
+    border-radius: 12px;
+    box-shadow: 0 16px 35px rgba(0, 77, 64, .16);
+}
+
+.panel-usuario[hidden] {
+    display: none;
+}
+
+.panel-usuario > a {
+    display: block;
+    padding: 10px 11px;
+    color: var(--azul-oscuro);
+    border-radius: 7px;
+    font-size: .88rem;
+    font-weight: 700;
+}
+
+.panel-usuario > a:hover {
+    background: var(--crema);
+}
+
+.seccion-accesibilidad {
+    display: grid;
+    gap: 8px;
+    margin-top: 5px;
+    padding: 12px 10px 7px;
+    border-top: 1px solid var(--beige);
+}
+
+.seccion-accesibilidad > span {
+    color: var(--verde-medio);
+    font-size: .7rem;
+    font-weight: 800;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+}
+
+.seccion-accesibilidad .interruptor-dislexia {
+    width: 100%;
+    min-height: 40px;
+    justify-content: space-between;
+    margin: 0;
+    padding: 6px 0;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    font-size: .86rem;
+}
+
+.enlace-estadia {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.enlace-estadia span {
+    min-width: 21px;
+    height: 21px;
+    display: inline-grid;
+    place-items: center;
+    color: var(--blanco);
+    background: var(--azul-medio);
+    border-radius: 6px;
+    font-size: .7rem;
+    line-height: 1;
+}
+
+/* Acceso */
+.logo-acceso {
+    width: 104px;
+    height: 104px;
+    display: block;
+    margin: 0 auto 14px;
+    overflow: hidden;
+}
+
+.tarjeta-inicio-sesion .simbolo-marca::after {
+    content: none;
+}
+
+.formulario-inicio-sesion button,
+.tarjeta-registro button {
+    border-radius: 9px;
+}
+
+/* Alojamientos */
+.portada-alojamientos {
+    margin-bottom: 42px;
+    padding: 8px 0 34px;
+    overflow: visible;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--beige);
+    border-radius: 0;
+}
+
+.portada-alojamientos h1 {
+    max-width: 760px;
+    font-size: clamp(2.35rem, 5vw, 3.7rem);
+}
+
+.portada-alojamientos .introduccion-compra {
+    max-width: 660px;
+    margin-top: 12px;
+    font-size: 1rem;
+}
+
+.encabezado-packs {
+    align-items: baseline;
+    margin-bottom: 18px;
+}
+
+.encabezado-packs > p {
+    color: var(--verde-medio);
+    font-size: .88rem;
+    font-weight: 600;
+}
+
+.grilla-productos-alojamiento {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 295px), 1fr));
+    gap: 18px;
+    margin-top: 0;
+}
+
+.producto-alojamiento {
+    overflow: visible;
+    padding: 0;
+    background: var(--blanco);
+    border: 1px solid #c8dfdc;
+    border-radius: 12px;
+    box-shadow: none;
+}
+
+.contenido-pack-alojamiento {
+    padding: 24px;
+}
+
+.etiquetas-pack {
+    justify-content: flex-start;
+    margin-bottom: 9px;
+}
+
+.etiquetas-pack .estado-alojamiento {
+    margin: 0;
+    padding-left: 13px;
+    position: relative;
+    font-size: .78rem;
+}
+
+.etiquetas-pack .estado-alojamiento::before {
+    content: "";
+    position: absolute;
+    top: .48em;
+    left: 0;
+    width: 7px;
+    height: 7px;
+    background: currentColor;
+    border-radius: 50%;
+}
+
+.producto-alojamiento h2 {
+    font-size: 1.45rem;
+}
+
+.capacidad-pack {
+    margin-top: 6px;
+    color: var(--texto);
+}
+
+.precio-alojamiento {
+    margin-block: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #dbe9e7;
+    font-size: 1.45rem;
+}
+
+.formulario-alojamiento {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+}
+
+.formulario-alojamiento label {
+    gap: 5px;
+    font-size: .82rem;
+}
+
+.formulario-alojamiento .boton {
+    min-height: 48px;
+    margin-top: 5px;
+    font-size: .92rem;
+}
+
+/* Mi estadía */
+.lista-carrito-alojamiento {
+    gap: 0;
+    max-width: 820px;
+    margin-top: 30px;
+    background: var(--blanco);
+    border: 1px solid #c8dfdc;
+    border-radius: 12px;
+}
+
+.linea-carrito-alojamiento,
+.linea-carrito-alojamiento:first-child,
+.linea-carrito-alojamiento:last-child {
+    padding: 22px 24px;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid #dbe9e7;
+    border-radius: 0;
+}
+
+.linea-carrito-alojamiento:last-child {
+    border-bottom: 0;
+}
+
+.linea-carrito-alojamiento p {
+    margin-top: 3px;
+    color: var(--verde-medio);
+    font-size: .9rem;
+}
+
+.linea-carrito-alojamiento strong {
+    display: inline-block;
+    margin-top: 9px;
+    color: var(--azul-oscuro);
+}
+
+.linea-carrito-alojamiento .boton-enlace {
+    color: #8a2c20;
+    text-decoration: none;
+}
+
+.linea-carrito-alojamiento .boton-enlace:hover {
+    text-decoration: underline;
+}
+
+.resumen-carrito-alojamiento {
+    max-width: 820px;
+    align-items: center;
+    padding: 20px 24px;
+    background: transparent;
+    border: 1px solid #c8dfdc;
+    border-radius: 12px;
+}
+
+.resumen-carrito-alojamiento p {
+    margin-top: 2px;
+    color: var(--verde-medio);
+}
+
+.resumen-carrito-alojamiento strong {
+    font-size: 1.7rem;
+}
+
+.estado-vacio-compra,
+.bloque-cuenta-compra,
+.resumen-compra {
+    box-shadow: none;
+    border-radius: 12px;
+}
+
+.estado-vacio-estadia {
+    max-width: 820px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 32px;
+    margin-top: 34px;
+    padding: 28px 0;
+    background: transparent;
+    border: 0;
+    border-top: 1px solid #c8dfdc;
+    border-bottom: 1px solid #c8dfdc;
+    border-radius: 0;
+}
+
+.estado-vacio-estadia h2 {
+    margin: 0 0 5px;
+    font-size: clamp(1.35rem, 2.4vw, 1.8rem);
+}
+
+.estado-vacio-estadia p {
+    max-width: 590px;
+    color: var(--verde-medio);
+}
+
+.estado-vacio-estadia .boton {
+    min-width: 168px;
+}
+
+/* Aviso de cobro de actividades */
+.dialogo-cobro-actividad {
+    width: min(480px, calc(100% - 32px));
+    margin: auto;
+    padding: 28px;
+    color: var(--texto);
+    background: var(--blanco);
+    border: 1px solid var(--beige);
+    border-radius: 14px;
+    box-shadow: 0 24px 70px rgba(0, 45, 38, .28);
+}
+
+.dialogo-cobro-actividad::backdrop {
+    background: rgba(0, 45, 38, .5);
+}
+
+.dialogo-cobro-actividad h2 {
+    margin-block: 4px 10px;
+    font-size: 1.75rem;
+}
+
+.dialogo-cobro-actividad p:not(.texto-destacado) {
+    color: var(--texto);
+}
+
+.acciones-dialogo {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 24px;
+}
+
+@media (max-width: 760px) {
+    .marca-logo {
+        width: 58px;
+        height: 58px;
+        flex-basis: 58px;
+    }
+
+    .barra-navegacion {
+        min-height: 72px;
+        gap: 10px;
+    }
+
+    .navegacion-principal .enlace-estadia {
+        justify-content: space-between;
+    }
+
+    .navegacion-compra {
+        order: 3;
+        width: 100%;
+        justify-content: flex-start;
+        padding-bottom: 8px;
+    }
+
+    .encabezado-compra .acciones-encabezado {
+        margin-left: auto;
+    }
+
+    .portada-alojamientos {
+        margin-bottom: 32px;
+        padding: 0 0 26px;
+    }
+
+    .linea-carrito-alojamiento,
+    .linea-carrito-alojamiento:first-child,
+    .linea-carrito-alojamiento:last-child {
+        padding: 19px;
+    }
+
+    .estado-vacio-estadia {
+        grid-template-columns: 1fr;
+        gap: 18px;
+        padding-block: 24px;
+    }
+
+    .estado-vacio-estadia .boton {
+        width: fit-content;
+    }
+}
+
+@media (max-width: 480px) {
+    .marca-logo {
+        width: 52px;
+        height: 52px;
+        flex-basis: 52px;
+    }
+
+    .boton-usuario {
+        min-height: 40px;
+        padding: 7px 10px;
+        font-size: .8rem;
+    }
+
+    .acciones-dialogo {
+        align-items: stretch;
+        flex-direction: column-reverse;
     }
 }
 
@@ -3626,5 +4130,354 @@ h3 {
     .grupo-horario-admin > span {
         padding: 0;
         text-align: center;
+    }
+}
+
+/* Ajustes definitivos de la experiencia de estadía */
+.pagina-compra .contenido-compra > h1 {
+    font-size: clamp(2.45rem, 5vw, 3.5rem);
+}
+
+.pagina-compra .estado-vacio-estadia {
+    max-width: 820px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 32px;
+    margin-top: 34px;
+    padding: 28px 0;
+    background: transparent;
+    border: 0;
+    border-top: 1px solid #c8dfdc;
+    border-bottom: 1px solid #c8dfdc;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.pagina-compra .estado-vacio-estadia h2 {
+    margin: 0 0 5px;
+    font-size: clamp(1.35rem, 2.4vw, 1.8rem);
+}
+
+.pagina-compra .estado-vacio-estadia p {
+    max-width: 590px;
+    color: var(--verde-medio);
+}
+
+.pagina-compra .estado-vacio-estadia .boton {
+    min-width: 168px;
+}
+
+.pagina-compra .portada-alojamientos {
+    margin-bottom: 42px;
+    padding: 8px 0 34px;
+    overflow: visible;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--beige);
+    border-radius: 0;
+}
+
+.pagina-compra .portada-alojamientos h1 {
+    max-width: 760px;
+    font-size: clamp(2.35rem, 5vw, 3.7rem);
+}
+
+.pagina-compra .portada-alojamientos .introduccion-compra {
+    max-width: 660px;
+    margin-top: 12px;
+    font-size: 1rem;
+}
+
+.pagina-compra .encabezado-packs {
+    align-items: baseline;
+    margin-bottom: 18px;
+}
+
+.pagina-compra .encabezado-packs > p {
+    padding: 0;
+    font-size: .88rem;
+    font-weight: 600;
+}
+
+.pagina-compra .grilla-productos-alojamiento {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 295px), 1fr));
+    gap: 18px;
+    margin-top: 0;
+}
+
+.pagina-compra .producto-alojamiento {
+    overflow: visible;
+    background: var(--blanco);
+    border: 1px solid #c8dfdc;
+    border-radius: 12px;
+    box-shadow: none;
+}
+
+.pagina-compra .contenido-pack-alojamiento {
+    padding: 24px;
+}
+
+.pagina-compra .etiquetas-pack {
+    justify-content: flex-start;
+    margin-bottom: 9px;
+}
+
+.pagina-compra .etiquetas-pack .estado-alojamiento {
+    position: relative;
+    margin: 0;
+    padding-left: 13px;
+    font-size: .78rem;
+}
+
+.pagina-compra .etiquetas-pack .estado-alojamiento::before {
+    content: "";
+    position: absolute;
+    top: .48em;
+    left: 0;
+    width: 7px;
+    height: 7px;
+    background: currentColor;
+    border-radius: 50%;
+}
+
+.pagina-compra .producto-alojamiento h2 {
+    font-size: 1.45rem;
+}
+
+.pagina-compra .capacidad-pack {
+    margin-top: 6px;
+    color: var(--texto);
+}
+
+.pagina-compra .precio-alojamiento {
+    margin-block: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #dbe9e7;
+    font-size: 1.45rem;
+}
+
+.pagina-compra .formulario-alojamiento {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+}
+
+.pagina-compra .formulario-alojamiento .boton {
+    min-height: 48px;
+    margin-top: 5px;
+    font-size: .92rem;
+}
+
+.pagina-compra .lista-carrito-alojamiento {
+    gap: 0;
+    max-width: 820px;
+    margin-top: 30px;
+    background: var(--blanco);
+    border: 1px solid #c8dfdc;
+    border-radius: 12px;
+}
+
+.pagina-compra .linea-carrito-alojamiento,
+.pagina-compra .linea-carrito-alojamiento:first-child,
+.pagina-compra .linea-carrito-alojamiento:last-child {
+    padding: 22px 24px;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid #dbe9e7;
+    border-radius: 0;
+}
+
+.pagina-compra .linea-carrito-alojamiento:last-child {
+    border-bottom: 0;
+}
+
+.pagina-compra .resumen-carrito-alojamiento {
+    max-width: 820px;
+    align-items: center;
+    padding: 20px 24px;
+    background: transparent;
+    border: 1px solid #c8dfdc;
+    border-radius: 12px;
+}
+
+@media (max-width: 760px) {
+    .pagina-compra .estado-vacio-estadia {
+        grid-template-columns: 1fr;
+        gap: 18px;
+        padding-block: 24px;
+    }
+
+    .pagina-compra .estado-vacio-estadia .boton {
+        width: fit-content;
+    }
+
+    .pagina-compra .portada-alojamientos {
+        margin-bottom: 32px;
+        padding: 0 0 26px;
+    }
+}
+
+/* Marca simple e invitaciones a continuar */
+.marca-logo,
+.marca-logo.marca-pie {
+    width: auto;
+    height: auto;
+    flex: 0 0 auto;
+    gap: 8px;
+    overflow: visible;
+}
+
+.marca-logo .logo-molino {
+    width: 64px;
+    height: 64px;
+    flex: 0 0 64px;
+}
+
+.marca-logo.marca-pie .logo-molino {
+    width: 82px;
+    height: 82px;
+    flex-basis: 82px;
+}
+
+.texto-marca-simple {
+    color: var(--azul-oscuro);
+    font-size: 1.06rem;
+    font-weight: 750;
+    letter-spacing: -.015em;
+    white-space: nowrap;
+}
+
+.marca-pie .texto-marca-simple {
+    color: var(--blanco-calido);
+}
+
+.indicador-explorar {
+    width: max-content;
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    gap: 3px;
+    margin: 10px auto 0;
+    color: var(--verde-medio);
+    font-size: .76rem;
+    font-weight: 700;
+    letter-spacing: .025em;
+}
+
+.flecha-explorar {
+    display: block;
+    color: var(--azul-medio);
+    font-size: 1.45rem;
+    line-height: 1;
+    animation: bajar-suave 1.8s ease-in-out infinite;
+}
+
+.indicador-explorar:hover {
+    color: var(--azul-oscuro);
+}
+
+.indicador-explorar-actividades {
+    margin-top: 28px;
+}
+
+@keyframes bajar-suave {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(5px); }
+}
+
+@media (max-width: 760px) {
+    .marca-logo .logo-molino {
+        width: 54px;
+        height: 54px;
+        flex-basis: 54px;
+    }
+
+    .texto-marca-simple {
+        font-size: .95rem;
+    }
+
+    .indicador-explorar {
+        margin-top: 4px;
+    }
+}
+
+@media (max-width: 430px) {
+    .marca-logo .logo-molino {
+        width: 48px;
+        height: 48px;
+        flex-basis: 48px;
+    }
+
+    .texto-marca-simple {
+        font-size: .86rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .flecha-explorar {
+        animation: none;
+    }
+}
+
+/* Navegación más aprovechada y avance entre secciones */
+@media (min-width: 761px) {
+    .encabezado .navegacion-principal {
+        margin-left: clamp(22px, 3vw, 46px);
+    }
+
+    .encabezado .acciones-encabezado,
+    .encabezado .barra-navegacion > .menu-usuario {
+        margin-left: auto;
+    }
+}
+
+.boton-bajar-seccion {
+    position: fixed;
+    left: 24px;
+    bottom: 24px;
+    z-index: 90;
+    width: 56px;
+    height: 56px;
+    display: grid;
+    place-items: center;
+    color: var(--blanco);
+    background: var(--azul-medio);
+    border: 0;
+    border-radius: 50%;
+    box-shadow: 0 8px 20px rgba(0, 77, 64, .22);
+    cursor: pointer;
+    opacity: 1;
+    transition: background-color 160ms ease, opacity 160ms ease, transform 160ms ease;
+}
+
+.boton-bajar-seccion span {
+    font-size: 1.9rem;
+    line-height: 1;
+    transform: translateY(-2px);
+}
+
+.boton-bajar-seccion:hover {
+    background: var(--azul-oscuro);
+    transform: translateY(-2px);
+}
+
+.boton-bajar-seccion.oculto {
+    opacity: 0;
+    pointer-events: none;
+}
+
+@media (max-width: 760px) {
+    .boton-bajar-seccion {
+        left: 16px;
+        bottom: 16px;
+        width: 50px;
+        height: 50px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .boton-bajar-seccion {
+        transition: none;
     }
 }
