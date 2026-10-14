@@ -20,14 +20,28 @@ final class ControladorInscripciones
             $this->repositorio->cancelar($actividad->id, $idCliente);
             return 'Tu inscripción fue cancelada y el lugar volvió a quedar disponible.';
         }
-        if ($accion !== 'inscribirse') {
+        if (!in_array($accion, ['guardar_inscripcion', 'inscribirse', 'actualizar_acompanantes'], true)) {
             throw new InvalidArgumentException('La acción solicitada no es válida.');
         }
 
-        $this->repositorio->inscribir($actividad->id, $idCliente);
+        $acompanantes = is_array($entrada['acompanantes'] ?? null) ? $entrada['acompanantes'] : [];
+        $participaTitular = isset($entrada['participa_titular']);
+        // Compatibilidad con formularios anteriores, donde el titular siempre participaba.
+        if ($accion === 'inscribirse' || $accion === 'actualizar_acompanantes') $participaTitular = true;
+
+        $yaEstabaInscripto = $this->repositorio->estaInscripto($actividad->id, $idCliente);
+        $this->repositorio->guardarParticipantes(
+            $actividad->id,
+            $idCliente,
+            $participaTitular,
+            $acompanantes
+        );
         if ($actividad->modalidad === 'inscripcion' && $actividad->precio > 0) {
-            return 'Tu inscripción quedó registrada. Esta actividad tiene un valor de ' . Vista::precio($actividad) . '.';
+            return ($yaEstabaInscripto ? 'Actualizamos las personas que participan.' : 'La inscripción quedó registrada.')
+                . ' El importe se cobrará al finalizar la estadía.';
         }
-        return 'Tu inscripción quedó registrada.';
+        return $yaEstabaInscripto
+            ? 'Actualizamos las personas que participan en esta actividad.'
+            : 'La inscripción quedó registrada.';
     }
 }

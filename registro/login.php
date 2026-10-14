@@ -59,8 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body class="pagina-inicio-sesion">
     <main class="tarjeta-inicio-sesion">
         <a class="enlace-volver" href="../index.php">← Volver al inicio</a>
-        <div class="simbolo-marca" aria-hidden="true">EM</div>
-        <p class="texto-destacado">CENTRO RECREATIVO</p>
+        <a class="logo-acceso" href="../index.php" aria-label="El Molino, inicio"><img src="../imgs/logo-el-molino.png" alt=""></a>
         <h1>Bienvenido</h1>
         <p class="subtitulo">Ingresá con tu cuenta para continuar.</p>
         <?php if ($mensaje): ?>
@@ -76,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <input id="correo" name="correo" type="email" value="<?= Utilidades::escapar($correo) ?>" autocomplete="email" required>
             <label for="contrasena">Contraseña</label>
             <input id="contrasena" name="contrasena" type="password" autocomplete="current-password" required>
-            <button type="submit">Iniciar sesión</button>
+            <button class="boton boton-principal" type="submit">Iniciar sesión</button>
         </form>
         <p class="texto-ayuda">¿No tenés cuenta? <a href="registro.php">Registrate</a></p>
     </main>

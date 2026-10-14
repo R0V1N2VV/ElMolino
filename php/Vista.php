@@ -26,6 +26,15 @@ final class Vista
         return $valor ? ' checked' : '';
     }
 
+    public static function marca(string $prefijo = '', string $destino = 'index.php', bool $pie = false): string
+    {
+        $clase = $pie ? 'marca marca-logo marca-pie' : 'marca marca-logo';
+        return '<a class="' . $clase . '" href="' . self::escapar($prefijo . $destino) . '" aria-label="El Molino, inicio">'
+            . '<img class="logo-molino" src="' . self::escapar($prefijo . 'imgs/logo-el-molino.png') . '" alt="">'
+            . '<span class="texto-marca-simple">El Molino</span>'
+            . '</a>';
+    }
+
     public static function tarjetaActividad(Actividad $actividad, bool $destacada = false): string
     {
         $clase = $destacada ? ' tarjeta-actividad-destacada' : '';
@@ -62,10 +71,23 @@ final class Vista
 
     public static function accesoCuenta(?array $usuario, string $prefijo = ''): string
     {
-        if ($usuario) {
-            return '<a class="boton boton-chico boton-encabezado" href="' . self::escapar($prefijo . 'registro/cuenta.php') . '">Mi cuenta</a>';
-        }
-        return '<a class="boton boton-chico boton-encabezado" href="' . self::escapar($prefijo . 'registro/login.php') . '">Iniciar sesión</a>';
+        $destino = $usuario ? $prefijo . 'registro/cuenta.php' : $prefijo . 'registro/login.php';
+        $texto = $usuario ? 'Mi cuenta' : 'Ingresar';
+        $enlaceCoordinacion = $usuario && class_exists('Autorizacion') && Autorizacion::esCoordinador($usuario)
+            ? '<a href="' . self::escapar($prefijo . 'administrar-actividades.php') . '">Gestionar actividades</a>'
+            : '';
+
+        return '<div class="menu-usuario">'
+            . '<button class="boton-usuario" type="button" aria-expanded="false" aria-controls="panel-cuenta">'
+            . '<span>' . self::escapar($texto) . '</span><span class="flecha-menu-usuario" aria-hidden="true"></span>'
+            . '</button>'
+            . '<div class="panel-usuario" id="panel-cuenta" hidden>'
+            . '<a class="enlace-cuenta-panel" href="' . self::escapar($destino) . '">' . ($usuario ? 'Ver mi cuenta' : 'Iniciar sesión') . '</a>'
+            . $enlaceCoordinacion
+            . '<div class="seccion-accesibilidad"><span>Opciones de accesibilidad</span>'
+            . '<button class="interruptor-dislexia" type="button" role="switch" aria-checked="false" aria-label="Activar modo dislexia con tipografía Sarakanda">'
+            . '<span>Modo dislexia</span><span class="pista-interruptor" aria-hidden="true"><span class="circulo-interruptor"></span></span>'
+            . '</button></div></div></div>';
     }
 
     public static function botonModoEdicion(?array $usuario, string $destino = 'administrar-actividades.php', string $texto = 'Modo edición'): string

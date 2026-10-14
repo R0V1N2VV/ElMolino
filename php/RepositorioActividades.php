@@ -10,9 +10,13 @@ final class RepositorioActividades implements FuenteActividades
                a.edadRecomendada, a.modalidad, a.precio, a.tendencia, a.imagen,
                c.slug AS categoria, c.nombre AS categoriaNombre,
                COALESCE(NULLIF(a.imagen, ''), c.imagen) AS imagenFinal,
-               (SELECT COUNT(*)
-                  FROM inscripcionActividad ia
-                 WHERE ia.idActividad = a.idActividad) AS cantidadInscriptos
+               ((SELECT COALESCE(SUM(ia.participaTitular), 0)
+                   FROM inscripcionActividad ia
+                  WHERE ia.idActividad = a.idActividad)
+                +
+                (SELECT COUNT(*)
+                   FROM inscripcionActividadAcompanante iaa
+                  WHERE iaa.idActividad = a.idActividad)) AS cantidadInscriptos
           FROM Actividad a
           JOIN CategoriaActividad c ON c.idCategoria = a.idCategoria
     SQL;

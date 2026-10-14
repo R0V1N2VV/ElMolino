@@ -16,12 +16,13 @@ $mensaje = Sesion::tomarMensaje();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" href="../imgs/favicon-molino.svg">
     <title>Mi cuenta | El Molino</title>
     <link rel="stylesheet" href="../estilos/estilos.css?v=<?= (int) filemtime(__DIR__ . '/../estilos/estilos.css') ?>">
 </head>
 <body class="pagina-inicio-sesion">
     <main class="tarjeta-inicio-sesion">
-        <div class="simbolo-marca" aria-hidden="true">EM</div>
+        <a class="logo-acceso" href="../index.php" aria-label="El Molino, inicio"><img src="../imgs/logo-el-molino.png" alt=""></a>
         <p class="texto-destacado">MI CUENTA</p>
         <h1>Hola, <?= Utilidades::escapar($usuario['nombre']) ?></h1>
         <p class="subtitulo">Tu sesión está activa como <?= Utilidades::escapar($usuario['rol']) ?>.</p>
