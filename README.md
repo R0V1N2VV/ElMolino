@@ -9,16 +9,6 @@ Sitio del Complejo Recreativo El Molino.
 - `categoria-actividades.php?categoria=deportes`: menú de una categoría con sus actividades y filtros.
 - `actividad.php?id=futbol-recreativo`: ficha de una actividad.
 - `administrar-actividades.php`: panel protegido donde el coordinador crea categorías y administra actividades.
-- `alojamientos.php`: catálogo y carrito de estadías; permite empezar como invitado.
-- `compra.php`: resumen, elección del método de pago y confirmación con cuenta.
-
-## Compras de alojamiento
-
-Las opciones del catálogo se leen de `alojamientos`; el precio se calcula por noche y las fechas/capacidad se validan al agregarlas y otra vez al confirmar. El carrito queda en la sesión del navegador, por lo que no hace falta registrarse para armarlo. Para confirmar el pedido, la persona inicia sesión o crea y verifica una cuenta.
-
-La confirmación registra el pedido y las reservas con estado `PENDIENTE`, guarda el método de pago elegido y envía el resumen a la dirección de correo de la cuenta. Las opciones son efectivo al llegar, transferencia bancaria y tarjeta en el complejo. No se realiza un cobro en línea: el pago y la estadía quedan pendientes de coordinación. Después de importar la base completa, ejecutá una vez `BD/actualizacion_compras_alojamiento.sql` sobre `s27_El Molino` para habilitar las tablas nuevas.
-
-Cada fila de `alojamientos` aparece como una opción en la grilla. Para probar varias opciones, ejecutá `ElMolino_Aplicacion/el-molino/sql/ejemplo_alojamiento.sql`; agrega tres alojamientos ficticios y no duplica los números si lo corrés otra vez. Reemplazá sus precios y datos por los reales antes de recibir pedidos. La lista inicial de equipamiento se configura en `alojamientos.php` y también debe coincidir con lo que ofrece cada unidad.
 
 ## Actividades
 
@@ -30,13 +20,13 @@ El archivo `BD/actualizacion_actividades.sql` amplía la base, carga las categor
 
 ## Cupos e inscripciones
 
-Cada actividad tiene un cupo máximo y muestra cuántos lugares siguen disponibles. Un usuario con sesión iniciada puede inscribirse desde la ficha de la actividad y también cancelar su inscripción. La operación se realiza dentro de una transacción y bloquea momentáneamente la actividad para impedir que se supere el cupo si llegan varias solicitudes al mismo tiempo.
+Cada actividad tiene un cupo máximo y muestra cuántos lugares siguen disponibles. Un usuario con sesión iniciada puede elegir si participa él, uno o más acompañantes asociados a su cuenta, o todos juntos. Cada persona seleccionada ocupa un lugar y la reserva también se puede modificar o cancelar. La operación se realiza dentro de una transacción y bloquea momentáneamente la actividad para impedir que se supere el cupo si llegan varias solicitudes al mismo tiempo.
 
 Las actividades pueden estar incluidas o ser pagas. En ambos casos se permite la inscripción; cuando es paga se muestra el precio definido por el coordinador. Esta versión no incorpora una pasarela de pago porque ese sistema no forma parte de los archivos actuales.
 
-El inicio de sesión conserva la actividad elegida y devuelve al usuario a su ficha para que pueda completar la inscripción. La tabla utilizada es `inscripcionActividad`, incluida en la base completa y asegurada también por `BD/actualizacion_actividades.sql`.
+El inicio de sesión conserva la actividad elegida y devuelve al usuario a su ficha para que pueda completar la inscripción. `inscripcionActividad` guarda la reserva y si participa el titular; `inscripcionActividadAcompanante` guarda las demás personas seleccionadas.
 
-Si `BD/actualizacion_actividades.sql` ya se ejecutó en una instalación anterior, no hay que repetirlo. Para esta entrega se debe ejecutar únicamente `BD/actualizacion_cupos_inscripciones.sql`; es una actualización separada que crea la tabla de inscripciones solo cuando hace falta.
+Si ya tenés la base funcionando, ejecutá una vez `BD/actualizacion_acompanantes_actividades.sql`. En una instalación nueva alcanza con importar `BD/s27_El_Molino_completa.sql`. Los scripts `BD/actualizacion_actividades.sql` y `BD/actualizacion_cupos_inscripciones.sql` también incluyen la tabla nueva para sus respectivos escenarios de actualización.
 
 Cuando el coordinador inicia sesión, encuentra el botón `Agregar categoría` en la sección pública de categorías y en su panel. Cada categoría también ofrece `Agregar actividad`, que abre el formulario con esa categoría ya seleccionada. Las categorías nuevas solicitan nombre, descripción e imagen.
 
@@ -60,7 +50,7 @@ Las categorías utilizan fotografías guardadas dentro de `imgs/`. Los autores y
 
 ## Conexión con la aplicación Java
 
-La página PHP y la aplicación de escritorio Java trabajan sobre la misma base MySQL. No se copian actividades entre dos sistemas: categorías, actividades, cupos e inscripciones se guardan una sola vez en las tablas `CategoriaActividad`, `Actividad` e `inscripcionActividad`.
+La página PHP y la aplicación de escritorio Java trabajan sobre la misma base MySQL. No se copian actividades entre dos sistemas: categorías, actividades, cupos e inscripciones se guardan una sola vez en `CategoriaActividad`, `Actividad`, `inscripcionActividad` e `inscripcionActividadAcompanante`. Los recuentos de la app incluyen titulares y acompañantes.
 
 La aplicación se configura desde `ElMolino_Aplicacion/el-molino/config.properties`. Los valores `db.host`, `db.port`, `db.name`, `db.user` y `db.password` deben identificar exactamente la misma base que utiliza `php/Conexion.php`.
 

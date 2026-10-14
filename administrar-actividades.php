@@ -14,7 +14,7 @@ $accionSolicitada = (string) ($_POST['accion'] ?? '');
 try {
     require_once __DIR__ . '/php/inicio_actividades.php';
     if ($modoCatalogoPredeterminado && $_SERVER['REQUEST_METHOD'] === 'POST') {
-        throw new RuntimeException('La base de actividades todavía no está instalada. Ejecutá BD/actualizacion_actividades.sql para habilitar los cambios.');
+        throw new RuntimeException('La base de actividades tiene actualizaciones pendientes. Revisá BD/actualizacion_actividades.sql y BD/actualizacion_acompanantes_actividades.sql.');
     }
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $resultadoGestion = $controladorActividades->procesarGestion($_POST, $_FILES, $usuario);
@@ -28,7 +28,7 @@ try {
     }
     ['categorias' => $categorias, 'actividades' => $actividades] = $controladorActividades->administracion();
     if ($modoCatalogoPredeterminado) {
-        $error = 'Se está mostrando el catálogo predeterminado. Ejecutá BD/actualizacion_actividades.sql para poder agregar, editar o eliminar actividades.';
+        $error = 'Se está mostrando el catálogo predeterminado. Ejecutá las actualizaciones SQL pendientes para poder agregar, editar o eliminar actividades.';
     }
 } catch (Throwable $excepcion) {
     $error = $excepcion instanceof InvalidArgumentException || $excepcion instanceof RuntimeException
@@ -67,10 +67,10 @@ $tendenciaFormulario = $_SERVER['REQUEST_METHOD'] === 'POST' ? isset($_POST['ten
 ?>
 <!DOCTYPE html>
 <html lang="es-AR">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="theme-color" content="#004D40"><link rel="stylesheet" href="estilos/estilos.css?v=<?= (int) filemtime(__DIR__ . '/estilos/estilos.css') ?>"><script src="script.js?v=<?= (int) filemtime(__DIR__ . '/script.js') ?>" defer></script><title>Coordinación de actividades | El Molino</title></head>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="theme-color" content="#004D40"><link rel="icon" type="image/svg+xml" href="imgs/favicon-molino.svg"><link rel="stylesheet" href="estilos/estilos.css?v=<?= (int) filemtime(__DIR__ . '/estilos/estilos.css') ?>"><script src="script.js?v=<?= (int) filemtime(__DIR__ . '/script.js') ?>" defer></script><title>Coordinación de actividades | El Molino</title></head>
 <body>
     <a class="enlace-saltar" href="#contenido">Saltar al contenido</a>
-    <header class="encabezado"><div class="contenedor barra-navegacion"><a class="marca" href="index.php" aria-label="El Molino, inicio"><span class="simbolo-marca" aria-hidden="true">EM</span><span class="nombre-marca">El Molino<small>Coordinación de actividades</small></span></a><button class="boton-menu" type="button" aria-expanded="false" aria-controls="navegacion-principal"><span></span><span></span><span></span><span class="solo-lector">Abrir menú</span></button><nav class="navegacion-principal" id="navegacion-principal" aria-label="Navegación de administración"><a href="index.php">Ver sitio</a><a href="actividades.php">Ver actividades</a><a class="enlace-activo" href="administrar-actividades.php" aria-current="page">Gestionar</a><a href="registro/cuenta.php">Mi cuenta</a><button class="interruptor-dislexia" type="button" role="switch" aria-checked="false" aria-label="Activar modo dislexia con tipografía Sarakanda"><span>Modo dislexia</span><span class="pista-interruptor" aria-hidden="true"><span class="circulo-interruptor"></span></span></button></nav></div></header>
+    <header class="encabezado"><div class="contenedor barra-navegacion"><?= Vista::marca() ?><button class="boton-menu" type="button" aria-expanded="false" aria-controls="navegacion-principal"><span></span><span></span><span></span><span class="solo-lector">Abrir menú</span></button><nav class="navegacion-principal" id="navegacion-principal" aria-label="Navegación de administración"><a href="index.php">Ver sitio</a><a href="actividades.php">Ver actividades</a><a class="enlace-activo" href="administrar-actividades.php" aria-current="page">Gestionar</a></nav><?= Vista::accesoCuenta($usuario) ?></div></header>
 
     <main id="contenido" class="pagina-administracion">
         <section class="cabecera-administracion"><div class="contenedor encabezado-admin"><div><p class="texto-destacado">Coordinador de actividades</p><h1>Gestión de actividades</h1><p>Creá, editá y organizá la información que se muestra en la página.</p></div><?php if (!$mostrarFormularioCategoria && !$mostrarFormulario): ?><div class="acciones-cabecera-admin"><a class="boton boton-neutral" href="administrar-actividades.php?nueva_categoria=1#formulario-categoria">Agregar categoría</a><a class="boton boton-principal" href="administrar-actividades.php?nuevo=1#formulario">Agregar actividad</a></div><?php endif; ?></div></section>
@@ -159,7 +159,7 @@ $tendenciaFormulario = $_SERVER['REQUEST_METHOD'] === 'POST' ? isset($_POST['ten
         </div></div></section>
 
         <section class="seccion listado-administracion"><div class="contenedor"><div class="encabezado-listado-admin"><div><p class="texto-destacado">Contenido publicado</p><h2>Actividades cargadas</h2></div></div><div class="lista-administracion">
-            <?php foreach ($actividades as $actividad): ?><article class="fila-actividad-admin"><span class="miniatura-admin"><img src="<?= Vista::escapar($actividad->imagen) ?>" alt=""></span><span><strong><?= Vista::escapar($actividad->nombre) ?></strong><small><?= Vista::escapar($actividad->categoriaNombre) ?> · <?= $actividad->cantidadInscriptos ?>/<?= $actividad->cupo ?> inscriptos · <?= Vista::escapar(Vista::precio($actividad)) ?></small></span><span class="acciones-admin"><a href="administrar-actividades.php?editar=<?= $actividad->id ?>#formulario">Editar</a><form method="post" onsubmit="return confirm('¿Eliminar esta actividad?')"><input type="hidden" name="token_csrf" value="<?= Vista::escapar(Sesion::tokenCsrf()) ?>"><input type="hidden" name="accion" value="eliminar"><input type="hidden" name="id" value="<?= $actividad->id ?>"><button type="submit" class="boton-eliminar">Eliminar</button></form></span></article><?php endforeach; ?>
+            <?php foreach ($actividades as $actividad): ?><article class="fila-actividad-admin"><span class="miniatura-admin"><img src="<?= Vista::escapar($actividad->imagen) ?>" alt=""></span><span><strong><?= Vista::escapar($actividad->nombre) ?></strong><small><?= Vista::escapar($actividad->categoriaNombre) ?> · <?= $actividad->cantidadInscriptos ?>/<?= $actividad->cupo ?> inscriptos · <?= Vista::escapar(Vista::precio($actividad)) ?></small></span><span class="acciones-admin"><a class="boton-accion-admin boton-modificar" href="administrar-actividades.php?editar=<?= $actividad->id ?>#formulario"><span class="icono-lapiz" aria-hidden="true"></span>Modificar</a><form method="post" onsubmit="return confirm('¿Eliminar esta actividad?')"><input type="hidden" name="token_csrf" value="<?= Vista::escapar(Sesion::tokenCsrf()) ?>"><input type="hidden" name="accion" value="eliminar"><input type="hidden" name="id" value="<?= $actividad->id ?>"><button type="submit" class="boton-accion-admin boton-eliminar"><span class="icono-papelera" aria-hidden="true"></span>Eliminar</button></form></span></article><?php endforeach; ?>
         </div></div></section>
         <?php endif; ?>
     </main>

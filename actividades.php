@@ -20,6 +20,7 @@ $esCoordinador = class_exists('Autorizacion') && Autorizacion::esCoordinador($us
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Conocé las actividades deportivas, recreativas y culturales de El Molino.">
     <meta name="theme-color" content="#004D40">
+    <link rel="icon" type="image/svg+xml" href="imgs/favicon-molino.svg">
     <link rel="stylesheet" href="estilos/estilos.css?v=<?= (int) filemtime(__DIR__ . '/estilos/estilos.css') ?>">
     <script src="script.js?v=<?= (int) filemtime(__DIR__ . '/script.js') ?>" defer></script>
     <title>Actividades | El Molino</title>
@@ -28,15 +29,16 @@ $esCoordinador = class_exists('Autorizacion') && Autorizacion::esCoordinador($us
     <a class="enlace-saltar" href="#contenido">Saltar al contenido</a>
     <header class="encabezado">
         <div class="contenedor barra-navegacion">
-            <a class="marca" href="index.php" aria-label="El Molino, inicio"><span class="simbolo-marca" aria-hidden="true">EM</span><span class="nombre-marca">El Molino<small>Complejo recreativo</small></span></a>
+            <?= Vista::marca() ?>
             <button class="boton-menu" type="button" aria-expanded="false" aria-controls="navegacion-principal"><span></span><span></span><span></span><span class="solo-lector">Abrir menú</span></button>
             <nav class="navegacion-principal" id="navegacion-principal" aria-label="Navegación principal">
                 <a href="index.php">Inicio</a><a href="index.php#nosotros">Quiénes somos</a><a href="index.php#alojamientos">Alojamientos</a><a class="enlace-activo" href="actividades.php" aria-current="page">Actividades</a><a href="index.php#espacios">Espacios</a>
-                <button class="interruptor-dislexia" type="button" role="switch" aria-checked="false" aria-label="Activar modo dislexia con tipografía Sarakanda"><span>Modo dislexia</span><span class="pista-interruptor" aria-hidden="true"><span class="circulo-interruptor"></span></span></button>
             </nav>
             <?= class_exists('Vista') ? Vista::accesoCuenta($usuario) : '<a class="boton boton-chico boton-encabezado" href="registro/login.php">Iniciar sesión</a>' ?>
         </div>
     </header>
+
+    <button class="boton-bajar-seccion" type="button" data-bajar-seccion aria-label="Bajar a la sección siguiente"><span aria-hidden="true">↓</span></button>
 
     <main id="contenido" class="pagina-actividades">
         <?php if ($error): ?><div class="aviso-administracion" role="alert"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></div><?php endif; ?>
@@ -78,7 +80,7 @@ $esCoordinador = class_exists('Autorizacion') && Autorizacion::esCoordinador($us
         </div></section>
     </main>
 
-    <footer class="pie-pagina"><div class="contenedor grilla-pie"><div><a class="marca marca-pie" href="index.php"><span class="simbolo-marca" aria-hidden="true">EM</span><span class="nombre-marca">El Molino<small>Complejo recreativo</small></span></a><p>Deporte, descanso y recreación en un mismo lugar.</p></div><nav aria-label="Enlaces del pie de página"><a href="index.php#nosotros">Quiénes somos</a><a href="index.php#alojamientos">Alojamientos</a><a href="actividades.php">Actividades</a><a href="index.php#espacios">Espacios</a><a href="registro/registro.php">Crear cuenta</a></nav></div><div class="contenedor pie-inferior"><span>El Molino · Complejo recreativo</span><span>Información sujeta a confirmación</span></div></footer>
+    <footer class="pie-pagina"><div class="contenedor grilla-pie"><div><?= Vista::marca('', 'index.php', true) ?><p>Deporte, descanso y recreación en un mismo lugar.</p></div><nav aria-label="Enlaces del pie de página"><a href="index.php#nosotros">Quiénes somos</a><a href="index.php#alojamientos">Alojamientos</a><a href="actividades.php">Actividades</a><a href="index.php#espacios">Espacios</a><a href="registro/registro.php">Crear cuenta</a></nav></div><div class="contenedor pie-inferior"><span>El Molino · Complejo recreativo</span><span>Información sujeta a confirmación</span></div></footer>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const pista = document.querySelector('#pista-carrusel');

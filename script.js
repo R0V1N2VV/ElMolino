@@ -1,6 +1,9 @@
 const botonMenu = document.querySelector(".boton-menu");
 const navegacionPrincipal = document.querySelector(".navegacion-principal");
-const textoBotonMenu = botonMenu.querySelector(".solo-lector");
+const textoBotonMenu = botonMenu?.querySelector(".solo-lector");
+const menuUsuario = document.querySelector(".menu-usuario");
+const botonUsuario = menuUsuario?.querySelector(".boton-usuario");
+const panelUsuario = menuUsuario?.querySelector(".panel-usuario");
 const interruptorDislexia = document.querySelector(".interruptor-dislexia");
 const preferenciaDislexia = "modo-dislexia-el-molino";
 
@@ -24,30 +27,50 @@ if (interruptorDislexia) {
 }
 
 function cerrarMenu() {
-    botonMenu.setAttribute("aria-expanded", "false");
-    textoBotonMenu.textContent = "Abrir menú";
-    navegacionPrincipal.classList.remove("abierto");
+    botonMenu?.setAttribute("aria-expanded", "false");
+    if (textoBotonMenu) textoBotonMenu.textContent = "Abrir menú";
+    navegacionPrincipal?.classList.remove("abierto");
     document.body.classList.remove("menu-abierto");
 }
 
-botonMenu.addEventListener("click", () => {
+function cerrarMenuUsuario() {
+    botonUsuario?.setAttribute("aria-expanded", "false");
+    if (panelUsuario) panelUsuario.hidden = true;
+    menuUsuario?.classList.remove("abierto");
+}
+
+botonMenu?.addEventListener("click", () => {
     const estaAbierto = botonMenu.getAttribute("aria-expanded") === "true";
 
     botonMenu.setAttribute("aria-expanded", String(!estaAbierto));
-    textoBotonMenu.textContent = estaAbierto ? "Abrir menú" : "Cerrar menú";
-    navegacionPrincipal.classList.toggle("abierto", !estaAbierto);
+    if (textoBotonMenu) textoBotonMenu.textContent = estaAbierto ? "Abrir menú" : "Cerrar menú";
+    navegacionPrincipal?.classList.toggle("abierto", !estaAbierto);
     document.body.classList.toggle("menu-abierto", !estaAbierto);
+    if (!estaAbierto) cerrarMenuUsuario();
 });
 
-navegacionPrincipal.addEventListener("click", (event) => {
+navegacionPrincipal?.addEventListener("click", (event) => {
     if (event.target.matches("a")) {
         cerrarMenu();
     }
 });
 
+botonUsuario?.addEventListener("click", () => {
+    const estaAbierto = botonUsuario.getAttribute("aria-expanded") === "true";
+    botonUsuario.setAttribute("aria-expanded", String(!estaAbierto));
+    if (panelUsuario) panelUsuario.hidden = estaAbierto;
+    menuUsuario?.classList.toggle("abierto", !estaAbierto);
+    if (!estaAbierto) cerrarMenu();
+});
+
+document.addEventListener("click", (event) => {
+    if (menuUsuario && !menuUsuario.contains(event.target)) cerrarMenuUsuario();
+});
+
 document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
         cerrarMenu();
+        cerrarMenuUsuario();
     }
 });
 
@@ -55,6 +78,47 @@ window.addEventListener("resize", () => {
     if (window.innerWidth > 760) {
         cerrarMenu();
     }
+});
+
+const botonBajarSeccion = document.querySelector("[data-bajar-seccion]");
+
+if (botonBajarSeccion) {
+    const contenidoPrincipal = document.querySelector("main");
+    const secciones = contenidoPrincipal
+        ? [...contenidoPrincipal.children].filter((elemento) => elemento.tagName === "SECTION")
+        : [];
+
+    function siguienteSeccion() {
+        return secciones.find((seccion) => seccion.getBoundingClientRect().top > 120);
+    }
+
+    function actualizarBotonBajar() {
+        botonBajarSeccion.classList.toggle("oculto", !siguienteSeccion());
+    }
+
+    botonBajarSeccion.addEventListener("click", () => {
+        siguienteSeccion()?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+
+    window.addEventListener("scroll", actualizarBotonBajar, { passive: true });
+    window.addEventListener("resize", actualizarBotonBajar);
+    actualizarBotonBajar();
+}
+
+const formularioConCobro = document.querySelector("[data-confirmar-cobro]");
+const dialogoCobro = document.querySelector("#aviso-cobro-actividad");
+let cobroConfirmado = false;
+
+formularioConCobro?.addEventListener("submit", (event) => {
+    if (cobroConfirmado || !dialogoCobro) return;
+    event.preventDefault();
+    dialogoCobro.showModal();
+});
+
+dialogoCobro?.addEventListener("close", () => {
+    if (dialogoCobro.returnValue !== "confirmar" || !formularioConCobro) return;
+    cobroConfirmado = true;
+    formularioConCobro.requestSubmit();
 });
 
 const formularioActividad = document.querySelector(".formulario-actividad-redisenado");

@@ -24,10 +24,7 @@ $cantidadCarrito = is_array($carritoSesion) ? count($carritoSesion) : 0;
 
     <header class="encabezado">
         <div class="contenedor barra-navegacion">
-            <a class="marca" href="#inicio" aria-label="El Molino, inicio">
-                <span class="simbolo-marca" aria-hidden="true">EM</span>
-                <span class="nombre-marca">El Molino<small>Complejo recreativo</small></span>
-            </a>
+            <?= Vista::marca('', '#inicio') ?>
 
             <button class="boton-menu" type="button" aria-expanded="false" aria-controls="navegacion-principal">
                 <span></span>
@@ -42,20 +39,16 @@ $cantidadCarrito = is_array($carritoSesion) ? count($carritoSesion) : 0;
                 <a href="#alojamientos">Alojamientos</a>
                 <a href="actividades.php">Actividades</a>
                 <a href="#espacios">Espacios</a>
-                <button class="interruptor-dislexia" type="button" role="switch" aria-checked="false" aria-label="Activar modo dislexia con tipografía Sarakanda">
-                    <span>Modo dislexia</span>
-                    <span class="pista-interruptor" aria-hidden="true">
-                        <span class="circulo-interruptor"></span>
-                    </span>
-                </button>
+                <a class="enlace-estadia" href="carrito.php">Mi estadía <span><?= $cantidadCarrito ?></span></a>
             </nav>
 
             <div class="acciones-encabezado">
-                <a class="boton boton-chico boton-carrito-encabezado" href="carrito.php" aria-label="Carrito, <?= $cantidadCarrito ?> estadías">Carrito <span><?= $cantidadCarrito ?></span></a>
                 <?= Vista::accesoCuenta($usuario) ?>
             </div>
         </div>
     </header>
+
+    <button class="boton-bajar-seccion" type="button" data-bajar-seccion aria-label="Bajar a la sección siguiente"><span aria-hidden="true">↓</span></button>
 
     <main id="contenido">
         <section class="portada">
@@ -148,7 +141,6 @@ $cantidadCarrito = is_array($carritoSesion) ? count($carritoSesion) : 0;
                     </article>
                 </div>
 
-                <p class="nota-seccion">Los precios se muestran por noche y la disponibilidad se confirma antes de registrar el pedido.</p>
             </div>
         </section>
 
@@ -197,7 +189,7 @@ $cantidadCarrito = is_array($carritoSesion) ? count($carritoSesion) : 0;
                 <div class="texto-visita">
                     <p class="texto-destacado">Tu visita</p>
                     <h2>Información para organizar tu estadía.</h2>
-                    <p>Elegí el alojamiento, las fechas y la cantidad de personas. Podés armar el carrito como invitado; para confirmar el pedido necesitás una cuenta.</p>
+                    <p>Elegí el alojamiento, las fechas y la cantidad de personas. Podés armar tu estadía como invitado; para confirmarla necesitás una cuenta.</p>
                     <a class="boton boton-secundario" href="alojamientos.php">Elegir alojamiento</a>
                 </div>
 
@@ -208,7 +200,7 @@ $cantidadCarrito = is_array($carritoSesion) ? count($carritoSesion) : 0;
                     </details>
                     <details>
                         <summary>¿Ya se puede reservar desde la web?</summary>
-                        <p>Podés elegir fechas, agregar alojamientos al carrito y confirmar un pedido con una cuenta. El pago se coordina por correo; todavía no se cobra en línea.</p>
+                        <p>Podés elegir fechas, sumar alojamientos a tu estadía y confirmar el pedido con una cuenta. El pago se coordina por correo; todavía no se cobra en línea.</p>
                     </details>
                     <details>
                         <summary>¿Las actividades están incluidas?</summary>
@@ -236,10 +228,7 @@ $cantidadCarrito = is_array($carritoSesion) ? count($carritoSesion) : 0;
     <footer class="pie-pagina">
         <div class="contenedor grilla-pie">
             <div>
-                <a class="marca marca-pie" href="#inicio">
-                    <span class="simbolo-marca" aria-hidden="true">EM</span>
-                    <span class="nombre-marca">El Molino<small>Complejo recreativo</small></span>
-                </a>
+                <?= Vista::marca('', '#inicio', true) ?>
                 <p>Deporte, descanso y recreación en un mismo lugar.</p>
             </div>
             <nav aria-label="Enlaces del pie de página">

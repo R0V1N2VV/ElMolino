@@ -55,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="stylesheet" href="estilos/estilos.css?v=<?= (int) filemtime(__DIR__ . '/estilos/estilos.css') ?>">
 </head>
 <body class="pagina-compra">
-    <header class="encabezado encabezado-compra"><div class="contenedor barra-navegacion"><a class="marca" href="index.php"><span class="simbolo-marca" aria-hidden="true">EM</span><span class="nombre-marca">El Molino<small>Complejo recreativo</small></span></a><nav class="navegacion-compra" aria-label="Navegación de compra"><a href="index.php">Inicio</a><a href="alojamientos.php">Alojamientos</a></nav></div></header>
+    <header class="encabezado encabezado-compra"><div class="contenedor barra-navegacion"><?= Vista::marca() ?><nav class="navegacion-compra" aria-label="Navegación de compra"><a href="index.php">Inicio</a><a href="alojamientos.php">Alojamientos</a></nav></div></header>
     <main class="contenedor contenido-compra">
         <p class="texto-destacado">PEDIDO #<?= (int) $pedido['idPedido'] ?></p>
         <h1>Recibimos tu pedido</h1>

@@ -15,7 +15,7 @@ try {
     $elementos = $gestor->elementos();
 } catch (PDOException $e) {
     error_log('No se pudo cargar el resumen de compra: ' . $e->getMessage());
-    $errores[] = 'No se pudo consultar el resumen del carrito. Revisá la conexión con la base de datos.';
+    $errores[] = 'No se pudo consultar el resumen de la estadía. Revisá la conexión con la base de datos.';
 }
 if ($gestor && !$elementos) Utilidades::redirigir('carrito.php');
 
@@ -28,7 +28,7 @@ if (!$usuario) {
     if (!Sesion::validarCsrf($_POST['token_csrf'] ?? null)) {
         $errores[] = 'La sesión del formulario venció. Volvé a intentarlo.';
     } elseif ($elementosConError) {
-        $errores[] = 'Hay alojamientos del carrito que ya no están disponibles. Revisá el carrito antes de continuar.';
+        $errores[] = 'Hay alojamientos de tu estadía que ya no están disponibles. Revisalos antes de continuar.';
     } else {
         try {
             $idPedido = $gestor->crearPedido($usuario, (string) ($_POST['metodoPago'] ?? ''));
@@ -73,9 +73,10 @@ $mensaje = Sesion::tomarMensaje();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Finalizar compra | El Molino</title>
     <link rel="stylesheet" href="estilos/estilos.css?v=<?= (int) filemtime(__DIR__ . '/estilos/estilos.css') ?>">
+    <script src="script.js?v=<?= (int) filemtime(__DIR__ . '/script.js') ?>" defer></script>
 </head>
 <body class="pagina-compra">
-    <header class="encabezado encabezado-compra"><div class="contenedor barra-navegacion"><a class="marca" href="index.php"><span class="simbolo-marca" aria-hidden="true">EM</span><span class="nombre-marca">El Molino<small>Complejo recreativo</small></span></a><nav class="navegacion-compra" aria-label="Navegación de compra"><a href="carrito.php">Volver al carrito</a><a href="index.php">Inicio</a></nav></div></header>
+    <header class="encabezado encabezado-compra"><div class="contenedor barra-navegacion"><?= Vista::marca() ?><nav class="navegacion-compra" aria-label="Navegación de compra"><a href="carrito.php">Volver a mi estadía</a><a href="index.php">Inicio</a></nav></div></header>
     <main class="contenedor contenido-compra">
         <p class="texto-destacado">FINALIZAR COMPRA</p>
         <h1>Resumen del pedido</h1>
@@ -84,7 +85,7 @@ $mensaje = Sesion::tomarMensaje();
         <?php if (!$usuario): ?>
             <section class="bloque-cuenta-compra">
                 <h2>Para confirmar necesitás una cuenta</h2>
-                <p>El carrito se conserva mientras iniciás sesión o creás una cuenta. Como invitado podés elegir alojamientos y preparar el pedido.</p>
+                <p>Tu selección se conserva mientras iniciás sesión o creás una cuenta. Como invitado podés elegir alojamientos y preparar el pedido.</p>
                 <div class="acciones-carrito"><a class="boton boton-principal" href="registro/login.php">Ya tengo cuenta</a><a class="boton boton-secundario" href="registro/registro.php">Crear cuenta</a></div>
             </section>
         <?php else: ?>
