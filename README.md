@@ -9,6 +9,16 @@ Sitio del Complejo Recreativo El Molino.
 - `categoria-actividades.php?categoria=deportes`: menú de una categoría con sus actividades y filtros.
 - `actividad.php?id=futbol-recreativo`: ficha de una actividad.
 - `administrar-actividades.php`: panel protegido donde el coordinador crea categorías y administra actividades.
+- `alojamientos.php`: catálogo y carrito de estadías; permite empezar como invitado.
+- `compra.php`: resumen, elección del método de pago y confirmación con cuenta.
+
+## Compras de alojamiento
+
+Las opciones del catálogo se leen de `alojamientos`; el precio se calcula por noche y las fechas/capacidad se validan al agregarlas y otra vez al confirmar. El carrito queda en la sesión del navegador, por lo que no hace falta registrarse para armarlo. Para confirmar el pedido, la persona inicia sesión o crea y verifica una cuenta.
+
+La confirmación registra el pedido y las reservas con estado `PENDIENTE`, guarda el método de pago elegido y envía el resumen a la dirección de correo de la cuenta. Las opciones son efectivo al llegar, transferencia bancaria y tarjeta en el complejo. No se realiza un cobro en línea: el pago y la estadía quedan pendientes de coordinación. Después de importar la base completa, ejecutá una vez `BD/actualizacion_compras_alojamiento.sql` sobre `s27_El Molino` para habilitar las tablas nuevas.
+
+Cada fila de `alojamientos` aparece como una opción en la grilla. Para probar varias opciones, ejecutá `ElMolino_Aplicacion/el-molino/sql/ejemplo_alojamiento.sql`; agrega tres alojamientos ficticios y no duplica los números si lo corrés otra vez. Reemplazá sus precios y datos por los reales antes de recibir pedidos. La lista inicial de equipamiento se configura en `alojamientos.php` y también debe coincidir con lo que ofrece cada unidad.
 
 ## Actividades
 

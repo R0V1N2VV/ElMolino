@@ -4,7 +4,13 @@ declare(strict_types=1);
 require_once __DIR__ . '/inicio.php';
 
 Sesion::iniciar();
-if ($usuarioActual = Sesion::usuario()) Utilidades::redirigir(Autorizacion::destinoInicial($usuarioActual));
+if ($usuarioActual = Sesion::usuario()) {
+    if (Sesion::obtener('continuar_compra', false)) {
+        Sesion::eliminar('continuar_compra');
+        Utilidades::redirigir('../compra.php');
+    }
+    Utilidades::redirigir(Autorizacion::destinoInicial($usuarioActual));
+}
 
 $errores = [];
 $correo = '';
@@ -27,6 +33,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $errores[] = 'El correo o la contraseña no son correctos.';
             } else {
                 Sesion::iniciarUsuario($usuario);
+                if (Sesion::obtener('continuar_compra', false)) {
+                    Sesion::eliminar('continuar_compra');
+                    Utilidades::redirigir('../compra.php');
+                }
                 if ($actividadDestino !== '') {
                     Utilidades::redirigir('../actividad.php?id=' . rawurlencode($actividadDestino));
                 }

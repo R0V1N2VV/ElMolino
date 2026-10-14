@@ -25,6 +25,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($resultado['usuario']) {
                 Sesion::iniciarUsuario($resultado['usuario']);
                 Sesion::eliminar('registro_pendiente_id');
+                if (Sesion::obtener('continuar_compra', false)) {
+                    Sesion::eliminar('continuar_compra');
+                    Utilidades::redirigir('../compra.php');
+                }
                 Sesion::guardarMensaje('exito', 'Tu correo fue verificado. ¡La cuenta ya está activa!');
                 Utilidades::redirigir('cuenta.php');
             }

@@ -5,6 +5,8 @@ require_once __DIR__ . '/php/Actividad.php';
 require_once __DIR__ . '/php/Vista.php';
 Sesion::iniciar();
 $usuario = Sesion::usuario();
+$carritoSesion = Sesion::obtener('carrito_alojamiento', []);
+$cantidadCarrito = is_array($carritoSesion) ? count($carritoSesion) : 0;
 ?>
 <!DOCTYPE html>
 <html lang="es-AR">
@@ -48,7 +50,10 @@ $usuario = Sesion::usuario();
                 </button>
             </nav>
 
-            <?= Vista::accesoCuenta($usuario) ?>
+            <div class="acciones-encabezado">
+                <a class="boton boton-chico boton-carrito-encabezado" href="carrito.php" aria-label="Carrito, <?= $cantidadCarrito ?> estadías">Carrito <span><?= $cantidadCarrito ?></span></a>
+                <?= Vista::accesoCuenta($usuario) ?>
+            </div>
         </div>
     </header>
 
@@ -126,21 +131,24 @@ $usuario = Sesion::usuario();
                     <article class="tarjeta-alojamiento">
                         <h3>Habitaciones</h3>
                         <p>Una alternativa práctica para descansar y seguir disfrutando del complejo.</p>
-                        <p class="por-confirmar">Capacidad y servicios: a confirmar.</p>
+                        <p class="por-confirmar">Consultá capacidad, precio y fechas disponibles.</p>
+                        <a class="boton boton-secundario boton-alojamiento" href="alojamientos.php">Ver opciones</a>
                     </article>
                     <article class="tarjeta-alojamiento">
                         <h3>Cabañas</h3>
                         <p>Un espacio propio para compartir la estadía y volver después de cada actividad.</p>
-                        <p class="por-confirmar">Capacidad y equipamiento: a confirmar.</p>
+                        <p class="por-confirmar">Consultá capacidad, precio y fechas disponibles.</p>
+                        <a class="boton boton-secundario boton-alojamiento" href="alojamientos.php">Ver opciones</a>
                     </article>
                     <article class="tarjeta-alojamiento">
                         <h3>Departamentos</h3>
                         <p>Una opción para organizar los días con mayor independencia dentro del complejo.</p>
-                        <p class="por-confirmar">Distribución y servicios: a confirmar.</p>
+                        <p class="por-confirmar">Consultá capacidad, precio y fechas disponibles.</p>
+                        <a class="boton boton-secundario boton-alojamiento" href="alojamientos.php">Ver opciones</a>
                     </article>
                 </div>
 
-                <p class="nota-seccion">Las tarifas, características y disponibilidad se publicarán cuando la información esté confirmada.</p>
+                <p class="nota-seccion">Los precios se muestran por noche y la disponibilidad se confirma antes de registrar el pedido.</p>
             </div>
         </section>
 
@@ -189,8 +197,8 @@ $usuario = Sesion::usuario();
                 <div class="texto-visita">
                     <p class="texto-destacado">Tu visita</p>
                     <h2>Información para organizar tu estadía.</h2>
-                    <p>Antes de reservar, definí las fechas, la cantidad de personas y el tipo de alojamiento. El precio dependerá de esas condiciones y de la temporada.</p>
-                    <a class="boton boton-secundario" href="#alojamientos">Revisar alojamientos</a>
+                    <p>Elegí el alojamiento, las fechas y la cantidad de personas. Podés armar el carrito como invitado; para confirmar el pedido necesitás una cuenta.</p>
+                    <a class="boton boton-secundario" href="alojamientos.php">Elegir alojamiento</a>
                 </div>
 
                 <div class="preguntas-frecuentes" aria-label="Preguntas frecuentes">
@@ -200,7 +208,7 @@ $usuario = Sesion::usuario();
                     </details>
                     <details>
                         <summary>¿Ya se puede reservar desde la web?</summary>
-                        <p>La reserva en línea todavía no está habilitada. Se incorporará junto con la consulta de disponibilidad y precios.</p>
+                        <p>Podés elegir fechas, agregar alojamientos al carrito y confirmar un pedido con una cuenta. El pago se coordina por correo; todavía no se cobra en línea.</p>
                     </details>
                     <details>
                         <summary>¿Las actividades están incluidas?</summary>
