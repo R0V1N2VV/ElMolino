@@ -22,12 +22,12 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 /**
- * Gestión de clientes: alta, consulta, edición y eliminación.
+ * Muestra y permite editar los datos de los clientes.
  */
 public class VentanaClientes extends JFrame {
 
     private final VentanaPrincipal ventanaPrincipal;
-    private final ClienteDAO clienteDAO = new ClienteDAO();
+    private final ClienteDAO accesoDatosCliente = new ClienteDAO();
     private final DefaultTableModel modelo = new DefaultTableModel(
             new String[]{"ID", "DNI", "Apellido", "Nombre", "Teléfono", "Email", "Dirección"}, 0) {
         @Override
@@ -44,18 +44,25 @@ public class VentanaClientes extends JFrame {
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setSize(900, 500);
         setLocationRelativeTo(null);
+        setExtendedState(JFrame.MAXIMIZED_BOTH);
 
-        JButton btnVolver = new JButton("← Volver al menú");
-        btnVolver.addActionListener(e -> volverAlMenu());
-        JButton btnActualizar = new JButton("Actualizar");
-        JButton btnEditar = new JButton("Editar seleccionado");
-        btnActualizar.addActionListener(e -> cargarClientes());
-        btnEditar.addActionListener(e -> editarSeleccionado());
+        // La barra superior agrupa las acciones y la tabla ocupa el espacio principal.
+        JButton botonVolver = new JButton("← Salir");
+        botonVolver.setToolTipText("Salir de esta sección y volver al menú principal");
+        botonVolver.setForeground(java.awt.Color.WHITE);
+        botonVolver.setBackground(new java.awt.Color(0x4F7358));
+        botonVolver.setOpaque(true);
+        botonVolver.setContentAreaFilled(true);
+        botonVolver.addActionListener(evento -> volverAlMenu());
+        JButton botonActualizar = new JButton("Actualizar");
+        JButton botonEditar = new JButton("Editar seleccionado");
+        botonActualizar.addActionListener(evento -> cargarClientes());
+        botonEditar.addActionListener(evento -> editarSeleccionado());
 
         JPanel herramientas = new JPanel();
-        herramientas.add(btnVolver);
-        herramientas.add(btnEditar);
-        herramientas.add(btnActualizar);
+        herramientas.add(botonVolver);
+        herramientas.add(botonEditar);
+        herramientas.add(botonActualizar);
         JPanel arriba = new JPanel(new BorderLayout(8, 8));
         arriba.setBorder(BorderFactory.createEmptyBorder(10, 10, 5, 10));
         arriba.add(new JLabel("Clientes registrados"), BorderLayout.NORTH);
@@ -72,7 +79,7 @@ public class VentanaClientes extends JFrame {
 
         addWindowListener(new WindowAdapter() {
             @Override
-            public void windowClosed(WindowEvent e) {
+            public void windowClosed(WindowEvent evento) {
                 ventanaPrincipal.setVisible(true);
                 ventanaPrincipal.toFront();
             }
@@ -82,10 +89,12 @@ public class VentanaClientes extends JFrame {
     }
 
     private void volverAlMenu() {
+        // Cierra esta pantalla; el evento de cierre vuelve a mostrar el menu principal.
         dispose();
     }
 
     private void editarSeleccionado() {
+        // Copia la fila elegida a un formulario y valida los datos antes de guardarlos.
         int filaVista = tabla.getSelectedRow();
         if (filaVista < 0) {
             JOptionPane.showMessageDialog(this, "Seleccioná un cliente de la tabla.",
@@ -108,12 +117,13 @@ public class VentanaClientes extends JFrame {
     }
 
     private void mostrarFormulario(Cliente original) {
+        // Si no hay cliente original, crea uno nuevo; si existe, guarda sus cambios.
         boolean edicion = original != null;
         JTextField dni = new JTextField(edicion ? String.valueOf(original.getDni()) : "");
         JTextField nombre = new JTextField(edicion ? original.getNombre() : "");
         JTextField apellido = new JTextField(edicion ? original.getApellido() : "");
         JTextField telefono = new JTextField(edicion ? original.getTelefono() : "");
-        JTextField email = new JTextField(edicion ? original.getEmail() : "");
+        JTextField correo = new JTextField(edicion ? original.getEmail() : "");
         JTextField direccion = new JTextField(edicion ? original.getDireccion() : "");
 
         JPanel formulario = new JPanel(new GridLayout(0, 2, 8, 8));
@@ -121,7 +131,7 @@ public class VentanaClientes extends JFrame {
         formulario.add(new JLabel("Nombre:")); formulario.add(nombre);
         formulario.add(new JLabel("Apellido:")); formulario.add(apellido);
         formulario.add(new JLabel("Teléfono:")); formulario.add(telefono);
-        formulario.add(new JLabel("Email:")); formulario.add(email);
+        formulario.add(new JLabel("Email:")); formulario.add(correo);
         formulario.add(new JLabel("Dirección:")); formulario.add(direccion);
 
         int opcion = JOptionPane.showConfirmDialog(this, formulario,
@@ -136,7 +146,7 @@ public class VentanaClientes extends JFrame {
         String apellidoTexto = apellido.getText().trim();
         String telefonoTexto = telefono.getText().trim();
         if (!dniTexto.matches("\\d{1,10}") || nombreTexto.isEmpty() || apellidoTexto.isEmpty()
-                || !telefonoTexto.matches("\\d{1,10}") || email.getText().trim().isEmpty()
+                || !telefonoTexto.matches("\\d{1,10}") || correo.getText().trim().isEmpty()
                 || direccion.getText().trim().isEmpty()) {
             JOptionPane.showMessageDialog(this,
                     "Completá todos los campos y verificá que DNI y teléfono sean numéricos.",
@@ -146,13 +156,13 @@ public class VentanaClientes extends JFrame {
         try {
             Integer.parseInt(dniTexto);
             Integer.parseInt(telefonoTexto);
-        } catch (NumberFormatException ex) {
+        } catch (NumberFormatException excepcion) {
             JOptionPane.showMessageDialog(this, "El DNI y el teléfono no pueden superar el límite numérico permitido.",
                     "Revisá los datos", JOptionPane.WARNING_MESSAGE);
             return;
         }
-        String emailTexto = email.getText().trim();
-        if (!emailTexto.isEmpty() && !emailTexto.matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")) {
+        String correoTexto = correo.getText().trim();
+        if (!correoTexto.isEmpty() && !correoTexto.matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")) {
             JOptionPane.showMessageDialog(this, "El email no tiene un formato válido.",
                     "Revisá los datos", JOptionPane.WARNING_MESSAGE);
             return;
@@ -160,15 +170,15 @@ public class VentanaClientes extends JFrame {
 
         Cliente cliente = new Cliente(edicion ? original.getIdCliente() : 0,
                 Integer.parseInt(dniTexto), nombreTexto, apellidoTexto,
-                telefonoTexto, emailTexto, direccion.getText().trim());
+                telefonoTexto, correoTexto, direccion.getText().trim());
         estado.setText(edicion ? "Guardando cambios..." : "Creando cliente...");
         new SwingWorker<Boolean, Void>() {
             @Override
             protected Boolean doInBackground() throws Exception {
                 if (edicion) {
-                    return clienteDAO.actualizar(cliente);
+                    return accesoDatosCliente.actualizar(cliente);
                 }
-                clienteDAO.insertar(cliente);
+                accesoDatosCliente.insertar(cliente);
                 return true;
             }
 
@@ -181,14 +191,15 @@ public class VentanaClientes extends JFrame {
                                 "Cliente no actualizado", JOptionPane.WARNING_MESSAGE);
                     }
                     cargarClientes();
-                } catch (Exception ex) {
-                    mostrarError("No se pudo guardar el cliente", ex);
+                } catch (Exception excepcion) {
+                    mostrarError("No se pudo guardar el cliente", excepcion);
                 }
             }
         }.execute();
     }
 
     private void eliminarSeleccionado() {
+        // Pide confirmacion antes de borrar para evitar una eliminacion por error.
         int filaVista = tabla.getSelectedRow();
         if (filaVista < 0) {
             JOptionPane.showMessageDialog(this, "Seleccioná un cliente de la tabla.",
@@ -208,7 +219,7 @@ public class VentanaClientes extends JFrame {
         new SwingWorker<Boolean, Void>() {
             @Override
             protected Boolean doInBackground() throws Exception {
-                return clienteDAO.eliminar(id);
+                return accesoDatosCliente.eliminar(id);
             }
 
             @Override
@@ -220,15 +231,15 @@ public class VentanaClientes extends JFrame {
                                 "Cliente no eliminado", JOptionPane.WARNING_MESSAGE);
                     }
                     cargarClientes();
-                } catch (Exception ex) {
-                    mostrarError("No se pudo eliminar. Puede tener reservas asociadas.", ex);
+                } catch (Exception excepcion) {
+                    mostrarError("No se pudo eliminar. Puede tener reservas asociadas.", excepcion);
                 }
             }
         }.execute();
     }
 
-    private void mostrarError(String mensaje, Exception ex) {
-        Throwable causa = ex;
+    private void mostrarError(String mensaje, Exception excepcion) {
+        Throwable causa = excepcion;
         while (causa.getCause() != null) {
             causa = causa.getCause();
         }
@@ -237,13 +248,14 @@ public class VentanaClientes extends JFrame {
                 "Error", JOptionPane.ERROR_MESSAGE);
     }
 
-    /** La consulta corre en segundo plano para que la ventana no se congele si el servidor tarda. */
+    /** Carga clientes en segundo plano para que la ventana no se congele. */
     private void cargarClientes() {
+        // Actualiza la tabla y el estado cuando termina la consulta.
         estado.setText("Cargando...");
         new SwingWorker<List<Cliente>, Void>() {
             @Override
             protected List<Cliente> doInBackground() throws Exception {
-                return clienteDAO.listarTodos();
+                return accesoDatosCliente.listarTodos();
             }
 
             @Override
@@ -251,15 +263,15 @@ public class VentanaClientes extends JFrame {
                 try {
                     List<Cliente> clientes = get();
                     modelo.setRowCount(0);
-                    for (Cliente c : clientes) {
+                    for (Cliente cliente : clientes) {
                         modelo.addRow(new Object[]{
-                                c.getIdCliente(), c.getDni(), c.getApellido(), c.getNombre(),
-                                c.getTelefono(), c.getEmail(), c.getDireccion()});
+                                cliente.getIdCliente(), cliente.getDni(), cliente.getApellido(), cliente.getNombre(),
+                                cliente.getTelefono(), cliente.getEmail(), cliente.getDireccion()});
                     }
                     estado.setText(clientes.size() + " clientes");
-                } catch (Exception ex) {
-                    // Se desenvuelven las excepciones "envoltorio" para mostrar el mensaje real
-                    Throwable causa = ex;
+                } catch (Exception excepcion) {
+                    // Obtiene el error original para mostrar su detalle.
+                    Throwable causa = excepcion;
                     while ((causa instanceof ExecutionException
                             || causa instanceof ExceptionInInitializerError)
                             && causa.getCause() != null) {

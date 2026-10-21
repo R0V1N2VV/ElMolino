@@ -2,23 +2,24 @@ package com.elmolino.model;
 
 public class Usuario {
 
+    // Estos datos representan la cuenta activa y su rol dentro del sistema.
     private int idUsuario;
     private String nombre;
     private String apellido;
-    private String email;
-    private String passwordHash;
+    private String correo;
+    private String hashContrasena;
     private String rol;
 
     public Usuario() {
     }
 
-    public Usuario(int idUsuario, String nombre, String apellido, String email,
-                   String passwordHash, String rol) {
+    public Usuario(int idUsuario, String nombre, String apellido, String correo,
+                   String hashContrasena, String rol) {
         this.idUsuario = idUsuario;
         this.nombre = nombre;
         this.apellido = apellido;
-        this.email = email;
-        this.passwordHash = passwordHash;
+        this.correo = correo;
+        this.hashContrasena = hashContrasena;
         this.rol = rol;
     }
 
@@ -31,13 +32,13 @@ public class Usuario {
     public String getApellido() { return apellido; }
     public void setApellido(String apellido) { this.apellido = apellido; }
 
-    public String getEmail() { return email; }
-    public void setEmail(String email) { this.email = email; }
+    public String getEmail() { return correo; }
+    public void setEmail(String correo) { this.correo = correo; }
 
-    public String getPasswordHash() { return passwordHash; }
-    public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
+    public String getPasswordHash() { return hashContrasena; }
+    public void setPasswordHash(String hashContrasena) { this.hashContrasena = hashContrasena; }
 
-    /** Uno de: ADMINISTRADOR, RECEPCION, ADMINISTRACION, COORDINADOR, GERENCIA */
+    /** El rol define las secciones que puede usar la cuenta. */
     public String getRol() { return rol; }
     public void setRol(String rol) { this.rol = rol; }
 

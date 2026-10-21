@@ -20,7 +20,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 
-/** Consultas generales para la vista de gerencia. */
+/** Presenta resumenes de reservas, alojamientos, actividades y pagos. */
 public class VentanaInformes extends JFrame {
 
     private final VentanaPrincipal principal;
@@ -36,11 +36,18 @@ public class VentanaInformes extends JFrame {
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setSize(950, 560);
         setLocationRelativeTo(principal);
+        setExtendedState(JFrame.MAXIMIZED_BOTH);
 
-        JButton volver = new JButton("← Volver al menú");
+        // Cada pestana tiene su tabla y la barra permite volver o actualizar informes.
+        JButton volver = new JButton("← Salir");
+        volver.setToolTipText("Salir de esta sección y volver al menú principal");
+        volver.setForeground(java.awt.Color.WHITE);
+        volver.setBackground(new java.awt.Color(0x4F7358));
+        volver.setOpaque(true);
+        volver.setContentAreaFilled(true);
         JButton actualizar = new JButton("Actualizar informes");
-        volver.addActionListener(e -> dispose());
-        actualizar.addActionListener(e -> cargarInformes());
+        volver.addActionListener(evento -> dispose());
+        actualizar.addActionListener(evento -> cargarInformes());
         JPanel barra = new JPanel(new BorderLayout());
         barra.add(volver, BorderLayout.WEST);
         barra.add(new JLabel("  Resumen de gestión"), BorderLayout.CENTER);
@@ -55,7 +62,7 @@ public class VentanaInformes extends JFrame {
         add(pestañas, BorderLayout.CENTER);
         add(estado, BorderLayout.SOUTH);
         addWindowListener(new WindowAdapter() {
-            @Override public void windowClosed(WindowEvent e) {
+            @Override public void windowClosed(WindowEvent evento) {
                 principal.setVisible(true);
                 principal.toFront();
             }
@@ -64,12 +71,14 @@ public class VentanaInformes extends JFrame {
     }
 
     private JTable tabla() {
+        // Las tablas de informe son de solo lectura.
         return new JTable(new DefaultTableModel() {
             @Override public boolean isCellEditable(int fila, int columna) { return false; }
         });
     }
 
     private void cargarInformes() {
+        // Inicia una consulta por cada grupo de datos que se muestra en las pestanas.
         cargar(reservas, "SELECT estadoReserva AS Estado, COUNT(*) AS Cantidad, "
                 + "COALESCE(SUM(precioTotal),0) AS `Total reservado` FROM reservas GROUP BY estadoReserva ORDER BY estadoReserva");
         cargar(alojamientos, "SELECT a.numero AS Número, a.tipo AS Tipo, a.capacidad AS Capacidad, "
@@ -86,20 +95,21 @@ public class VentanaInformes extends JFrame {
                 + "GROUP BY DATE_FORMAT(fechaPago, '%Y-%m'), metodoPago ORDER BY Mes DESC");
     }
 
-    private void cargar(JTable tabla, String sql) {
+    private void cargar(JTable tabla, String consultaSql) {
+        // Ejecuta cada consulta en segundo plano y coloca sus resultados en la tabla.
         new SwingWorker<DefaultTableModel, Void>() {
             @Override protected DefaultTableModel doInBackground() throws Exception {
                 DefaultTableModel modelo = new DefaultTableModel() {
                     @Override public boolean isCellEditable(int fila, int columna) { return false; }
                 };
-                try (Connection con = Conexion.obtener();
-                     PreparedStatement ps = con.prepareStatement(sql);
-                     ResultSet rs = ps.executeQuery()) {
-                    ResultSetMetaData meta = rs.getMetaData();
-                    for (int i = 1; i <= meta.getColumnCount(); i++) modelo.addColumn(meta.getColumnLabel(i));
-                    while (rs.next()) {
-                        Object[] fila = new Object[meta.getColumnCount()];
-                        for (int i = 0; i < fila.length; i++) fila[i] = rs.getObject(i + 1);
+                try (Connection conexion = Conexion.obtener();
+                     PreparedStatement sentencia = conexion.prepareStatement(consultaSql);
+                     ResultSet resultados = sentencia.executeQuery()) {
+                    ResultSetMetaData metadatos = resultados.getMetaData();
+                    for (int indice = 1; indice <= metadatos.getColumnCount(); indice++) modelo.addColumn(metadatos.getColumnLabel(indice));
+                    while (resultados.next()) {
+                        Object[] fila = new Object[metadatos.getColumnCount()];
+                        for (int indice = 0; indice < fila.length; indice++) fila[indice] = resultados.getObject(indice + 1);
                         modelo.addRow(fila);
                     }
                 }
@@ -109,8 +119,8 @@ public class VentanaInformes extends JFrame {
                 try {
                     tabla.setModel(get());
                     estado.setText("Informes actualizados");
-                } catch (Exception ex) {
-                    Throwable causa = ex.getCause() == null ? ex : ex.getCause();
+                } catch (Exception excepcion) {
+                    Throwable causa = excepcion.getCause() == null ? excepcion : excepcion.getCause();
                     estado.setText("No se pudieron cargar los informes");
                     JOptionPane.showMessageDialog(VentanaInformes.this,
                             "Error al consultar los informes:\n" + causa.getMessage(),

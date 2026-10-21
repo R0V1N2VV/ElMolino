@@ -11,75 +11,78 @@ import java.sql.SQLIntegrityConstraintViolationException;
 
 public class UsuarioDAO {
 
-    /** Devuelve el usuario si el email existe, o null si no hay ninguno con ese email. */
-    public Usuario buscarPorEmail(String email) throws SQLException {
-        String sql = "SELECT idUsuario, nombre, apellido, email, password_hash, rol "
+    /** Busca una cuenta por email y devuelve null si no existe. */
+    public Usuario buscarPorEmail(String correo) throws SQLException {
+        // La consulta trae los campos usados para validar el acceso.
+        String consultaSql = "SELECT idUsuario, nombre, apellido, email, password_hash, rol "
                    + "FROM usuarios WHERE email = ?";
 
-        try (Connection con = Conexion.obtener();
-             PreparedStatement ps = con.prepareStatement(sql)) {
+        try (Connection conexion = Conexion.obtener();
+             PreparedStatement sentencia = conexion.prepareStatement(consultaSql)) {
 
-            ps.setString(1, email);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
+            sentencia.setString(1, correo);
+            try (ResultSet resultados = sentencia.executeQuery()) {
+                if (resultados.next()) {
                     return new Usuario(
-                            rs.getInt("idUsuario"),
-                            rs.getString("nombre"),
-                            rs.getString("apellido"),
-                            rs.getString("email"),
-                            rs.getString("password_hash"),
-                            rs.getString("rol"));
+                            resultados.getInt("idUsuario"),
+                            resultados.getString("nombre"),
+                            resultados.getString("apellido"),
+                            resultados.getString("email"),
+                            resultados.getString("password_hash"),
+                            resultados.getString("rol"));
                 }
             }
         }
         return null;
     }
 
-    /** Crea una cuenta con rol inicial limitado; el formulario nunca recibe el rol. */
-    public boolean crearCuenta(String nombre, String apellido, String email,
-                               String passwordHash) throws SQLException {
-        String sql = "INSERT INTO usuarios (nombre, apellido, email, password_hash, rol) "
+    /** Crea una cuenta nueva con rol de recepcion definido por el sistema. */
+    public boolean crearCuenta(String nombre, String apellido, String correo,
+                               String hashContrasena) throws SQLException {
+        // Primero evita duplicados y luego guarda la cuenta con la clave ya protegida.
+        String consultaSql = "INSERT INTO usuarios (nombre, apellido, email, password_hash, rol) "
                    + "VALUES (?, ?, ?, ?, 'RECEPCION')";
 
-        try (Connection con = Conexion.obtener();
-             PreparedStatement ps = con.prepareStatement(sql)) {
-            try (PreparedStatement buscar = con.prepareStatement(
+        try (Connection conexion = Conexion.obtener();
+             PreparedStatement sentencia = conexion.prepareStatement(consultaSql)) {
+            try (PreparedStatement consultaExistente = conexion.prepareStatement(
                     "SELECT 1 FROM usuarios WHERE LOWER(email) = LOWER(?) LIMIT 1")) {
-                buscar.setString(1, email);
-                try (ResultSet rs = buscar.executeQuery()) {
-                    if (rs.next()) {
+                consultaExistente.setString(1, correo);
+                try (ResultSet resultados = consultaExistente.executeQuery()) {
+                    if (resultados.next()) {
                         return false;
                     }
                 }
             }
-            ps.setString(1, nombre);
-            ps.setString(2, apellido);
-            ps.setString(3, email);
-            ps.setString(4, passwordHash);
-            ps.executeUpdate();
+            sentencia.setString(1, nombre);
+            sentencia.setString(2, apellido);
+            sentencia.setString(3, correo);
+            sentencia.setString(4, hashContrasena);
+            sentencia.executeUpdate();
             return true;
-        } catch (SQLIntegrityConstraintViolationException ex) {
-            if (ex.getErrorCode() == 1062) {
+        } catch (SQLIntegrityConstraintViolationException excepcion) {
+            if (excepcion.getErrorCode() == 1062) {
                 return false;
             }
-            throw ex;
-        } catch (SQLException ex) {
-            // Algunos drivers MySQL reportan una clave duplicada como SQLException general.
-            if (ex.getErrorCode() == 1062) {
+            throw excepcion;
+        } catch (SQLException excepcion) {
+            // Algunos drivers reportan una clave repetida como error SQL general.
+            if (excepcion.getErrorCode() == 1062) {
                 return false;
             }
-            throw ex;
+            throw excepcion;
         }
     }
 
-    /** Actualiza una clave antigua en texto plano después de un inicio de sesión válido. */
-    public void actualizarPasswordHash(int idUsuario, String passwordHash) throws SQLException {
-        String sql = "UPDATE usuarios SET password_hash = ? WHERE idUsuario = ?";
-        try (Connection con = Conexion.obtener();
-             PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setString(1, passwordHash);
-            ps.setInt(2, idUsuario);
-            ps.executeUpdate();
+    /** Cambia una clave antigua por su huella segura luego de un acceso valido. */
+    public void actualizarPasswordHash(int idUsuario, String hashContrasena) throws SQLException {
+        // Actualiza solo la cuenta indicada y nunca modifica otras columnas.
+        String consultaSql = "UPDATE usuarios SET password_hash = ? WHERE idUsuario = ?";
+        try (Connection conexion = Conexion.obtener();
+             PreparedStatement sentencia = conexion.prepareStatement(consultaSql)) {
+            sentencia.setString(1, hashContrasena);
+            sentencia.setInt(2, idUsuario);
+            sentencia.executeUpdate();
         }
     }
 }

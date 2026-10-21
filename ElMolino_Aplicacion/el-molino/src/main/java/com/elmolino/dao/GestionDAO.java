@@ -2,6 +2,7 @@ package com.elmolino.dao;
 
 import com.elmolino.util.Conexion;
 import com.elmolino.util.SeguridadPassword;
+import com.elmolino.util.SesionActual;
 
 import java.math.BigDecimal;
 import java.sql.Connection;
@@ -18,15 +19,18 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** Consultas parametrizadas de los módulos de gestión del complejo. */
+/** Reune las consultas y reglas para los modulos de gestion. */
 public final class GestionDAO {
 
+    // Indica que tipo de dato usa un campo y que editor debe mostrar la interfaz.
     public enum Tipo { TEXTO, ENTERO, DECIMAL, FECHA, HORA, BOOLEANO, OPCION, CLAVE }
 
+    // Opcion con identificador para listas que se cargan desde otra tabla.
     public record Opcion(int id, String nombre) {
         @Override public String toString() { return nombre; }
     }
 
+    // Describe un campo, su etiqueta, reglas y posibles opciones de seleccion.
     public record Campo(String columna, String etiqueta, Tipo tipo, boolean obligatorio,
                         boolean visible, List<String> opciones, String consultaOpciones) {
         public Campo(String columna, String etiqueta, Tipo tipo, boolean obligatorio) {
@@ -34,47 +38,51 @@ public final class GestionDAO {
         }
     }
 
+    // Agrupa los datos necesarios para presentar y guardar una seccion.
     public record Modulo(String titulo, String tabla, String id, List<Campo> campos) {
         public Modulo {
             campos = List.copyOf(campos);
         }
     }
 
-    private static Campo texto(String col, String label, boolean requerido) {
-        return new Campo(col, label, Tipo.TEXTO, requerido);
+    // Estos metodos cortos crean campos requeridos, opcionales y relacionados.
+    private static Campo texto(String columna, String etiqueta, boolean requerido) {
+        return new Campo(columna, etiqueta, Tipo.TEXTO, requerido);
     }
-    private static Campo entero(String col, String label) {
-        return new Campo(col, label, Tipo.ENTERO, true);
+    private static Campo entero(String columna, String etiqueta) {
+        return new Campo(columna, etiqueta, Tipo.ENTERO, true);
     }
-    private static Campo decimal(String col, String label) {
-        return new Campo(col, label, Tipo.DECIMAL, true);
+    private static Campo decimal(String columna, String etiqueta) {
+        return new Campo(columna, etiqueta, Tipo.DECIMAL, true);
     }
-    private static Campo fecha(String col, String label) {
-        return new Campo(col, label, Tipo.FECHA, true);
+    private static Campo fecha(String columna, String etiqueta) {
+        return new Campo(columna, etiqueta, Tipo.FECHA, true);
     }
-    private static Campo hora(String col, String label) {
-        return new Campo(col, label, Tipo.HORA, true);
+    private static Campo hora(String columna, String etiqueta) {
+        return new Campo(columna, etiqueta, Tipo.HORA, true);
     }
-    private static Campo booleano(String col, String label) {
-        return new Campo(col, label, Tipo.BOOLEANO, true);
+    private static Campo booleano(String columna, String etiqueta) {
+        return new Campo(columna, etiqueta, Tipo.BOOLEANO, true);
     }
-    private static Campo opcion(String col, String label, List<String> values) {
-        return new Campo(col, label, Tipo.OPCION, true, true, values, null);
+    private static Campo opcion(String columna, String etiqueta, List<String> valores) {
+        return new Campo(columna, etiqueta, Tipo.OPCION, true, true, valores, null);
     }
-    private static Campo opcionOpcional(String col, String label, List<String> values) {
-        return new Campo(col, label, Tipo.OPCION, false, true, values, null);
+    private static Campo opcionOpcional(String columna, String etiqueta, List<String> valores) {
+        return new Campo(columna, etiqueta, Tipo.OPCION, false, true, valores, null);
     }
-    private static Campo relacion(String col, String label, String sql) {
-        return new Campo(col, label, Tipo.OPCION, true, true, List.of(), sql);
+    private static Campo relacion(String columna, String etiqueta, String consultaSql) {
+        return new Campo(columna, etiqueta, Tipo.OPCION, true, true, List.of(), consultaSql);
     }
-    private static Campo relacionOpcional(String col, String label, String sql) {
-        return new Campo(col, label, Tipo.OPCION, false, true, List.of(), sql);
+    private static Campo relacionOpcional(String columna, String etiqueta, String consultaSql) {
+        return new Campo(columna, etiqueta, Tipo.OPCION, false, true, List.of(), consultaSql);
     }
 
+    // Catalogo de campos por modulo; los nombres de tabla y columna deben coincidir con la base.
     public static final Modulo ALOJAMIENTOS = new Modulo("Alojamientos", "alojamientos", "idAlojamiento", List.of(
             texto("numero", "Número", true),
             opcion("tipo", "Tipo", List.of("Habitación", "Cabaña", "Departamento")),
             entero("capacidad", "Capacidad"), decimal("precioPorNoche", "Precio por noche"),
+            texto("descripcion", "Descripción", false),
             opcion("estado", "Estado", List.of("Disponible", "Reservado", "Ocupado", "En limpieza", "Mantenimiento"))));
 
     public static final Modulo ESPACIOS = new Modulo("Espacios recreativos", "EspacioRecreativo", "idEspacio", List.of(
@@ -82,16 +90,8 @@ public final class GestionDAO {
             texto("ubicacion", "Ubicación", true), hora("horarioApertura", "Abre (HH:mm)"),
             hora("horarioCierre", "Cierra (HH:mm)"), booleano("requiereReserva", "Requiere reserva")));
 
-    public static final Modulo CATEGORIAS_ACTIVIDAD = new Modulo(
-            "Categorías de actividades", "CategoriaActividad", "idCategoria", List.of(
-            texto("nombre", "Categoría", true), texto("descripcion", "Descripción", true),
-            booleano("activa", "Activa")));
-
     public static final Modulo ACTIVIDADES = new Modulo("Actividades", "Actividad", "idActividad", List.of(
-            texto("nombre", "Nombre", true),
-            relacionOpcional("idCategoria", "Categoría",
-                    "SELECT idCategoria, nombre FROM `CategoriaActividad` WHERE activa = 1 ORDER BY nombre"),
-            texto("descripcionCorta", "Descripción breve", false),
+            texto("nombre", "Nombre", true), texto("descripcionCorta", "Descripción breve", false),
             texto("descripcion", "Descripción completa", true), texto("requisitos", "Requisitos", false),
             texto("informacionImportante", "Información importante", false),
             texto("horario", "Horario", true), texto("dias", "Días", false),
@@ -130,44 +130,82 @@ public final class GestionDAO {
     public static final Modulo USUARIOS = new Modulo("Usuarios", "usuarios", "idUsuario", List.of(
             texto("nombre", "Nombre", true), texto("apellido", "Apellido", true),
             new Campo("email", "Email", Tipo.TEXTO, true),
-            opcion("rol", "Rol", List.of("cliente", "coordinador_actividades", "ADMINISTRADOR",
-                    "RECEPCION", "ADMINISTRACION", "COORDINADOR", "GERENCIA")),
+            opcion("rol", "Rol", List.of("ADMINISTRADOR", "RECEPCION", "COORDINADOR", "GERENCIA", "LIMPIEZA")),
             new Campo("password_hash", "Contraseña (dejar vacía para conservarla)", Tipo.CLAVE, false, false, List.of(), null)));
 
     private GestionDAO() { }
 
+    // Valida el permiso antes de consultar o cambiar cualquier modulo.
+    public static void validarAcceso(Modulo modulo) throws SQLException {
+        if (SesionActual.get() == null || !tieneAccesoTabla(modulo.tabla(), SesionActual.get().getRol())) {
+            throw new SQLException("Tu rol no tiene acceso a la sección " + modulo.titulo() + ".");
+        }
+    }
+
+    public static void validarAccesoClientes() throws SQLException {
+        validarAccesoTabla("cliente", "Clientes");
+    }
+
+    public static void validarAccesoAcompanantesReserva() throws SQLException {
+        validarAccesoTabla("reservaAcompañante", "Acompañantes por reserva");
+    }
+
+    private static void validarAccesoTabla(String tabla, String seccion) throws SQLException {
+        if (SesionActual.get() == null || !tieneAccesoTabla(tabla, SesionActual.get().getRol())) {
+            throw new SQLException("Tu rol no tiene acceso a la sección " + seccion + ".");
+        }
+    }
+
+    private static boolean tieneAccesoTabla(String tabla, String rol) {
+        // Esta lista tambien protege las operaciones que llegan directo al DAO.
+        return switch (rol) {
+            case "ADMINISTRADOR" -> List.of("cliente", "usuarios", "reservas", "pago").contains(tabla);
+            case "GERENCIA" -> List.of("cliente", "reservas", "pago", "alojamientos").contains(tabla);
+            case "RECEPCION" -> List.of("cliente", "alojamientos", "pago", "EspacioRecreativo").contains(tabla);
+            case "ADMINISTRACION" -> List.of("cliente", "acompañante", "alojamientos", "reservas", "pago", "reservaAcompañante").contains(tabla);
+            case "COORDINADOR" -> List.of("EspacioRecreativo", "Actividad", "inscripcionActividad").contains(tabla);
+            case "LIMPIEZA" -> "alojamientos".equals(tabla);
+            default -> false;
+        };
+    }
     public static List<Campo> camposVisibles(Modulo modulo) {
         return modulo.campos().stream().filter(Campo::visible).toList();
     }
 
-    public static List<Opcion> opciones(String sql) throws SQLException {
+    public static List<Opcion> opciones(String consultaSql) throws SQLException {
+        // Ejecuta la consulta que llena una lista desplegable.
         List<Opcion> resultado = new ArrayList<>();
-        try (Connection con = Conexion.obtener();
-             PreparedStatement ps = con.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-            while (rs.next()) {
-                resultado.add(new Opcion(rs.getInt(1), rs.getString(2)));
+        try (Connection conexion = Conexion.obtener();
+             PreparedStatement sentencia = conexion.prepareStatement(consultaSql);
+             ResultSet resultados = sentencia.executeQuery()) {
+            while (resultados.next()) {
+                resultado.add(new Opcion(resultados.getInt(1), resultados.getString(2)));
             }
         }
         return resultado;
     }
 
     public static List<Object[]> listar(Modulo modulo) throws SQLException {
+        // Arma la consulta de lista segun la definicion del modulo.
+        validarAcceso(modulo);
         if ("Actividad".equals(modulo.tabla())) return listarActividades();
-        if ("inscripcionActividad".equals(modulo.tabla())) return listarInscripciones();
         List<Campo> visibles = camposVisibles(modulo);
-        String columnas = visibles.stream().map(c -> q(c.columna())).reduce((a, b) -> a + ", " + b).orElse("");
-        String sql = "SELECT " + q(modulo.id()) + (columnas.isEmpty() ? "" : ", " + columnas)
-                + " FROM " + q(modulo.tabla()) + " ORDER BY " + q(modulo.id()) + " DESC";
+        String columnas = visibles.stream().map(campo -> q(campo.columna())).reduce((acumulado, siguiente) -> acumulado + ", " + siguiente).orElse("");
+        String consultaSql = "SELECT " + q(modulo.id()) + (columnas.isEmpty() ? "" : ", " + columnas)
+                + " FROM " + q(modulo.tabla());
+        if ("alojamientos".equals(modulo.tabla()) && esLimpieza()) {
+            consultaSql += " WHERE tipo = 'Habitación'";
+        }
+        consultaSql += " ORDER BY " + q(modulo.id()) + " DESC";
         List<Object[]> filas = new ArrayList<>();
-        try (Connection con = Conexion.obtener();
-             PreparedStatement ps = con.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-            while (rs.next()) {
+        try (Connection conexion = Conexion.obtener();
+             PreparedStatement sentencia = conexion.prepareStatement(consultaSql);
+             ResultSet resultados = sentencia.executeQuery()) {
+            while (resultados.next()) {
                 Object[] fila = new Object[visibles.size() + 1];
-                fila[0] = rs.getInt(1);
-                for (int i = 0; i < visibles.size(); i++) {
-                    fila[i + 1] = rs.getObject(i + 2);
+                fila[0] = resultados.getInt(1);
+                for (int indice = 0; indice < visibles.size(); indice++) {
+                    fila[indice + 1] = resultados.getObject(indice + 2);
                 }
                 filas.add(fila);
             }
@@ -176,7 +214,8 @@ public final class GestionDAO {
     }
 
     private static List<Object[]> listarActividades() throws SQLException {
-        String sql = "SELECT a.idActividad, a.nombre, c.nombre, a.descripcionCorta, a.horario, a.dias, a.momentoDia, "
+        // Incluye cupos y estado calculados para mostrar informacion util de actividades.
+        String consultaSql = "SELECT a.idActividad, a.nombre, a.descripcionCorta, a.horario, a.dias, a.momentoDia, "
                 + "a.Duracion, a.sector, a.responsable, a.edadRecomendada, a.modalidad, a.activa, e.nombre, a.cupoMax, "
                 + "COUNT(i.idInscripcion), GREATEST(a.cupoMax - COUNT(i.idInscripcion), 0), "
                 + "CASE WHEN COUNT(i.idInscripcion) >= a.cupoMax THEN 'Cupo lleno' "
@@ -184,47 +223,24 @@ public final class GestionDAO {
                 + "WHEN a.cupoMax - COUNT(i.idInscripcion) <= 2 THEN 'Últimos lugares' "
                 + "ELSE 'Disponible' END, a.precio, a.pago "
                 + "FROM `Actividad` a "
-                + "LEFT JOIN `CategoriaActividad` c ON c.idCategoria = a.idCategoria "
                 + "LEFT JOIN `EspacioRecreativo` e ON e.idEspacio = a.idEspacio "
                 + "LEFT JOIN `inscripcionActividad` i ON i.idActividad = a.idActividad "
-                + "GROUP BY a.idActividad, a.nombre, c.nombre, a.descripcionCorta, a.horario, a.dias, a.momentoDia, "
+                + "GROUP BY a.idActividad, a.nombre, a.descripcionCorta, a.horario, a.dias, a.momentoDia, "
                 + "a.Duracion, a.sector, a.responsable, a.edadRecomendada, a.modalidad, a.activa, "
                 + "e.nombre, a.cupoMax, a.precio, a.pago "
                 + "ORDER BY a.idActividad DESC";
         List<Object[]> filas = new ArrayList<>();
-        try (Connection con = Conexion.obtener();
-             PreparedStatement ps = con.prepareStatement(sql);
-            ResultSet rs = ps.executeQuery()) {
-            while (rs.next()) {
-                int cupoMax = rs.getInt(15);
-                int inscriptos = rs.getInt(16);
-                filas.add(new Object[]{rs.getInt(1), rs.getString(2),
-                        rs.getString(3) == null ? "Sin categoría" : rs.getString(3), rs.getString(4),
-                        rs.getString(5), rs.getString(6), etiquetaMomentoDia(rs.getString(7)), rs.getString(8),
-                        rs.getString(9), rs.getString(10), etiquetaEdad(rs.getString(11)),
-                        etiquetaModalidad(rs.getString(12)), rs.getBoolean(13) ? "Sí" : "No",
-                        rs.getString(14) == null ? "Sin asignar" : rs.getString(14),
-                        inscriptos + " / " + cupoMax, rs.getInt(17), rs.getString(18),
-                        rs.getBigDecimal(19), rs.getString(20)});
-            }
-        }
-        return filas;
-    }
-
-    private static List<Object[]> listarInscripciones() throws SQLException {
-        String sql = "SELECT i.idInscripcion, "
-                + "CONCAT(c.apellido, ', ', c.nombre, ' - DNI ', c.dni), "
-                + "a.nombre, i.fechaInscripcion "
-                + "FROM `inscripcionActividad` i "
-                + "INNER JOIN `cliente` c ON c.idCliente = i.idCliente "
-                + "INNER JOIN `Actividad` a ON a.idActividad = i.idActividad "
-                + "ORDER BY i.idInscripcion DESC";
-        List<Object[]> filas = new ArrayList<>();
-        try (Connection con = Conexion.obtener();
-             PreparedStatement ps = con.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-            while (rs.next()) {
-                filas.add(new Object[]{rs.getInt(1), rs.getString(2), rs.getString(3), rs.getDate(4)});
+        try (Connection conexion = Conexion.obtener();
+             PreparedStatement sentencia = conexion.prepareStatement(consultaSql);
+             ResultSet resultados = sentencia.executeQuery()) {
+            while (resultados.next()) {
+                int cupoMax = resultados.getInt(14);
+                int inscriptos = resultados.getInt(15);
+                filas.add(new Object[]{resultados.getInt(1), resultados.getString(2), resultados.getString(3), resultados.getString(4),
+                        resultados.getString(5), etiquetaMomentoDia(resultados.getString(6)), resultados.getString(7), resultados.getString(8),
+                        resultados.getString(9), etiquetaEdad(resultados.getString(10)), etiquetaModalidad(resultados.getString(11)),
+                        resultados.getBoolean(12) ? "Sí" : "No", resultados.getString(13) == null ? "Sin asignar" : resultados.getString(13),
+                        inscriptos + " / " + cupoMax, resultados.getInt(16), resultados.getString(17), resultados.getBigDecimal(18), resultados.getString(19)});
             }
         }
         return filas;
@@ -261,18 +277,23 @@ public final class GestionDAO {
     }
 
     public static Map<String, Object> buscarPorId(Modulo modulo, int id) throws SQLException {
-        String columnas = modulo.campos().stream().map(c -> q(c.columna()))
-                .reduce((a, b) -> a + ", " + b).orElse("");
-        String sql = "SELECT " + columnas + " FROM " + q(modulo.tabla())
+        // Carga todos los valores de una fila para abrir el formulario de edicion.
+        validarAcceso(modulo);
+        String columnas = modulo.campos().stream().map(campo -> q(campo.columna()))
+                .reduce((acumulado, siguiente) -> acumulado + ", " + siguiente).orElse("");
+        String consultaSql = "SELECT " + columnas + " FROM " + q(modulo.tabla())
                 + " WHERE " + q(modulo.id()) + " = ?";
-        try (Connection con = Conexion.obtener(); PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setInt(1, id);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (!rs.next()) return Map.of();
+        if ("alojamientos".equals(modulo.tabla()) && esLimpieza()) {
+            consultaSql += " AND tipo = 'Habitación'";
+        }
+        try (Connection conexion = Conexion.obtener(); PreparedStatement sentencia = conexion.prepareStatement(consultaSql)) {
+            sentencia.setInt(1, id);
+            try (ResultSet resultados = sentencia.executeQuery()) {
+                if (!resultados.next()) return Map.of();
                 Map<String, Object> fila = new LinkedHashMap<>();
                 for (Campo campo : modulo.campos()) {
                     Object valor = campo.tipo() == Tipo.BOOLEANO
-                            ? rs.getBoolean(campo.columna()) : rs.getObject(campo.columna());
+                            ? resultados.getBoolean(campo.columna()) : resultados.getObject(campo.columna());
                     fila.put(campo.columna(), valor);
                 }
                 return fila;
@@ -281,11 +302,23 @@ public final class GestionDAO {
     }
 
     public static void guardar(Modulo modulo, Integer id, Map<String, String> valores) throws SQLException {
-        try (Connection con = Conexion.obtener()) {
-            con.setAutoCommit(false);
+        // Revisa permisos, convierte datos y guarda una fila nueva o sus cambios.
+        validarAcceso(modulo);
+        boolean rolLimpieza = esLimpieza();
+        if (rolLimpieza && !"alojamientos".equals(modulo.tabla())) {
+            throw new SQLException("El rol Limpieza solo puede actualizar habitaciones.");
+        }
+        if ("alojamientos".equals(modulo.tabla()) && id == null) {
+            throw new SQLException("Los alojamientos se agregan desde la página web.");
+        }
+        // Una transaccion permite deshacer el guardado si falla una validacion o consulta.
+        try (Connection conexion = Conexion.obtener()) {
+            if (rolLimpieza) validarHabitacionDeLimpieza(conexion, id);
+            conexion.setAutoCommit(false);
             try {
                 Map<String, Object> datos = new LinkedHashMap<>();
                 for (Campo campo : modulo.campos()) {
+                    if (rolLimpieza && !"estado".equals(campo.columna())) continue;
                     String valor = valores.getOrDefault(campo.columna(), "").trim();
                     if (campo.tipo() == Tipo.CLAVE && id != null && valor.isEmpty()) continue;
                     if (campo.tipo() == Tipo.CLAVE && valor.isEmpty()) {
@@ -303,65 +336,109 @@ public final class GestionDAO {
                 if (id == null && "inscripcionActividad".equals(modulo.tabla())) {
                     datos.put("asistencia", false);
                 }
-                if ("reservas".equals(modulo.tabla())) validarReserva(con, datos, id);
+                if ("alojamientos".equals(modulo.tabla()) && !rolLimpieza) {
+                    validarEstadoSinPermiso(conexion, id, datos.get("estado"));
+                }
+                if ("reservas".equals(modulo.tabla())) validarReserva(conexion, datos, id);
                 if ("Actividad".equals(modulo.tabla())) validarActividad(datos);
-                if ("inscripcionActividad".equals(modulo.tabla()) && id == null) validarCupo(con, datos);
+                if ("inscripcionActividad".equals(modulo.tabla()) && id == null) validarCupo(conexion, datos);
                 if ("usuarios".equals(modulo.tabla())) validarEmail(valores.get("email"));
 
                 boolean crear = id == null;
                 String asignaciones = datos.keySet().stream().map(k -> q(k) + " = ?")
-                        .reduce((a, b) -> a + ", " + b).orElseThrow();
-                String sql;
+                        .reduce((acumulado, siguiente) -> acumulado + ", " + siguiente).orElseThrow();
+                String consultaSql;
                 if (crear) {
-                    sql = "INSERT INTO " + q(modulo.tabla()) + " SET " + asignaciones;
+                    consultaSql = "INSERT INTO " + q(modulo.tabla()) + " SET " + asignaciones;
                 } else {
-                    sql = "UPDATE " + q(modulo.tabla()) + " SET " + asignaciones + " WHERE " + q(modulo.id()) + " = ?";
+                    consultaSql = "UPDATE " + q(modulo.tabla()) + " SET " + asignaciones + " WHERE " + q(modulo.id()) + " = ?";
                 }
-                try (PreparedStatement ps = con.prepareStatement(sql)) {
+                try (PreparedStatement sentencia = conexion.prepareStatement(consultaSql)) {
                     int indice = 1;
-                    for (Object valor : datos.values()) ps.setObject(indice++, valor);
-                    if (!crear) ps.setInt(indice, id);
-                    ps.executeUpdate();
+                    for (Object valor : datos.values()) sentencia.setObject(indice++, valor);
+                    if (!crear) sentencia.setInt(indice, id);
+                    sentencia.executeUpdate();
                 }
-                con.commit();
-            } catch (Exception ex) {
-                con.rollback();
-                if (ex instanceof SQLException sqlEx) throw sqlEx;
-                if (ex instanceof IllegalArgumentException argEx) throw argEx;
-                throw new SQLException("No se pudo guardar el registro", ex);
+                conexion.commit();
+            } catch (Exception excepcion) {
+                conexion.rollback();
+                if (excepcion instanceof SQLException excepcionSql) throw excepcionSql;
+                if (excepcion instanceof IllegalArgumentException excepcionArgumento) throw excepcionArgumento;
+                throw new SQLException("No se pudo guardar el registro", excepcion);
             } finally {
-                con.setAutoCommit(true);
+                conexion.setAutoCommit(true);
             }
         }
     }
 
     public static void eliminar(Modulo modulo, int id) throws SQLException {
-        if ("Actividad".equals(modulo.tabla())) {
-            try (Connection con = Conexion.obtener();
-                 PreparedStatement ps = con.prepareStatement(
-                         "UPDATE Actividad SET activa = 0 WHERE idActividad = ?")) {
-                ps.setInt(1, id);
-                if (ps.executeUpdate() == 0) throw new SQLException("No se encontró la actividad.");
-            }
-            return;
+        // Verifica permisos y relaciones antes de borrar el registro.
+        validarAcceso(modulo);
+        if (esLimpieza() && "alojamientos".equals(modulo.tabla())) {
+            throw new SQLException("El rol Limpieza no puede eliminar habitaciones.");
         }
-        String sql = "DELETE FROM " + q(modulo.tabla()) + " WHERE " + q(modulo.id()) + " = ?";
-        try (Connection con = Conexion.obtener(); PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setInt(1, id);
-            ps.executeUpdate();
+        if ("Actividad".equals(modulo.tabla())) {
+            try (Connection conexion = Conexion.obtener();
+                 PreparedStatement sentencia = conexion.prepareStatement(
+                         "SELECT COUNT(*) FROM inscripcionActividad WHERE idActividad = ?")) {
+                sentencia.setInt(1, id);
+                try (ResultSet resultados = sentencia.executeQuery()) {
+                    if (resultados.next() && resultados.getInt(1) > 0) {
+                        throw new SQLException("No se puede eliminar una actividad que tiene inscripciones.");
+                    }
+                }
+            }
+        }
+        String consultaSql = "DELETE FROM " + q(modulo.tabla()) + " WHERE " + q(modulo.id()) + " = ?";
+        try (Connection conexion = Conexion.obtener(); PreparedStatement sentencia = conexion.prepareStatement(consultaSql)) {
+            sentencia.setInt(1, id);
+            sentencia.executeUpdate();
         }
     }
 
     public static void cancelarReserva(int idReserva) throws SQLException {
-        try (Connection con = Conexion.obtener();
-             PreparedStatement ps = con.prepareStatement(
+        // Conserva la reserva y cambia su estado para mantener el historial.
+        validarAcceso(RESERVAS);
+        try (Connection conexion = Conexion.obtener();
+             PreparedStatement sentencia = conexion.prepareStatement(
                      "UPDATE reservas SET estadoReserva = 'CANCELADA' WHERE idReserva = ?")) {
-            ps.setInt(1, idReserva);
-            if (ps.executeUpdate() == 0) throw new SQLException("No se encontró la reserva.");
+            sentencia.setInt(1, idReserva);
+            if (sentencia.executeUpdate() == 0) throw new SQLException("No se encontró la reserva.");
+        }
+    }
+
+    private static boolean esLimpieza() {
+        return SesionActual.get() != null && "LIMPIEZA".equals(SesionActual.get().getRol());
+    }
+
+    private static void validarHabitacionDeLimpieza(Connection conexion, int id) throws SQLException {
+        try (PreparedStatement sentencia = conexion.prepareStatement(
+                "SELECT tipo FROM alojamientos WHERE idAlojamiento = ?")) {
+            sentencia.setInt(1, id);
+            try (ResultSet resultados = sentencia.executeQuery()) {
+                if (!resultados.next() || !"Habitación".equals(resultados.getString(1))) {
+                    throw new IllegalArgumentException("El rol Limpieza solo puede actualizar habitaciones.");
+                }
+            }
+        }
+    }
+
+    private static void validarEstadoSinPermiso(Connection conexion, Integer id, Object nuevoEstado) throws SQLException {
+        if (id == null) return;
+        try (PreparedStatement sentencia = conexion.prepareStatement(
+                "SELECT estado FROM alojamientos WHERE idAlojamiento = ?")) {
+            sentencia.setInt(1, id);
+            try (ResultSet resultados = sentencia.executeQuery()) {
+                if (!resultados.next()) throw new IllegalArgumentException("No se encontró la habitación.");
+                if (!java.util.Objects.equals(resultados.getString(1), nuevoEstado)) {
+                    throw new IllegalArgumentException("Solo el rol Limpieza puede cambiar el estado de las habitaciones.");
+                }
+            }
         }
     }
 
     private static Object convertir(Campo campo, String valor) {
+        // Convierte el texto del formulario al tipo que espera JDBC.
         return switch (campo.tipo()) {
             case TEXTO -> {
                 if ("email".equals(campo.columna())) validarEmail(valor);
@@ -381,37 +458,38 @@ public final class GestionDAO {
         };
     }
 
-    private static void validarEmail(String email) {
-        if (email == null || !email.trim().matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")) {
+    private static void validarEmail(String correo) {
+        if (correo == null || !correo.trim().matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")) {
             throw new IllegalArgumentException("Ingresá un email válido.");
         }
     }
 
-    private static void validarReserva(Connection con, Map<String, Object> datos, Integer id) throws SQLException {
+    private static void validarReserva(Connection conexion, Map<String, Object> datos, Integer id) throws SQLException {
+        // Evita fechas invalidas, exceso de ocupantes y cruces con otras reservas.
         LocalDate ingreso = ((Date) datos.get("fechaIngreso")).toLocalDate();
         LocalDate egreso = ((Date) datos.get("fechaEgreso")).toLocalDate();
         if (!egreso.isAfter(ingreso)) throw new IllegalArgumentException("El egreso debe ser posterior al ingreso.");
         int personas = (Integer) datos.get("cantidadPersonas");
         int idAlojamiento = (Integer) datos.get("idAlojamiento");
         BigDecimal precioNoche;
-        try (PreparedStatement ps = con.prepareStatement(
+        try (PreparedStatement sentencia = conexion.prepareStatement(
                 "SELECT capacidad, precioPorNoche FROM alojamientos WHERE idAlojamiento = ? FOR UPDATE")) {
-            ps.setInt(1, idAlojamiento);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (!rs.next()) throw new IllegalArgumentException("El alojamiento seleccionado no existe.");
-                if (personas < 1 || personas > rs.getInt(1)) throw new IllegalArgumentException("La cantidad de personas supera la capacidad del alojamiento.");
-                precioNoche = rs.getBigDecimal(2);
+            sentencia.setInt(1, idAlojamiento);
+            try (ResultSet resultados = sentencia.executeQuery()) {
+                if (!resultados.next()) throw new IllegalArgumentException("El alojamiento seleccionado no existe.");
+                if (personas < 1 || personas > resultados.getInt(1)) throw new IllegalArgumentException("La cantidad de personas supera la capacidad del alojamiento.");
+                precioNoche = resultados.getBigDecimal(2);
             }
         }
-        String sql = "SELECT COUNT(*) FROM reservas WHERE idAlojamiento = ? AND estadoReserva NOT IN ('CANCELADA','CANCELADO') "
+        String consultaSql = "SELECT COUNT(*) FROM reservas WHERE idAlojamiento = ? AND estadoReserva NOT IN ('CANCELADA','CANCELADO') "
                 + "AND fechaIngreso < ? AND fechaEgreso > ?" + (id == null ? "" : " AND idReserva <> ?");
-        try (PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setInt(1, idAlojamiento);
-            ps.setDate(2, Date.valueOf(egreso));
-            ps.setDate(3, Date.valueOf(ingreso));
-            if (id != null) ps.setInt(4, id);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next() && rs.getInt(1) > 0) throw new IllegalArgumentException("Ese alojamiento ya tiene una reserva para parte de esas fechas.");
+        try (PreparedStatement sentencia = conexion.prepareStatement(consultaSql)) {
+            sentencia.setInt(1, idAlojamiento);
+            sentencia.setDate(2, Date.valueOf(egreso));
+            sentencia.setDate(3, Date.valueOf(ingreso));
+            if (id != null) sentencia.setInt(4, id);
+            try (ResultSet resultados = sentencia.executeQuery()) {
+                if (resultados.next() && resultados.getInt(1) > 0) throw new IllegalArgumentException("Ese alojamiento ya tiene una reserva para parte de esas fechas.");
             }
         }
         BigDecimal total = (BigDecimal) datos.get("precioTotal");
@@ -422,22 +500,23 @@ public final class GestionDAO {
         }
     }
 
-    private static void validarCupo(Connection con, Map<String, Object> datos) throws SQLException {
+    private static void validarCupo(Connection conexion, Map<String, Object> datos) throws SQLException {
+        // Bloquea la inscripcion si la actividad esta inactiva o ya no tiene lugares.
         int cupoMax;
-        try (PreparedStatement ps = con.prepareStatement(
+        try (PreparedStatement sentencia = conexion.prepareStatement(
                 "SELECT cupoMax, activa FROM Actividad WHERE idActividad = ? FOR UPDATE")) {
-            ps.setInt(1, (Integer) datos.get("idActividad"));
-            try (ResultSet rs = ps.executeQuery()) {
-                if (!rs.next()) throw new IllegalArgumentException("La actividad seleccionada no existe.");
-                cupoMax = rs.getInt(1);
-                if (!rs.getBoolean(2)) throw new IllegalArgumentException("La actividad no está habilitada para inscripciones.");
+            sentencia.setInt(1, (Integer) datos.get("idActividad"));
+            try (ResultSet resultados = sentencia.executeQuery()) {
+                if (!resultados.next()) throw new IllegalArgumentException("La actividad seleccionada no existe.");
+                cupoMax = resultados.getInt(1);
+                if (!resultados.getBoolean(2)) throw new IllegalArgumentException("La actividad no está habilitada para inscripciones.");
             }
         }
-        try (PreparedStatement ps = con.prepareStatement(
+        try (PreparedStatement sentencia = conexion.prepareStatement(
                 "SELECT COUNT(*) FROM inscripcionActividad WHERE idActividad = ?")) {
-            ps.setInt(1, (Integer) datos.get("idActividad"));
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next() && rs.getInt(1) >= cupoMax) {
+            sentencia.setInt(1, (Integer) datos.get("idActividad"));
+            try (ResultSet resultados = sentencia.executeQuery()) {
+                if (resultados.next() && resultados.getInt(1) >= cupoMax) {
                     throw new IllegalArgumentException("La actividad alcanzó su cupo máximo.");
                 }
             }
@@ -445,6 +524,7 @@ public final class GestionDAO {
     }
 
     private static void validarActividad(Map<String, Object> datos) {
+        // Aplica limites basicos antes de guardar los datos de la actividad.
         if (((Integer) datos.get("cupoMax")) < 1) {
             throw new IllegalArgumentException("El cupo máximo debe ser al menos 1.");
         }
@@ -454,6 +534,7 @@ public final class GestionDAO {
     }
 
     private static String q(String identificador) {
+        // Acepta solo nombres SQL simples antes de agregarlos a una consulta.
         if (!identificador.matches("[\\p{L}_][\\p{L}\\p{N}_]*")) {
             throw new IllegalArgumentException("Identificador SQL no válido.");
         }

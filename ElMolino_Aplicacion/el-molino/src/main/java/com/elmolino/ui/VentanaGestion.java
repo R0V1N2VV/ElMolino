@@ -21,7 +21,6 @@ import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingWorker;
-import javax.swing.Timer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.BorderLayout;
 import java.awt.GridLayout;
@@ -30,13 +29,12 @@ import java.awt.event.WindowEvent;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
-/** Ventana reutilizable de alta, consulta, edición y baja de un módulo. */
+/** Ventana reutilizable para listar y mantener los datos de un modulo. */
 public class VentanaGestion extends JFrame {
 
     private record OpcionEnum(String valor, String etiqueta) {
@@ -49,49 +47,50 @@ public class VentanaGestion extends JFrame {
     private final DefaultTableModel modelo;
     private final JTable tabla;
     private final JLabel estado = new JLabel(" ");
-    private final JButton btnNuevo = new JButton("Nuevo");
-    private final JButton btnEditar = new JButton("Editar");
-    private final JButton btnEliminar = new JButton("Eliminar");
-    private Timer actualizacionAutomatica;
-    private boolean cargando;
+    private final JButton botonNuevo = new JButton("Nuevo");
+    private final JButton botonEditar = new JButton("Editar");
+    private final JButton botonEliminar = new JButton("Eliminar");
 
     public VentanaGestion(VentanaPrincipal principal, Modulo modulo) {
         super("El Molino - " + modulo.titulo());
         this.principal = principal;
         this.modulo = modulo;
+        // Ajusta los botones visibles segun los permisos y las reglas de cada modulo.
         boolean pagosSoloLectura = "pago".equals(modulo.tabla());
-        boolean categoriasSoloLectura = "CategoriaActividad".equals(modulo.tabla());
         boolean soloAltaInscripcion = "inscripcionActividad".equals(modulo.tabla());
         boolean altaUsuarioAdmin = "usuarios".equals(modulo.tabla()) && esAdministrador();
-        // Las altas se realizan desde la web. La app solo permite crear inscripciones
-        // (para evitar inconsistencias) y usuarios administradores.
-        btnNuevo.setVisible(soloAltaInscripcion || altaUsuarioAdmin);
-        if (pagosSoloLectura || categoriasSoloLectura) {
-            btnNuevo.setVisible(false);
-            btnEditar.setVisible(false);
-            btnEliminar.setVisible(false);
+        // Los alojamientos se crean en la web; aqui solo se crean inscripciones y usuarios administradores.
+        botonNuevo.setVisible(soloAltaInscripcion || altaUsuarioAdmin);
+        if (pagosSoloLectura) {
+            botonNuevo.setVisible(false);
+            botonEditar.setVisible(false);
+            botonEliminar.setVisible(false);
         }
         if (soloAltaInscripcion) {
-            btnEditar.setVisible(false);
-            btnEliminar.setVisible(false);
+            botonEditar.setVisible(false);
+            botonEliminar.setVisible(false);
+        }
+        if ("alojamientos".equals(modulo.tabla()) && esLimpieza()) {
+            botonNuevo.setVisible(false);
+            botonEliminar.setVisible(false);
         }
         if ("usuarios".equals(modulo.tabla()) && !esAdministrador()) {
-            btnNuevo.setVisible(false);
-            btnEditar.setVisible(false);
-            btnEliminar.setVisible(false);
+            botonNuevo.setVisible(false);
+            botonEditar.setVisible(false);
+            botonEliminar.setVisible(false);
         }
-        if ("reservas".equals(modulo.tabla())) btnEliminar.setText("Cancelar reserva");
-        if ("Actividad".equals(modulo.tabla())) btnEliminar.setText("Desactivar");
+        if ("reservas".equals(modulo.tabla())) botonEliminar.setText("Cancelar reserva");
         this.visibles = GestionDAO.camposVisibles(modulo);
+        // Define las columnas de la tabla; actividades usa datos calculados adicionales.
         String[] columnas;
         if (esModuloActividades()) {
-            columnas = new String[]{"ID", "Actividad", "Categoría", "Descripción breve", "Horario", "Días", "Momento",
+            columnas = new String[]{"ID", "Actividad", "Descripción breve", "Horario", "Días", "Momento",
                     "Duración", "Sector", "Responsable", "Edad", "Modalidad", "Activa", "Espacio",
                     "Inscriptos / cupo", "Disponibles", "Estado del cupo", "Precio", "Pago"};
         } else {
             columnas = new String[visibles.size() + 1];
             columnas[0] = "ID";
-            for (int i = 0; i < visibles.size(); i++) columnas[i + 1] = visibles.get(i).etiqueta();
+            for (int indice = 0; indice < visibles.size(); indice++) columnas[indice + 1] = visibles.get(indice).etiqueta();
         }
         this.modelo = new DefaultTableModel(columnas, 0) {
             @Override public boolean isCellEditable(int fila, int columna) { return false; }
@@ -99,30 +98,36 @@ public class VentanaGestion extends JFrame {
         this.tabla = new JTable(modelo);
         if (esModuloActividades()) {
             tabla.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
-            int[] anchos = {55, 180, 125, 200, 105, 115, 95, 95, 110, 135, 120, 110, 65, 150, 110, 90, 125, 95, 105};
-            for (int i = 0; i < anchos.length; i++) tabla.getColumnModel().getColumn(i).setPreferredWidth(anchos[i]);
+            int[] anchos = {55, 180, 200, 105, 115, 95, 95, 110, 135, 120, 110, 65, 150, 110, 90, 125, 95, 105};
+            for (int indice = 0; indice < anchos.length; indice++) tabla.getColumnModel().getColumn(indice).setPreferredWidth(anchos[indice]);
         }
 
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setSize(1050, 580);
         setMinimumSize(new java.awt.Dimension(760, 420));
         setLocationRelativeTo(principal);
+        setExtendedState(JFrame.MAXIMIZED_BOTH);
         tabla.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
-        JButton btnVolver = new JButton("← Volver al menú");
-        JButton btnActualizar = new JButton("Actualizar");
-        btnVolver.addActionListener(e -> dispose());
-        btnActualizar.addActionListener(e -> cargar());
-        btnNuevo.addActionListener(e -> mostrarFormulario(null));
-        btnEditar.addActionListener(e -> editarSeleccionado());
-        btnEliminar.addActionListener(e -> eliminarSeleccionado());
+        JButton botonVolver = new JButton("← Salir");
+        botonVolver.setToolTipText("Salir de esta sección y volver al menú principal");
+        botonVolver.setForeground(java.awt.Color.WHITE);
+        botonVolver.setBackground(new java.awt.Color(0x4F7358));
+        botonVolver.setOpaque(true);
+        botonVolver.setContentAreaFilled(true);
+        JButton botonActualizar = new JButton("Actualizar");
+        botonVolver.addActionListener(evento -> dispose());
+        botonActualizar.addActionListener(evento -> cargar());
+        botonNuevo.addActionListener(evento -> mostrarFormulario(null));
+        botonEditar.addActionListener(evento -> editarSeleccionado());
+        botonEliminar.addActionListener(evento -> eliminarSeleccionado());
 
         JPanel herramientas = new JPanel();
-        herramientas.add(btnVolver);
-        herramientas.add(btnNuevo);
-        herramientas.add(btnEditar);
-        herramientas.add(btnEliminar);
-        herramientas.add(btnActualizar);
+        herramientas.add(botonVolver);
+        herramientas.add(botonNuevo);
+        herramientas.add(botonEditar);
+        herramientas.add(botonEliminar);
+        herramientas.add(botonActualizar);
         herramientas.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
         JPanel arriba = new JPanel(new BorderLayout());
         arriba.add(new JLabel("  " + modulo.titulo()), BorderLayout.NORTH);
@@ -136,59 +141,42 @@ public class VentanaGestion extends JFrame {
         add(abajo, BorderLayout.SOUTH);
 
         addWindowListener(new WindowAdapter() {
-            @Override public void windowActivated(WindowEvent e) {
-                if (esModuloSincronizado()) cargar(false);
-            }
-
-            @Override public void windowClosed(WindowEvent e) {
-                if (actualizacionAutomatica != null) actualizacionAutomatica.stop();
+            @Override public void windowClosed(WindowEvent evento) {
                 principal.setVisible(true);
                 principal.toFront();
             }
         });
         cargar();
-        if (esModuloSincronizado()) {
-            actualizacionAutomatica = new Timer(10_000, e -> {
-                if (isShowing()) cargar(false);
-            });
-            actualizacionAutomatica.start();
-        }
     }
 
     private void cargar() {
-        cargar(true);
-    }
-
-    private void cargar(boolean mostrarCarga) {
-        if (cargando) return;
-        cargando = true;
-        if (mostrarCarga) estado.setText("Cargando...");
-        btnNuevo.setEnabled(false);
-        btnEditar.setEnabled(false);
-        btnEliminar.setEnabled(false);
+        // Consulta los datos fuera del hilo grafico y luego actualiza la tabla.
+        estado.setText("Cargando...");
+        botonNuevo.setEnabled(false);
+        botonEditar.setEnabled(false);
+        botonEliminar.setEnabled(false);
         new SwingWorker<List<Object[]>, Void>() {
             @Override protected List<Object[]> doInBackground() throws Exception {
                 return GestionDAO.listar(modulo);
             }
             @Override protected void done() {
-                cargando = false;
-                btnNuevo.setEnabled(btnNuevo.isVisible());
-                btnEditar.setEnabled(btnEditar.isVisible());
-                btnEliminar.setEnabled(btnEliminar.isVisible());
+                botonNuevo.setEnabled(botonNuevo.isVisible());
+                botonEditar.setEnabled(botonEditar.isVisible());
+                botonEliminar.setEnabled(botonEliminar.isVisible());
                 try {
                     List<Object[]> filas = get();
                     modelo.setRowCount(0);
                     for (Object[] fila : filas) modelo.addRow(fila);
-                    String hora = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"));
-                    estado.setText(filas.size() + " registros · sincronizado " + hora);
-                } catch (Exception ex) {
-                    mostrarError("No se pudo cargar " + modulo.titulo().toLowerCase(), ex);
+                    estado.setText(filas.size() + " registros");
+                } catch (Exception excepcion) {
+                    mostrarError("No se pudo cargar " + modulo.titulo().toLowerCase(), excepcion);
                 }
             }
         }.execute();
     }
 
     private void editarSeleccionado() {
+        // Comprueba la fila elegida y prepara sus datos para abrir el formulario.
         int fila = tabla.getSelectedRow();
         if (fila < 0) {
             JOptionPane.showMessageDialog(this, "Seleccioná un registro de la tabla.",
@@ -203,35 +191,37 @@ public class VentanaGestion extends JFrame {
                 return;
             }
         }
-        int idSeleccionado = (int) modelo.getValueAt(fila, 0);
+        int identificadorSeleccionado = (int) modelo.getValueAt(fila, 0);
         if (esModuloActividades()) {
             try {
-                Map<String, Object> valores = GestionDAO.buscarPorId(modulo, idSeleccionado);
+                Map<String, Object> valores = GestionDAO.buscarPorId(modulo, identificadorSeleccionado);
                 if (valores.isEmpty()) {
                     JOptionPane.showMessageDialog(this, "La actividad ya no existe. Actualizá la lista.",
                             "Editar actividad", JOptionPane.INFORMATION_MESSAGE);
                     cargar();
                     return;
                 }
-                mostrarFormulario(new Registro(idSeleccionado, valores));
-            } catch (Exception ex) {
-                mostrarError("No se pudo abrir la actividad", ex);
+                mostrarFormulario(new Registro(identificadorSeleccionado, valores));
+            } catch (Exception excepcion) {
+                mostrarError("No se pudo abrir la actividad", excepcion);
             }
             return;
         }
         Map<String, Object> valores = new LinkedHashMap<>();
-        for (int i = 0; i < visibles.size(); i++) {
-            valores.put(visibles.get(i).columna(), modelo.getValueAt(fila, i + 1));
+        for (int indice = 0; indice < visibles.size(); indice++) {
+            valores.put(visibles.get(indice).columna(), modelo.getValueAt(fila, indice + 1));
         }
         mostrarFormulario(new Registro((int) modelo.getValueAt(fila, 0), valores));
     }
 
     private void mostrarFormulario(Registro original) {
+        // Crea un formulario dinamico a partir de los campos definidos en el modulo.
         if ("usuarios".equals(modulo.tabla()) && !esAdministrador()) {
             JOptionPane.showMessageDialog(this, "Solo un administrador puede gestionar usuarios.",
                     "Acción no permitida", JOptionPane.WARNING_MESSAGE);
             return;
         }
+        if (esLimpieza() && (!"alojamientos".equals(modulo.tabla()) || original == null)) return;
         if (original == null && !"inscripcionActividad".equals(modulo.tabla())
                 && !("usuarios".equals(modulo.tabla()) && esAdministrador())) {
             return;
@@ -242,18 +232,27 @@ public class VentanaGestion extends JFrame {
         JPanel formulario = new JPanel(new GridLayout(0, 2, 8, 8));
         formulario.setBorder(BorderFactory.createEmptyBorder(14, 18, 14, 18));
         Map<Campo, java.awt.Component> componentes = new LinkedHashMap<>();
+        List<Campo> camposFormulario = modulo.campos();
+        if (esLimpieza() && "alojamientos".equals(modulo.tabla())) {
+            camposFormulario = camposFormulario.stream().filter(campo -> "estado".equals(campo.columna())).toList();
+        }
 
         try {
-            for (Campo campo : modulo.campos()) {
-                formulario.add(new JLabel(campo.etiqueta() + (campo.obligatorio() ? " *" : "")));
+            for (Campo campo : camposFormulario) {
+                JLabel etiqueta = new JLabel(campo.etiqueta() + (campo.obligatorio() ? " *" : ""));
+                boolean estadoBloqueado = "alojamientos".equals(modulo.tabla())
+                        && "estado".equals(campo.columna()) && !esLimpieza();
+                etiqueta.setEnabled(!estadoBloqueado);
+                formulario.add(etiqueta);
                 java.awt.Component componente = crearEditor(campo);
+                componente.setEnabled(!estadoBloqueado);
                 componentes.put(campo, componente);
                 formulario.add(componente);
                 Object valor = original == null ? null : original.valores().get(campo.columna());
                 configurarEditor(campo, componente, valor, original == null);
             }
-        } catch (Exception ex) {
-            mostrarError("No se pudieron cargar las opciones del formulario", ex);
+        } catch (Exception excepcion) {
+            mostrarError("No se pudieron cargar las opciones del formulario", excepcion);
             return;
         }
 
@@ -268,16 +267,16 @@ public class VentanaGestion extends JFrame {
         dialogo.pack();
         dialogo.setMinimumSize(new java.awt.Dimension(540, Math.min(650, dialogo.getHeight())));
         dialogo.setLocationRelativeTo(this);
-        cancelar.addActionListener(e -> dialogo.dispose());
-        guardar.addActionListener(e -> {
+        cancelar.addActionListener(evento -> dialogo.dispose());
+        guardar.addActionListener(evento -> {
             Map<String, String> datos = new LinkedHashMap<>();
             try {
                 for (Map.Entry<Campo, java.awt.Component> entrada : componentes.entrySet()) {
                     datos.put(entrada.getKey().columna(), leerEditor(entrada.getKey(), entrada.getValue()));
                 }
                 validarFormulario(datos, original != null);
-            } catch (RuntimeException ex) {
-                JOptionPane.showMessageDialog(dialogo, ex.getMessage(), "Revisá los datos", JOptionPane.WARNING_MESSAGE);
+            } catch (RuntimeException excepcion) {
+                JOptionPane.showMessageDialog(dialogo, excepcion.getMessage(), "Revisá los datos", JOptionPane.WARNING_MESSAGE);
                 return;
             }
             guardar.setEnabled(false);
@@ -293,15 +292,15 @@ public class VentanaGestion extends JFrame {
                         get();
                         dialogo.dispose();
                         cargar();
-                    } catch (InterruptedException ex) {
+                    } catch (InterruptedException excepcion) {
                         Thread.currentThread().interrupt();
                         guardar.setEnabled(true);
                         cancelar.setEnabled(true);
                         JOptionPane.showMessageDialog(dialogo, "Se interrumpió el guardado.", "Error", JOptionPane.ERROR_MESSAGE);
-                    } catch (ExecutionException ex) {
+                    } catch (ExecutionException excepcion) {
                         guardar.setEnabled(true);
                         cancelar.setEnabled(true);
-                        mostrarError("No se pudo guardar el registro", ex);
+                        mostrarError("No se pudo guardar el registro", excepcion);
                     }
                 }
             }.execute();
@@ -311,72 +310,74 @@ public class VentanaGestion extends JFrame {
     }
 
     private java.awt.Component crearEditor(Campo campo) throws Exception {
+        // Elige un control segun el tipo de campo: texto, clave, lista u opcion.
         if (campo.tipo() == Tipo.CLAVE) return new JPasswordField(20);
         if (esTextoLargo(campo)) {
-            javax.swing.JTextArea area = new javax.swing.JTextArea(4, 20);
-            area.setLineWrap(true);
-            area.setWrapStyleWord(true);
-            return new JScrollPane(area);
+            javax.swing.JTextArea areaTexto = new javax.swing.JTextArea(4, 20);
+            areaTexto.setLineWrap(true);
+            areaTexto.setWrapStyleWord(true);
+            return new JScrollPane(areaTexto);
         }
         if (campo.tipo() == Tipo.OPCION) {
-                JComboBox<Object> combo = new JComboBox<>();
+                JComboBox<Object> selector = new JComboBox<>();
                 if (campo.consultaOpciones() != null) {
-                    if (!campo.obligatorio()) combo.addItem(new Opcion(0, "— Sin asignar —"));
-                    for (Opcion opcion : GestionDAO.opciones(campo.consultaOpciones())) combo.addItem(opcion);
+                    if (!campo.obligatorio()) selector.addItem(new Opcion(0, "— Sin asignar —"));
+                    for (Opcion opcion : GestionDAO.opciones(campo.consultaOpciones())) selector.addItem(opcion);
                 } else {
                     if (!campo.obligatorio() && esEnumActividad(campo.columna())) {
-                        combo.addItem(new OpcionEnum("", "— Sin especificar —"));
+                        selector.addItem(new OpcionEnum("", "— Sin especificar —"));
                     }
                     for (String opcion : campo.opciones()) {
                         if ("rol".equals(campo.columna()) && "ADMINISTRADOR".equals(opcion) && !esAdministrador()) continue;
-                        combo.addItem(esEnumActividad(campo.columna())
+                        selector.addItem(esEnumActividad(campo.columna())
                                 ? new OpcionEnum(opcion, etiquetaEnumActividad(campo.columna(), opcion)) : opcion);
                     }
                 }
-            return combo;
+            return selector;
         }
         if (campo.tipo() == Tipo.BOOLEANO) {
-            JComboBox<Boolean> combo = new JComboBox<>(new Boolean[]{false, true});
-            combo.setRenderer((list, valor, index, seleccionado, foco) ->
+            JComboBox<Boolean> selector = new JComboBox<>(new Boolean[]{false, true});
+            selector.setRenderer((listaDesplegable, valor, indice, seleccionado, foco) ->
                     new JLabel(Boolean.TRUE.equals(valor) ? "Sí" : "No"));
-            return combo;
+            return selector;
         }
         return new JTextField(20);
     }
 
     private void configurarEditor(Campo campo, java.awt.Component componente, Object valor, boolean nuevo) {
+        // Rellena cada control con el valor guardado o con un valor inicial util.
         if (componente instanceof JPasswordField clave) {
             clave.setToolTipText("Mínimo 8 caracteres. Al editar, dejar vacío conserva la clave.");
         } else if (componente instanceof JScrollPane desplazamiento && esTextoLargo(campo)) {
-            javax.swing.JTextArea area = (javax.swing.JTextArea) desplazamiento.getViewport().getView();
-            if (valor != null) area.setText(valor.toString());
-        } else if (componente instanceof JComboBox<?> combo) {
+            javax.swing.JTextArea areaTexto = (javax.swing.JTextArea) desplazamiento.getViewport().getView();
+            if (valor != null) areaTexto.setText(valor.toString());
+        } else if (componente instanceof JComboBox<?> selector) {
             if (campo.tipo() == Tipo.BOOLEANO) {
                 boolean marcado = valor instanceof Boolean valorBooleano
                         ? valorBooleano : valor != null && ((Number) valor).intValue() != 0;
-                combo.setSelectedItem(marcado);
+                selector.setSelectedItem(marcado);
             } else if (campo.consultaOpciones() != null && valor != null) {
-                for (int i = 0; i < combo.getItemCount(); i++) {
-                    Object item = combo.getItemAt(i);
-                    if (item instanceof Opcion opcion && opcion.id() == ((Number) valor).intValue()) {
-                        combo.setSelectedIndex(i);
+                for (int indice = 0; indice < selector.getItemCount(); indice++) {
+                    Object elemento = selector.getItemAt(indice);
+                    if (elemento instanceof Opcion opcion && opcion.id() == ((Number) valor).intValue()) {
+                        selector.setSelectedIndex(indice);
                         break;
                     }
                 }
             } else if (esEnumActividad(campo.columna())) {
                 String codigo = valor == null ? "" : valor.toString();
-                for (int i = 0; i < combo.getItemCount(); i++) {
-                    Object item = combo.getItemAt(i);
-                    if (item instanceof OpcionEnum opcion && opcion.valor().equals(codigo)) {
-                        combo.setSelectedIndex(i);
+                for (int indice = 0; indice < selector.getItemCount(); indice++) {
+                    Object elemento = selector.getItemAt(indice);
+                    if (elemento instanceof OpcionEnum opcion && opcion.valor().equals(codigo)) {
+                        selector.setSelectedIndex(indice);
                         break;
                     }
                 }
             } else if (valor != null) {
-                combo.setSelectedItem(valor.toString());
-            } else if (!campo.obligatorio() && combo.getItemCount() > 0
-                    && combo.getItemAt(0) instanceof Opcion opcion && opcion.id() == 0) {
-                combo.setSelectedIndex(0);
+                selector.setSelectedItem(valor.toString());
+            } else if (!campo.obligatorio() && selector.getItemCount() > 0
+                    && selector.getItemAt(0) instanceof Opcion opcion && opcion.id() == 0) {
+                selector.setSelectedIndex(0);
             }
         } else if (componente instanceof JTextField campoTexto) {
             if (valor != null) campoTexto.setText(valor.toString());
@@ -387,12 +388,13 @@ public class VentanaGestion extends JFrame {
     }
 
     private String leerEditor(Campo campo, java.awt.Component componente) {
+        // Convierte el contenido de cualquier control a texto para validarlo y guardarlo.
         if (componente instanceof JPasswordField clave) return new String(clave.getPassword());
         if (componente instanceof JScrollPane desplazamiento && esTextoLargo(campo)) {
             return ((javax.swing.JTextArea) desplazamiento.getViewport().getView()).getText().trim();
         }
-        if (componente instanceof JComboBox<?> combo) {
-            Object valor = combo.getSelectedItem();
+        if (componente instanceof JComboBox<?> selector) {
+            Object valor = selector.getSelectedItem();
             if (valor == null) return "";
             if (valor instanceof Opcion opcion) {
                 if (opcion.id() == 0 && !campo.obligatorio()) return "";
@@ -405,7 +407,9 @@ public class VentanaGestion extends JFrame {
     }
 
     private void validarFormulario(Map<String, String> datos, boolean edicion) {
+        // Revisa campos obligatorios y formatos antes de llamar al DAO.
         for (Campo campo : modulo.campos()) {
+            if (!datos.containsKey(campo.columna())) continue;
             String valor = datos.getOrDefault(campo.columna(), "").trim();
             if (campo.obligatorio() && valor.isEmpty()) throw new IllegalArgumentException("Completá " + campo.etiqueta() + ".");
             if (valor.isEmpty()) continue;
@@ -430,6 +434,7 @@ public class VentanaGestion extends JFrame {
     }
 
     private void eliminarSeleccionado() {
+        // Una reserva cambia a estado cancelada; las demas filas siguen la regla de borrado.
         int fila = tabla.getSelectedRow();
         if (fila < 0) {
             JOptionPane.showMessageDialog(this, "Seleccioná un registro de la tabla.", "Eliminar", JOptionPane.INFORMATION_MESSAGE);
@@ -451,12 +456,9 @@ public class VentanaGestion extends JFrame {
             }
         }
         boolean esReserva = "reservas".equals(modulo.tabla());
-        boolean esActividad = esModuloActividades();
         String pregunta = esReserva
                 ? "¿Cancelar la reserva seleccionada? Se conservará el registro y sus pagos."
-                : esActividad
-                    ? "¿Desactivar la actividad seleccionada? Dejará de mostrarse en la página."
-                    : "¿Eliminar el registro seleccionado?";
+                : "¿Eliminar el registro seleccionado?";
         if (JOptionPane.showConfirmDialog(this, pregunta, "Confirmar acción",
                 JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE) != JOptionPane.YES_OPTION) return;
         new SwingWorker<Void, Void>() {
@@ -467,15 +469,14 @@ public class VentanaGestion extends JFrame {
             }
             @Override protected void done() {
                 try { get(); cargar(); }
-                catch (Exception ex) { mostrarError(esActividad
-                        ? "No se pudo desactivar la actividad"
-                        : "No se pudo eliminar. Puede tener datos relacionados", ex); }
+                catch (Exception excepcion) { mostrarError("No se pudo eliminar. Puede tener datos relacionados", excepcion); }
             }
         }.execute();
     }
 
-    private void mostrarError(String mensaje, Exception ex) {
-        Throwable causa = ex;
+    private void mostrarError(String mensaje, Exception excepcion) {
+        // Busca la causa mas especifica para mostrar un error entendible.
+        Throwable causa = excepcion;
         while (causa.getCause() != null) causa = causa.getCause();
         String detalle = causa.getMessage() == null ? "" : ":\n" + causa.getMessage();
         estado.setText("Ocurrió un error");
@@ -483,23 +484,25 @@ public class VentanaGestion extends JFrame {
     }
 
     private int indiceVisible(String columna) {
-        for (int i = 0; i < visibles.size(); i++) {
-            if (columna.equals(visibles.get(i).columna())) return i;
+        // Busca la posicion de una columna en la tabla que muestra solo campos visibles.
+        for (int indice = 0; indice < visibles.size(); indice++) {
+            if (columna.equals(visibles.get(indice).columna())) return indice;
         }
         return -1;
     }
 
     private boolean esAdministrador() {
+        // Centraliza la comprobacion del rol de administrador.
         return SesionActual.get() != null && "ADMINISTRADOR".equals(SesionActual.get().getRol());
+    }
+
+    private boolean esLimpieza() {
+        // Centraliza la comprobacion del rol de limpieza.
+        return SesionActual.get() != null && "LIMPIEZA".equals(SesionActual.get().getRol());
     }
 
     private boolean esModuloActividades() {
         return "Actividad".equals(modulo.tabla());
-    }
-
-    private boolean esModuloSincronizado() {
-        return esModuloActividades() || "CategoriaActividad".equals(modulo.tabla())
-                || "inscripcionActividad".equals(modulo.tabla());
     }
 
     private boolean esEnumActividad(String columna) {
@@ -513,6 +516,7 @@ public class VentanaGestion extends JFrame {
     }
 
     private String etiquetaEnumActividad(String columna, String valor) {
+        // Muestra etiquetas en espanol sin cambiar los valores guardados en la base.
         if ("momentoDia".equals(columna)) {
             return switch (valor) {
                 case "manana" -> "Mañana";

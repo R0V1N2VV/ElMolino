@@ -7,35 +7,36 @@ import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.Base64;
 
-/** Utilidades para almacenar y verificar contraseñas sin guardarlas en texto visible. */
+/** Crea y comprueba claves protegidas sin guardarlas como texto visible. */
 public final class SeguridadPassword {
 
     private static final String PREFIJO = "pbkdf2_sha256";
     private static final int ITERACIONES = 120_000;
-    private static final int BITS = 256;
-    private static final int BYTES_SALT = 16;
+    private static final int CANTIDAD_BITS = 256;
+    private static final int CANTIDAD_BYTES_SAL = 16;
     private static final SecureRandom ALEATORIO = new SecureRandom();
 
     private SeguridadPassword() {
     }
 
-    public static String crearHash(char[] password) {
-        byte[] salt = new byte[BYTES_SALT];
-        ALEATORIO.nextBytes(salt);
-        byte[] hash = derivar(password, salt, ITERACIONES);
+    public static String crearHash(char[] contrasena) {
+        // Genera una sal distinta y deriva una huella para guardar en la base.
+        byte[] sal = new byte[CANTIDAD_BYTES_SAL];
+        ALEATORIO.nextBytes(sal);
+        byte[] huella = derivar(contrasena, sal, ITERACIONES);
         return PREFIJO + "$" + ITERACIONES + "$"
-                + Base64.getEncoder().encodeToString(salt) + "$"
-                + Base64.getEncoder().encodeToString(hash);
+                + Base64.getEncoder().encodeToString(sal) + "$"
+                + Base64.getEncoder().encodeToString(huella);
     }
 
-    /** Acepta hashes PBKDF2 y, temporalmente, claves antiguas guardadas en texto plano. */
-    public static boolean verificar(char[] password, String guardada) {
+    /** Comprueba el formato seguro y permite migrar claves antiguas al iniciar sesion. */
+    public static boolean verificar(char[] contrasena, String guardada) {
         if (guardada == null) {
             return false;
         }
         if (!guardada.startsWith(PREFIJO + "$")) {
             return MessageDigest.isEqual(
-                    new String(password).getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                    new String(contrasena).getBytes(java.nio.charset.StandardCharsets.UTF_8),
                     guardada.getBytes(java.nio.charset.StandardCharsets.UTF_8));
         }
 
@@ -48,28 +49,30 @@ public final class SeguridadPassword {
             if (iteraciones < 1 || iteraciones > 2_000_000) {
                 return false;
             }
-            byte[] salt = Base64.getDecoder().decode(partes[2]);
-            byte[] hashGuardado = Base64.getDecoder().decode(partes[3]);
-            byte[] hashIngresado = derivar(password, salt, iteraciones);
-            return MessageDigest.isEqual(hashGuardado, hashIngresado);
-        } catch (IllegalArgumentException ex) {
+            byte[] sal = Base64.getDecoder().decode(partes[2]);
+            byte[] huellaGuardada = Base64.getDecoder().decode(partes[3]);
+            byte[] huellaIngresada = derivar(contrasena, sal, iteraciones);
+            return MessageDigest.isEqual(huellaGuardada, huellaIngresada);
+        } catch (IllegalArgumentException excepcion) {
             return false;
         }
     }
 
     public static boolean necesitaMigracion(String guardada) {
+        // Indica si la clave guardada aun necesita pasar al formato seguro.
         return guardada == null || !guardada.startsWith(PREFIJO + "$");
     }
 
-    private static byte[] derivar(char[] password, byte[] salt, int iteraciones) {
-        PBEKeySpec spec = new PBEKeySpec(password, salt, iteraciones, BITS);
+    private static byte[] derivar(char[] contrasena, byte[] sal, int iteraciones) {
+        // Aplica PBKDF2 con la sal y la cantidad de iteraciones indicada.
+        PBEKeySpec especificacion = new PBEKeySpec(contrasena, sal, iteraciones, CANTIDAD_BITS);
         try {
             return SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
-                    .generateSecret(spec).getEncoded();
-        } catch (GeneralSecurityException ex) {
-            throw new IllegalStateException("No se pudo proteger la contraseña", ex);
+                    .generateSecret(especificacion).getEncoded();
+        } catch (GeneralSecurityException excepcion) {
+            throw new IllegalStateException("No se pudo proteger la contraseña", excepcion);
         } finally {
-            spec.clearPassword();
+            especificacion.clearPassword();
         }
     }
 }

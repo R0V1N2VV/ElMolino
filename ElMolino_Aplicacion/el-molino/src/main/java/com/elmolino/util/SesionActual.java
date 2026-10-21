@@ -3,8 +3,7 @@ package com.elmolino.util;
 import com.elmolino.model.Usuario;
 
 /**
- * Guarda el usuario que inicio sesion para que cualquier pantalla
- * pueda consultar quien esta usando la aplicacion y con que rol.
+ * Guarda al usuario conectado para que las pantallas consulten su identidad y rol.
  */
 public final class SesionActual {
 
@@ -13,8 +12,9 @@ public final class SesionActual {
     private SesionActual() {
     }
 
-    public static void iniciar(Usuario u) {
-        usuario = u;
+    public static void iniciar(Usuario usuarioIniciado) {
+        // Registra la cuenta que acaba de validar sus credenciales.
+        usuario = usuarioIniciado;
     }
 
     public static Usuario get() {
@@ -22,6 +22,7 @@ public final class SesionActual {
     }
 
     public static void cerrar() {
+        // Borra la cuenta activa al salir de la aplicacion.
         usuario = null;
     }
 }

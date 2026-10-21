@@ -5,8 +5,8 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 
 /**
- * Punto unico para abrir conexiones a la base.
- * Cada DAO pide una conexion, la usa dentro de un try-with-resources y se cierra sola.
+ * Centraliza la apertura de conexiones con la base.
+ * Cada DAO usa y cierra la conexion con try-with-resources.
  */
 public final class Conexion {
 
@@ -14,14 +14,15 @@ public final class Conexion {
     }
 
     public static Connection obtener() throws SQLException {
-        String host = Config.get("db.host");
+        // Lee los parametros locales sin guardar credenciales dentro del codigo.
+        String servidor = Config.get("db.host");
         String puerto = Config.get("db.port");
-        // El nombre de la base tiene un espacio, se codifica para que la URL sea valida
-        String base = Config.get("db.name").replace(" ", "%20");
+        // Codifica los espacios del nombre para formar una URL JDBC valida.
+        String nombreBase = Config.get("db.name").replace(" ", "%20");
 
-        String url = "jdbc:mysql://" + host + ":" + puerto + "/" + base
+        String direccion = "jdbc:mysql://" + servidor + ":" + puerto + "/" + nombreBase
                 + "?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC";
 
-        return DriverManager.getConnection(url, Config.get("db.user"), Config.get("db.password"));
+        return DriverManager.getConnection(direccion, Config.get("db.user"), Config.get("db.password"));
     }
 }

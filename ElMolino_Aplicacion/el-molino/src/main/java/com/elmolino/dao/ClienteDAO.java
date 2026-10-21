@@ -1,6 +1,7 @@
 package com.elmolino.dao;
 
 import com.elmolino.model.Cliente;
+import com.elmolino.dao.GestionDAO;
 import com.elmolino.util.Conexion;
 
 import java.sql.Connection;
@@ -12,81 +13,88 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Acceso a la tabla cliente. Todas las consultas usan PreparedStatement.
- * Los demas DAO (AlojamientoDAO, ReservaDAO, etc.) siguen este mismo molde.
+ * Acceso a los datos de clientes. Las consultas usan parametros preparados.
  */
 public class ClienteDAO {
 
     public List<Cliente> listarTodos() throws SQLException {
-        String sql = "SELECT idCliente, dni, nombre, apellido, telefono, email, direccion "
+        // Comprueba el rol y devuelve los clientes ordenados por apellido y nombre.
+        GestionDAO.validarAccesoClientes();
+        String consultaSql = "SELECT idCliente, dni, nombre, apellido, telefono, email, direccion "
                    + "FROM cliente ORDER BY apellido, nombre";
 
         List<Cliente> lista = new ArrayList<>();
-        try (Connection con = Conexion.obtener();
-             PreparedStatement ps = con.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
+        try (Connection conexion = Conexion.obtener();
+             PreparedStatement sentencia = conexion.prepareStatement(consultaSql);
+             ResultSet resultados = sentencia.executeQuery()) {
 
-            while (rs.next()) {
+            while (resultados.next()) {
                 lista.add(new Cliente(
-                        rs.getInt("idCliente"),
-                        rs.getInt("dni"),
-                        rs.getString("nombre"),
-                        rs.getString("apellido"),
-                        rs.getString("telefono"),
-                        rs.getString("email"),
-                        rs.getString("direccion")));
+                        resultados.getInt("idCliente"),
+                        resultados.getInt("dni"),
+                        resultados.getString("nombre"),
+                        resultados.getString("apellido"),
+                        resultados.getString("telefono"),
+                        resultados.getString("email"),
+                        resultados.getString("direccion")));
             }
         }
         return lista;
     }
 
-    /** Inserta un cliente y devuelve el id que le asigno la base. */
-    public int insertar(Cliente c) throws SQLException {
-        String sql = "INSERT INTO cliente (dni, nombre, apellido, telefono, email, direccion) "
+    /** Inserta un cliente y devuelve el identificador generado por la base. */
+    public int insertar(Cliente cliente) throws SQLException {
+        // Los valores se envian por parametros para separar datos y consulta SQL.
+        GestionDAO.validarAccesoClientes();
+        String consultaSql = "INSERT INTO cliente (dni, nombre, apellido, telefono, email, direccion) "
                    + "VALUES (?, ?, ?, ?, ?, ?)";
 
-        try (Connection con = Conexion.obtener();
-             PreparedStatement ps = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+        try (Connection conexion = Conexion.obtener();
+             PreparedStatement sentencia = conexion.prepareStatement(consultaSql, Statement.RETURN_GENERATED_KEYS)) {
 
-            ps.setInt(1, c.getDni());
-            ps.setString(2, c.getNombre());
-            ps.setString(3, c.getApellido());
-            ps.setInt(4, Integer.parseInt(c.getTelefono()));
-            ps.setString(5, c.getEmail());
-            ps.setString(6, c.getDireccion());
-            ps.executeUpdate();
+            sentencia.setInt(1, cliente.getDni());
+            sentencia.setString(2, cliente.getNombre());
+            sentencia.setString(3, cliente.getApellido());
+            sentencia.setInt(4, Integer.parseInt(cliente.getTelefono()));
+            sentencia.setString(5, cliente.getEmail());
+            sentencia.setString(6, cliente.getDireccion());
+            sentencia.executeUpdate();
 
-            try (ResultSet keys = ps.getGeneratedKeys()) {
-                if (keys.next()) {
-                    return keys.getInt(1);
+            try (ResultSet clavesGeneradas = sentencia.getGeneratedKeys()) {
+                if (clavesGeneradas.next()) {
+                    return clavesGeneradas.getInt(1);
                 }
             }
         }
         throw new SQLException("No se obtuvo el id del cliente insertado");
     }
 
-    public boolean actualizar(Cliente c) throws SQLException {
-        String sql = "UPDATE cliente SET dni = ?, nombre = ?, apellido = ?, telefono = ?, "
+    public boolean actualizar(Cliente cliente) throws SQLException {
+        // Cambia los datos del cliente indicado y devuelve si se actualizo una fila.
+        GestionDAO.validarAccesoClientes();
+        String consultaSql = "UPDATE cliente SET dni = ?, nombre = ?, apellido = ?, telefono = ?, "
                    + "email = ?, direccion = ? WHERE idCliente = ?";
-        try (Connection con = Conexion.obtener();
-             PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setInt(1, c.getDni());
-            ps.setString(2, c.getNombre());
-            ps.setString(3, c.getApellido());
-            ps.setInt(4, Integer.parseInt(c.getTelefono()));
-            ps.setString(5, c.getEmail());
-            ps.setString(6, c.getDireccion());
-            ps.setInt(7, c.getIdCliente());
-            return ps.executeUpdate() > 0;
+        try (Connection conexion = Conexion.obtener();
+             PreparedStatement sentencia = conexion.prepareStatement(consultaSql)) {
+            sentencia.setInt(1, cliente.getDni());
+            sentencia.setString(2, cliente.getNombre());
+            sentencia.setString(3, cliente.getApellido());
+            sentencia.setInt(4, Integer.parseInt(cliente.getTelefono()));
+            sentencia.setString(5, cliente.getEmail());
+            sentencia.setString(6, cliente.getDireccion());
+            sentencia.setInt(7, cliente.getIdCliente());
+            return sentencia.executeUpdate() > 0;
         }
     }
 
     public boolean eliminar(int idCliente) throws SQLException {
-        String sql = "DELETE FROM cliente WHERE idCliente = ?";
-        try (Connection con = Conexion.obtener();
-             PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setInt(1, idCliente);
-            return ps.executeUpdate() > 0;
+        // Elimina el cliente solo si la base permite borrar sus datos relacionados.
+        GestionDAO.validarAccesoClientes();
+        String consultaSql = "DELETE FROM cliente WHERE idCliente = ?";
+        try (Connection conexion = Conexion.obtener();
+             PreparedStatement sentencia = conexion.prepareStatement(consultaSql)) {
+            sentencia.setInt(1, idCliente);
+            return sentencia.executeUpdate() > 0;
         }
     }
 }

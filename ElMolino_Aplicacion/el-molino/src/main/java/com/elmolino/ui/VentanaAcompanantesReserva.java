@@ -19,11 +19,11 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.List;
 
-/** Administra la relación entre acompañantes y reservas (tabla puente). */
+/** Administra el vinculo entre reservas y acompanantes. */
 public class VentanaAcompanantesReserva extends JFrame {
 
     private final VentanaPrincipal principal;
-    private final ReservaAcompananteDAO dao = new ReservaAcompananteDAO();
+    private final ReservaAcompananteDAO accesoDatos = new ReservaAcompananteDAO();
     private final DefaultTableModel modelo = new DefaultTableModel(
             new String[]{"ID reserva", "Reserva / cliente", "ID acompañante", "Acompañante"}, 0) {
         @Override public boolean isCellEditable(int fila, int columna) { return false; }
@@ -38,15 +38,22 @@ public class VentanaAcompanantesReserva extends JFrame {
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setSize(900, 500);
         setLocationRelativeTo(principal);
+        setExtendedState(JFrame.MAXIMIZED_BOTH);
 
-        JButton volver = new JButton("← Volver al menú");
+        // La tabla muestra los vinculos y la barra superior permite mantenerlos.
+        JButton volver = new JButton("← Salir");
+        volver.setToolTipText("Salir de esta sección y volver al menú principal");
+        volver.setForeground(java.awt.Color.WHITE);
+        volver.setBackground(new java.awt.Color(0x4F7358));
+        volver.setOpaque(true);
+        volver.setContentAreaFilled(true);
         JButton editar = new JButton("Editar asociación");
         JButton eliminar = new JButton("Quitar asociación");
         JButton actualizar = new JButton("Actualizar");
-        volver.addActionListener(e -> dispose());
-        editar.addActionListener(e -> editar());
-        eliminar.addActionListener(e -> eliminar());
-        actualizar.addActionListener(e -> cargar());
+        volver.addActionListener(evento -> dispose());
+        editar.addActionListener(evento -> editar());
+        eliminar.addActionListener(evento -> eliminar());
+        actualizar.addActionListener(evento -> cargar());
 
         JPanel barra = new JPanel();
         barra.add(volver);
@@ -57,7 +64,7 @@ public class VentanaAcompanantesReserva extends JFrame {
         add(new JScrollPane(tabla), BorderLayout.CENTER);
         add(estado, BorderLayout.SOUTH);
         addWindowListener(new WindowAdapter() {
-            @Override public void windowClosed(WindowEvent e) {
+            @Override public void windowClosed(WindowEvent evento) {
                 principal.setVisible(true);
                 principal.toFront();
             }
@@ -67,32 +74,35 @@ public class VentanaAcompanantesReserva extends JFrame {
     }
 
     private void cargarOpciones() {
+        // Carga las opciones de acompanante para el selector de la pantalla.
         try {
             for (GestionDAO.Opcion opcion : GestionDAO.opciones(
                     "SELECT idAcompañante, CONCAT(apellido, ', ', nombre, ' - DNI ', dni) FROM `acompañante` ORDER BY apellido, nombre")) {
                 acompanantes.addItem(opcion);
             }
-        } catch (Exception ex) {
-            error("No se pudieron cargar reservas y acompañantes", ex);
+        } catch (Exception excepcion) {
+            error("No se pudieron cargar reservas y acompañantes", excepcion);
         }
     }
 
     private void cargar() {
+        // Consulta y muestra todos los vinculos sin bloquear la interfaz.
         estado.setText("Cargando asociaciones...");
         new SwingWorker<List<Vinculo>, Void>() {
-            @Override protected List<Vinculo> doInBackground() throws Exception { return dao.listar(); }
+            @Override protected List<Vinculo> doInBackground() throws Exception { return accesoDatos.listar(); }
             @Override protected void done() {
                 try {
                     List<Vinculo> lista = get();
                     modelo.setRowCount(0);
-                    for (Vinculo v : lista) modelo.addRow(new Object[]{v.idReserva(), v.reserva(), v.idAcompanante(), v.acompanante()});
+                    for (Vinculo vinculo : lista) modelo.addRow(new Object[]{vinculo.idReserva(), vinculo.reserva(), vinculo.idAcompanante(), vinculo.acompanante()});
                     estado.setText(lista.size() + " acompañantes asociados");
-                } catch (Exception ex) { error("No se pudieron cargar las asociaciones", ex); }
+                } catch (Exception excepcion) { error("No se pudieron cargar las asociaciones", excepcion); }
             }
         }.execute();
     }
 
     private void editar() {
+        // Reemplaza el acompanante asociado a la reserva seleccionada.
         int fila = tabla.getSelectedRow();
         if (fila < 0) {
             JOptionPane.showMessageDialog(this, "Seleccioná una asociación de la tabla.",
@@ -106,10 +116,10 @@ public class VentanaAcompanantesReserva extends JFrame {
             for (GestionDAO.Opcion opcion : GestionDAO.opciones(
                     "SELECT idAcompañante, CONCAT(apellido, ', ', nombre, ' - DNI ', dni) FROM `acompañante` ORDER BY apellido, nombre"))
                 acompanantes.addItem(opcion);
-            for (int i = 0; i < acompanantes.getItemCount(); i++)
-                if (acompanantes.getItemAt(i).id() == idAnterior) acompanantes.setSelectedIndex(i);
-        } catch (Exception ex) {
-            error("No se pudieron cargar acompañantes", ex);
+            for (int indice = 0; indice < acompanantes.getItemCount(); indice++)
+                if (acompanantes.getItemAt(indice).id() == idAnterior) acompanantes.setSelectedIndex(indice);
+        } catch (Exception excepcion) {
+            error("No se pudieron cargar acompañantes", excepcion);
             return;
         }
         if (JOptionPane.showConfirmDialog(this, acompanantes, "Editar acompañante asociado",
@@ -118,16 +128,17 @@ public class VentanaAcompanantesReserva extends JFrame {
         if (nuevo == null) return;
         new SwingWorker<Void, Void>() {
             @Override protected Void doInBackground() throws Exception {
-                dao.actualizar(idReserva, idAnterior, nuevo.id()); return null;
+                accesoDatos.actualizar(idReserva, idAnterior, nuevo.id()); return null;
             }
             @Override protected void done() {
                 try { get(); cargar(); }
-                catch (Exception ex) { error("No se pudo editar. Revisá si ya estaba asociado", ex); }
+                catch (Exception excepcion) { error("No se pudo editar. Revisá si ya estaba asociado", excepcion); }
             }
         }.execute();
     }
 
     private void eliminar() {
+        // Pide confirmacion antes de quitar el vinculo elegido.
         int fila = tabla.getSelectedRow();
         if (fila < 0) {
             JOptionPane.showMessageDialog(this, "Seleccioná una asociación de la tabla.",
@@ -138,17 +149,18 @@ public class VentanaAcompanantesReserva extends JFrame {
         int idAcompanante = ((Number) modelo.getValueAt(fila, 2)).intValue();
         new SwingWorker<Void, Void>() {
             @Override protected Void doInBackground() throws Exception {
-                dao.eliminar(idReserva, idAcompanante); return null;
+                accesoDatos.eliminar(idReserva, idAcompanante); return null;
             }
             @Override protected void done() {
                 try { get(); cargar(); }
-                catch (Exception ex) { error("No se pudo quitar la asociación", ex); }
+                catch (Exception excepcion) { error("No se pudo quitar la asociación", excepcion); }
             }
         }.execute();
     }
 
-    private void error(String mensaje, Exception ex) {
-        Throwable causa = ex;
+    private void error(String mensaje, Exception excepcion) {
+        // Muestra la causa del error para ayudar a identificar el problema.
+        Throwable causa = excepcion;
         while (causa.getCause() != null) causa = causa.getCause();
         estado.setText("Ocurrió un error");
         JOptionPane.showMessageDialog(this, mensaje + ":\n" + causa.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
