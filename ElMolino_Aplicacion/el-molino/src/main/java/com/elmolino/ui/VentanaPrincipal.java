@@ -199,6 +199,20 @@ public class VentanaPrincipal extends JFrame {
         // Define las secciones visibles segun el rol que inicio sesion.
         List<Acceso> accesos = new ArrayList<>();
         switch (rol) {
+            case "SUPERADMIN" -> {
+                accesos.add(modulo("Clientes", "Consultar y editar datos de clientes", null));
+                accesos.add(modulo("Alojamientos", "Gestionar alojamientos y estados", GestionDAO.ALOJAMIENTOS));
+                accesos.add(modulo("Reservas", "Gestionar reservas", GestionDAO.RESERVAS));
+                accesos.add(modulo("Pagos", "Consultar pagos registrados", GestionDAO.PAGOS));
+                accesos.add(modulo("Usuarios", "Crear usuarios y asignar cualquier rol", GestionDAO.USUARIOS));
+                accesos.add(modulo("Acompañantes", "Gestionar acompañantes", GestionDAO.ACOMPANANTES));
+                accesos.add(new Acceso("Acompañantes por reserva", "Gestionar acompañantes asociados", () -> abrirAcompanantes()));
+                accesos.add(modulo("Espacios recreativos", "Gestionar espacios recreativos", GestionDAO.ESPACIOS));
+                accesos.add(modulo("Actividades", "Gestionar actividades", GestionDAO.ACTIVIDADES));
+                accesos.add(modulo("Inscripciones", "Gestionar inscripciones", GestionDAO.ACTIVIDAD_INSCRIPTOS));
+                accesos.add(new Acceso("Informes", "Ver resumenes de reservas, alojamientos, actividades y pagos", () -> abrirInformes()));
+                accesos.add(new Acceso("Registro de auditoría", "Consultar quién realizó cambios en el sistema", () -> abrirAuditoria()));
+            }
             case "RECEPCION" -> {
                 accesos.add(modulo("Clientes", "Consultar y editar datos de clientes", null));
                 accesos.add(modulo("Alojamientos", "Consultar y actualizar alojamientos", GestionDAO.ALOJAMIENTOS));
@@ -212,6 +226,7 @@ public class VentanaPrincipal extends JFrame {
                 accesos.add(modulo("Alojamientos", "Consultar y actualizar alojamientos", GestionDAO.ALOJAMIENTOS));
                 accesos.add(modulo("Reservas", "Consultar y actualizar reservas", GestionDAO.RESERVAS));
                 accesos.add(modulo("Pagos", "Consultar pagos registrados", GestionDAO.PAGOS));
+                accesos.add(new Acceso("Registro de auditoría", "Consultar quién realizó cambios en el sistema", () -> abrirAuditoria()));
             }
             case "COORDINADOR" -> {
                 accesos.add(modulo("Espacios recreativos", "Consultar y actualizar espacios", GestionDAO.ESPACIOS));
@@ -223,6 +238,7 @@ public class VentanaPrincipal extends JFrame {
                 accesos.add(modulo("Reservas", "Consultar y actualizar reservas", GestionDAO.RESERVAS));
                 accesos.add(modulo("Pagos", "Consultar pagos registrados", GestionDAO.PAGOS));
                 accesos.add(modulo("Alojamientos", "Consultar y actualizar alojamientos", GestionDAO.ALOJAMIENTOS));
+                accesos.add(new Acceso("Registro de auditoría", "Consultar quién realizó cambios en el sistema", () -> abrirAuditoria()));
             }
             case "LIMPIEZA" -> accesos.add(modulo(
                     "Habitaciones", "Consultar habitaciones y actualizar su estado", GestionDAO.ALOJAMIENTOS));
@@ -231,6 +247,7 @@ public class VentanaPrincipal extends JFrame {
                 accesos.add(modulo("Reservas", "Consultar y actualizar reservas", GestionDAO.RESERVAS));
                 accesos.add(modulo("Pagos", "Consultar pagos registrados", GestionDAO.PAGOS));
                 accesos.add(modulo("Usuarios", "Crear cuentas, asignar roles y gestionar usuarios", GestionDAO.USUARIOS));
+                accesos.add(new Acceso("Registro de auditoría", "Consultar quién realizó cambios en el sistema", () -> abrirAuditoria()));
             }
             default -> { }
         }
@@ -252,8 +269,21 @@ public class VentanaPrincipal extends JFrame {
         new VentanaAcompanantesReserva(this).setVisible(true);
     }
 
+    private void abrirInformes() {
+        // Abre los informes desde el menu general.
+        setVisible(false);
+        new VentanaInformes(this).setVisible(true);
+    }
+
+    private void abrirAuditoria() {
+        // Solo estos roles ven esta seccion; el DAO valida el permiso al consultar.
+        setVisible(false);
+        new VentanaAuditoria(this).setVisible(true);
+    }
+
     private String nombreRol(String rol) {
         return switch (rol) {
+            case "SUPERADMIN" -> "SuperAdmin";
             case "ADMINISTRADOR" -> "Administrador";
             case "RECEPCION" -> "Recepción";
             case "ADMINISTRACION" -> "Administración";

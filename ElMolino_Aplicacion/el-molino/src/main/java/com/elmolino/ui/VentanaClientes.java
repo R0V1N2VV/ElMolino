@@ -59,10 +59,13 @@ public class VentanaClientes extends JFrame {
         botonActualizar.addActionListener(evento -> cargarClientes());
         botonEditar.addActionListener(evento -> editarSeleccionado());
 
-        JPanel herramientas = new JPanel();
-        herramientas.add(botonVolver);
-        herramientas.add(botonEditar);
-        herramientas.add(botonActualizar);
+        JPanel acciones = new JPanel();
+        acciones.add(botonVolver);
+        acciones.add(botonEditar);
+        acciones.add(botonActualizar);
+        JPanel herramientas = new JPanel(new BorderLayout());
+        herramientas.add(acciones, BorderLayout.WEST);
+        herramientas.add(FiltroTabla.crear(tabla), BorderLayout.EAST);
         JPanel arriba = new JPanel(new BorderLayout(8, 8));
         arriba.setBorder(BorderFactory.createEmptyBorder(10, 10, 5, 10));
         arriba.add(new JLabel("Clientes registrados"), BorderLayout.NORTH);

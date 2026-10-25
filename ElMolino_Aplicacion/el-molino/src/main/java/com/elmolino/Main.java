@@ -44,6 +44,9 @@ public class Main {
         // Los botones usan verde medio para mantener buen contraste sin oscurecer la interfaz.
         UIManager.put("Button.background", verdeClaro);
         UIManager.put("Button.foreground", crema);
+        // Mantiene el mismo color al recibir foco, por ejemplo despues de editar un campo.
+        UIManager.put("Button.focusedBackground", verdeClaro);
+        UIManager.put("Button.default.focusedBackground", verdeClaro);
         UIManager.put("Button.hoverBackground", new Color(0x7FA87A));
         UIManager.put("Button.pressedBackground", verde);
         UIManager.put("Button.focusedBorderColor", new Color(0x8FC1CA));

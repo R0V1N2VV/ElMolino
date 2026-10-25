@@ -55,11 +55,14 @@ public class VentanaAcompanantesReserva extends JFrame {
         eliminar.addActionListener(evento -> eliminar());
         actualizar.addActionListener(evento -> cargar());
 
-        JPanel barra = new JPanel();
-        barra.add(volver);
-        barra.add(editar);
-        barra.add(eliminar);
-        barra.add(actualizar);
+        JPanel acciones = new JPanel();
+        acciones.add(volver);
+        acciones.add(editar);
+        acciones.add(eliminar);
+        acciones.add(actualizar);
+        JPanel barra = new JPanel(new BorderLayout());
+        barra.add(acciones, BorderLayout.WEST);
+        barra.add(FiltroTabla.crear(tabla), BorderLayout.EAST);
         add(barra, BorderLayout.NORTH);
         add(new JScrollPane(tabla), BorderLayout.CENTER);
         add(estado, BorderLayout.SOUTH);
@@ -103,12 +106,13 @@ public class VentanaAcompanantesReserva extends JFrame {
 
     private void editar() {
         // Reemplaza el acompanante asociado a la reserva seleccionada.
-        int fila = tabla.getSelectedRow();
-        if (fila < 0) {
+        int filaVista = tabla.getSelectedRow();
+        if (filaVista < 0) {
             JOptionPane.showMessageDialog(this, "Seleccioná una asociación de la tabla.",
                     "Editar asociación", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
+        int fila = tabla.convertRowIndexToModel(filaVista);
         int idReserva = ((Number) modelo.getValueAt(fila, 0)).intValue();
         int idAnterior = ((Number) modelo.getValueAt(fila, 2)).intValue();
         try {
@@ -139,12 +143,13 @@ public class VentanaAcompanantesReserva extends JFrame {
 
     private void eliminar() {
         // Pide confirmacion antes de quitar el vinculo elegido.
-        int fila = tabla.getSelectedRow();
-        if (fila < 0) {
+        int filaVista = tabla.getSelectedRow();
+        if (filaVista < 0) {
             JOptionPane.showMessageDialog(this, "Seleccioná una asociación de la tabla.",
                     "Quitar asociación", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
+        int fila = tabla.convertRowIndexToModel(filaVista);
         int idReserva = ((Number) modelo.getValueAt(fila, 0)).intValue();
         int idAcompanante = ((Number) modelo.getValueAt(fila, 2)).intValue();
         new SwingWorker<Void, Void>() {

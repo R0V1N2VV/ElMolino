@@ -49,24 +49,35 @@ public class ClienteDAO {
         String consultaSql = "INSERT INTO cliente (dni, nombre, apellido, telefono, email, direccion) "
                    + "VALUES (?, ?, ?, ?, ?, ?)";
 
-        try (Connection conexion = Conexion.obtener();
-             PreparedStatement sentencia = conexion.prepareStatement(consultaSql, Statement.RETURN_GENERATED_KEYS)) {
-
-            sentencia.setInt(1, cliente.getDni());
-            sentencia.setString(2, cliente.getNombre());
-            sentencia.setString(3, cliente.getApellido());
-            sentencia.setInt(4, Integer.parseInt(cliente.getTelefono()));
-            sentencia.setString(5, cliente.getEmail());
-            sentencia.setString(6, cliente.getDireccion());
-            sentencia.executeUpdate();
-
-            try (ResultSet clavesGeneradas = sentencia.getGeneratedKeys()) {
-                if (clavesGeneradas.next()) {
-                    return clavesGeneradas.getInt(1);
+        try (Connection conexion = Conexion.obtener()) {
+            conexion.setAutoCommit(false);
+            try {
+                int idCliente;
+                try (PreparedStatement sentencia = conexion.prepareStatement(consultaSql, Statement.RETURN_GENERATED_KEYS)) {
+                    sentencia.setInt(1, cliente.getDni());
+                    sentencia.setString(2, cliente.getNombre());
+                    sentencia.setString(3, cliente.getApellido());
+                    sentencia.setInt(4, Integer.parseInt(cliente.getTelefono()));
+                    sentencia.setString(5, cliente.getEmail());
+                    sentencia.setString(6, cliente.getDireccion());
+                    sentencia.executeUpdate();
+                    try (ResultSet clavesGeneradas = sentencia.getGeneratedKeys()) {
+                        if (!clavesGeneradas.next()) throw new SQLException("No se obtuvo el id del cliente insertado");
+                        idCliente = clavesGeneradas.getInt(1);
+                    }
                 }
+                AuditoriaDAO.registrar(conexion, "CREAR", "Clientes", Integer.toString(idCliente),
+                        java.util.Map.of(), AuditoriaDAO.capturar(conexion, "cliente", "idCliente", idCliente));
+                conexion.commit();
+                return idCliente;
+            } catch (Exception excepcion) {
+                conexion.rollback();
+                if (excepcion instanceof SQLException excepcionSql) throw excepcionSql;
+                throw new SQLException("No se pudo crear el cliente", excepcion);
+            } finally {
+                conexion.setAutoCommit(true);
             }
         }
-        throw new SQLException("No se obtuvo el id del cliente insertado");
     }
 
     public boolean actualizar(Cliente cliente) throws SQLException {
@@ -74,16 +85,34 @@ public class ClienteDAO {
         GestionDAO.validarAccesoClientes();
         String consultaSql = "UPDATE cliente SET dni = ?, nombre = ?, apellido = ?, telefono = ?, "
                    + "email = ?, direccion = ? WHERE idCliente = ?";
-        try (Connection conexion = Conexion.obtener();
-             PreparedStatement sentencia = conexion.prepareStatement(consultaSql)) {
-            sentencia.setInt(1, cliente.getDni());
-            sentencia.setString(2, cliente.getNombre());
-            sentencia.setString(3, cliente.getApellido());
-            sentencia.setInt(4, Integer.parseInt(cliente.getTelefono()));
-            sentencia.setString(5, cliente.getEmail());
-            sentencia.setString(6, cliente.getDireccion());
-            sentencia.setInt(7, cliente.getIdCliente());
-            return sentencia.executeUpdate() > 0;
+        try (Connection conexion = Conexion.obtener()) {
+            conexion.setAutoCommit(false);
+            try {
+                var anterior = AuditoriaDAO.capturar(conexion, "cliente", "idCliente", cliente.getIdCliente());
+                int filas;
+                try (PreparedStatement sentencia = conexion.prepareStatement(consultaSql)) {
+                    sentencia.setInt(1, cliente.getDni());
+                    sentencia.setString(2, cliente.getNombre());
+                    sentencia.setString(3, cliente.getApellido());
+                    sentencia.setInt(4, Integer.parseInt(cliente.getTelefono()));
+                    sentencia.setString(5, cliente.getEmail());
+                    sentencia.setString(6, cliente.getDireccion());
+                    sentencia.setInt(7, cliente.getIdCliente());
+                    filas = sentencia.executeUpdate();
+                }
+                if (filas > 0) {
+                    AuditoriaDAO.registrar(conexion, "EDITAR", "Clientes", Integer.toString(cliente.getIdCliente()),
+                            anterior, AuditoriaDAO.capturar(conexion, "cliente", "idCliente", cliente.getIdCliente()));
+                }
+                conexion.commit();
+                return filas > 0;
+            } catch (Exception excepcion) {
+                conexion.rollback();
+                if (excepcion instanceof SQLException excepcionSql) throw excepcionSql;
+                throw new SQLException("No se pudo actualizar el cliente", excepcion);
+            } finally {
+                conexion.setAutoCommit(true);
+            }
         }
     }
 
@@ -91,10 +120,26 @@ public class ClienteDAO {
         // Elimina el cliente solo si la base permite borrar sus datos relacionados.
         GestionDAO.validarAccesoClientes();
         String consultaSql = "DELETE FROM cliente WHERE idCliente = ?";
-        try (Connection conexion = Conexion.obtener();
-             PreparedStatement sentencia = conexion.prepareStatement(consultaSql)) {
-            sentencia.setInt(1, idCliente);
-            return sentencia.executeUpdate() > 0;
+        try (Connection conexion = Conexion.obtener()) {
+            conexion.setAutoCommit(false);
+            try {
+                var anterior = AuditoriaDAO.capturar(conexion, "cliente", "idCliente", idCliente);
+                int filas;
+                try (PreparedStatement sentencia = conexion.prepareStatement(consultaSql)) {
+                    sentencia.setInt(1, idCliente);
+                    filas = sentencia.executeUpdate();
+                }
+                if (filas > 0) AuditoriaDAO.registrar(conexion, "ELIMINAR", "Clientes",
+                        Integer.toString(idCliente), anterior, java.util.Map.of());
+                conexion.commit();
+                return filas > 0;
+            } catch (Exception excepcion) {
+                conexion.rollback();
+                if (excepcion instanceof SQLException excepcionSql) throw excepcionSql;
+                throw new SQLException("No se pudo eliminar el cliente", excepcion);
+            } finally {
+                conexion.setAutoCommit(true);
+            }
         }
     }
 }

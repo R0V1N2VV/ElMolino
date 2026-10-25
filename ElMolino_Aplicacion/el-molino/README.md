@@ -20,6 +20,12 @@ La aplicación lee `config.properties` desde la carpeta raíz del proyecto al ej
 
 No subas `config.properties` al repositorio: contiene credenciales y ya está excluido en `.gitignore`.
 
+### Habilitar el primer SuperAdmin
+
+No hace falta agregar columnas a `alojamientos`: la aplicación usa el campo `estado` existente. Para que la columna de roles acepte `SUPERADMIN`, debe ser `VARCHAR(32)` o un tipo que incluya ese valor.
+
+Para habilitar el primer SuperAdmin, crea desde la aplicación una cuenta con rol `ADMINISTRADOR`, reemplaza el correo de ejemplo en `sql/promover_superadmin_inicial.sql` y ejecuta ese `UPDATE` en MySQL. Luego inicia sesión con esa cuenta: desde **Usuarios** podrá crear usuarios con los roles disponibles, pero no podrá asignar `SUPERADMIN`.
+
 ## Módulos disponibles
 
 - Clientes: consulta y edición. Las altas se realizan desde la página web.
@@ -28,10 +34,10 @@ No subas `config.properties` al repositorio: contiene credenciales y ya está ex
 - Acompañantes por reserva: edición o eliminación de una asociación existente.
 - Actividades: consulta y edición desde la aplicación. La grilla muestra datos operativos, inscriptos frente al cupo, lugares disponibles y estado; los conteos se calculan desde `inscripcionActividad`. Las altas se realizan desde la página web.
 - Inscripciones: consulta y alta desde la aplicación; comprueba el cupo y no gestiona asistencia.
-- Pagos: solo consulta.
+- Pagos: solo consulta para los roles habituales; SuperAdmin puede gestionarlos.
 - Usuarios: gestión y asignación de roles por el administrador.
 
-El menú muestra los módulos según el rol. Las pantallas de gestión tienen **Volver al menú**. Las relaciones entre módulos usan listas para elegir clientes, alojamientos, espacios, actividades y usuarios existentes.
+El menú muestra los módulos según el rol. `SUPERADMIN` puede acceder a todos los módulos e informes, pero no puede asignar el rol `SUPERADMIN` desde la aplicación. `RECEPCION` puede cambiar el estado de un alojamiento entre `Disponible`, `Reservado` y `Mantenimiento`. `LIMPIEZA` puede ver todos los tipos de alojamiento y cambiar entre `Limpieza` y `Disponible`; no puede modificar alojamientos que estén `Reservados` o en `Mantenimiento`. Las pantallas de gestión tienen **Volver al menú**. Las relaciones entre módulos usan listas para elegir clientes, alojamientos, espacios, actividades y usuarios existentes.
 
 El proyecto debe usar las tablas del esquema MySQL entregado para El Molino. No vuelvas a importar ni ejecutar el volcado completo sobre una base que ya contiene información.
 

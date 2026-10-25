@@ -10,6 +10,7 @@ import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.sql.Time;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -83,7 +84,7 @@ public final class GestionDAO {
             opcion("tipo", "Tipo", List.of("Habitación", "Cabaña", "Departamento")),
             entero("capacidad", "Capacidad"), decimal("precioPorNoche", "Precio por noche"),
             texto("descripcion", "Descripción", false),
-            opcion("estado", "Estado", List.of("Disponible", "Reservado", "Ocupado", "En limpieza", "Mantenimiento"))));
+            opcion("estado", "Estado", List.of("Disponible", "Mantenimiento", "Limpieza", "Reservado"))));
 
     public static final Modulo ESPACIOS = new Modulo("Espacios recreativos", "EspacioRecreativo", "idEspacio", List.of(
             texto("nombre", "Nombre", true), texto("descripcion", "Descripción", true),
@@ -130,7 +131,7 @@ public final class GestionDAO {
     public static final Modulo USUARIOS = new Modulo("Usuarios", "usuarios", "idUsuario", List.of(
             texto("nombre", "Nombre", true), texto("apellido", "Apellido", true),
             new Campo("email", "Email", Tipo.TEXTO, true),
-            opcion("rol", "Rol", List.of("ADMINISTRADOR", "RECEPCION", "COORDINADOR", "GERENCIA", "LIMPIEZA")),
+            opcion("rol", "Rol", List.of("SUPERADMIN", "ADMINISTRADOR", "RECEPCION", "ADMINISTRACION", "COORDINADOR", "GERENCIA", "LIMPIEZA")),
             new Campo("password_hash", "Contraseña (dejar vacía para conservarla)", Tipo.CLAVE, false, false, List.of(), null)));
 
     private GestionDAO() { }
@@ -159,6 +160,8 @@ public final class GestionDAO {
     private static boolean tieneAccesoTabla(String tabla, String rol) {
         // Esta lista tambien protege las operaciones que llegan directo al DAO.
         return switch (rol) {
+            case "SUPERADMIN" -> List.of("cliente", "usuarios", "reservas", "pago", "alojamientos",
+                    "acompañante", "reservaAcompañante", "EspacioRecreativo", "Actividad", "inscripcionActividad").contains(tabla);
             case "ADMINISTRADOR" -> List.of("cliente", "usuarios", "reservas", "pago").contains(tabla);
             case "GERENCIA" -> List.of("cliente", "reservas", "pago", "alojamientos").contains(tabla);
             case "RECEPCION" -> List.of("cliente", "alojamientos", "pago", "EspacioRecreativo").contains(tabla);
@@ -193,9 +196,6 @@ public final class GestionDAO {
         String columnas = visibles.stream().map(campo -> q(campo.columna())).reduce((acumulado, siguiente) -> acumulado + ", " + siguiente).orElse("");
         String consultaSql = "SELECT " + q(modulo.id()) + (columnas.isEmpty() ? "" : ", " + columnas)
                 + " FROM " + q(modulo.tabla());
-        if ("alojamientos".equals(modulo.tabla()) && esLimpieza()) {
-            consultaSql += " WHERE tipo = 'Habitación'";
-        }
         consultaSql += " ORDER BY " + q(modulo.id()) + " DESC";
         List<Object[]> filas = new ArrayList<>();
         try (Connection conexion = Conexion.obtener();
@@ -283,9 +283,6 @@ public final class GestionDAO {
                 .reduce((acumulado, siguiente) -> acumulado + ", " + siguiente).orElse("");
         String consultaSql = "SELECT " + columnas + " FROM " + q(modulo.tabla())
                 + " WHERE " + q(modulo.id()) + " = ?";
-        if ("alojamientos".equals(modulo.tabla()) && esLimpieza()) {
-            consultaSql += " AND tipo = 'Habitación'";
-        }
         try (Connection conexion = Conexion.obtener(); PreparedStatement sentencia = conexion.prepareStatement(consultaSql)) {
             sentencia.setInt(1, id);
             try (ResultSet resultados = sentencia.executeQuery()) {
@@ -305,20 +302,24 @@ public final class GestionDAO {
         // Revisa permisos, convierte datos y guarda una fila nueva o sus cambios.
         validarAcceso(modulo);
         boolean rolLimpieza = esLimpieza();
-        if (rolLimpieza && !"alojamientos".equals(modulo.tabla())) {
-            throw new SQLException("El rol Limpieza solo puede actualizar habitaciones.");
+        boolean rolRecepcion = esRecepcion();
+        boolean gestionAlojamientos = "alojamientos".equals(modulo.tabla());
+        if (rolLimpieza && !gestionAlojamientos) {
+            throw new SQLException("El rol Limpieza solo puede actualizar el estado de limpieza de alojamientos.");
         }
-        if ("alojamientos".equals(modulo.tabla()) && id == null) {
+        if (gestionAlojamientos && id == null && !esSuperAdmin()) {
             throw new SQLException("Los alojamientos se agregan desde la página web.");
         }
         // Una transaccion permite deshacer el guardado si falla una validacion o consulta.
         try (Connection conexion = Conexion.obtener()) {
-            if (rolLimpieza) validarHabitacionDeLimpieza(conexion, id);
             conexion.setAutoCommit(false);
             try {
                 Map<String, Object> datos = new LinkedHashMap<>();
                 for (Campo campo : modulo.campos()) {
                     if (rolLimpieza && !"estado".equals(campo.columna())) continue;
+                    if (rolRecepcion && gestionAlojamientos && !"estado".equals(campo.columna())) continue;
+                    if (gestionAlojamientos && !esSuperAdmin() && !rolLimpieza && !rolRecepcion
+                            && "estado".equals(campo.columna())) continue;
                     String valor = valores.getOrDefault(campo.columna(), "").trim();
                     if (campo.tipo() == Tipo.CLAVE && id != null && valor.isEmpty()) continue;
                     if (campo.tipo() == Tipo.CLAVE && valor.isEmpty()) {
@@ -336,9 +337,10 @@ public final class GestionDAO {
                 if (id == null && "inscripcionActividad".equals(modulo.tabla())) {
                     datos.put("asistencia", false);
                 }
-                if ("alojamientos".equals(modulo.tabla()) && !rolLimpieza) {
-                    validarEstadoSinPermiso(conexion, id, datos.get("estado"));
+                if (gestionAlojamientos && (rolRecepcion || rolLimpieza)) {
+                    validarCambioEstadoAlojamiento(id, (String) datos.get("estado"), rolLimpieza);
                 }
+                if ("usuarios".equals(modulo.tabla())) validarRolUsuario(datos, id);
                 if ("reservas".equals(modulo.tabla())) validarReserva(conexion, datos, id);
                 if ("Actividad".equals(modulo.tabla())) validarActividad(datos);
                 if ("inscripcionActividad".equals(modulo.tabla()) && id == null) validarCupo(conexion, datos);
@@ -353,12 +355,25 @@ public final class GestionDAO {
                 } else {
                     consultaSql = "UPDATE " + q(modulo.tabla()) + " SET " + asignaciones + " WHERE " + q(modulo.id()) + " = ?";
                 }
-                try (PreparedStatement sentencia = conexion.prepareStatement(consultaSql)) {
+                Map<String, Object> datosAnteriores = crear ? Map.of()
+                        : AuditoriaDAO.capturar(conexion, modulo.tabla(), modulo.id(), id);
+                int idGuardado = id == null ? -1 : id;
+                try (PreparedStatement sentencia = conexion.prepareStatement(
+                        consultaSql, crear ? Statement.RETURN_GENERATED_KEYS : Statement.NO_GENERATED_KEYS)) {
                     int indice = 1;
                     for (Object valor : datos.values()) sentencia.setObject(indice++, valor);
                     if (!crear) sentencia.setInt(indice, id);
                     sentencia.executeUpdate();
+                    if (crear) {
+                        try (ResultSet claves = sentencia.getGeneratedKeys()) {
+                            if (claves.next()) idGuardado = claves.getInt(1);
+                        }
+                    }
                 }
+                Map<String, Object> datosNuevos = idGuardado < 0 ? datos
+                        : AuditoriaDAO.capturar(conexion, modulo.tabla(), modulo.id(), idGuardado);
+                AuditoriaDAO.registrar(conexion, crear ? "CREAR" : "EDITAR", modulo.titulo(),
+                        idGuardado < 0 ? null : Integer.toString(idGuardado), datosAnteriores, datosNuevos);
                 conexion.commit();
             } catch (Exception excepcion) {
                 conexion.rollback();
@@ -374,6 +389,20 @@ public final class GestionDAO {
     public static void eliminar(Modulo modulo, int id) throws SQLException {
         // Verifica permisos y relaciones antes de borrar el registro.
         validarAcceso(modulo);
+        if (esRecepcion() && "alojamientos".equals(modulo.tabla())) {
+            throw new SQLException("Recepción no puede eliminar alojamientos.");
+        }
+        if ("usuarios".equals(modulo.tabla()) && !esSuperAdmin()) {
+            try (Connection conexion = Conexion.obtener(); PreparedStatement sentencia = conexion.prepareStatement(
+                    "SELECT rol FROM usuarios WHERE idUsuario = ?")) {
+                sentencia.setInt(1, id);
+                try (ResultSet resultados = sentencia.executeQuery()) {
+                    if (resultados.next() && "SUPERADMIN".equals(resultados.getString(1))) {
+                        throw new SQLException("Solo un SuperAdmin puede eliminar una cuenta SuperAdmin.");
+                    }
+                }
+            }
+        }
         if (esLimpieza() && "alojamientos".equals(modulo.tabla())) {
             throw new SQLException("El rol Limpieza no puede eliminar habitaciones.");
         }
@@ -390,20 +419,50 @@ public final class GestionDAO {
             }
         }
         String consultaSql = "DELETE FROM " + q(modulo.tabla()) + " WHERE " + q(modulo.id()) + " = ?";
-        try (Connection conexion = Conexion.obtener(); PreparedStatement sentencia = conexion.prepareStatement(consultaSql)) {
-            sentencia.setInt(1, id);
-            sentencia.executeUpdate();
+        try (Connection conexion = Conexion.obtener()) {
+            conexion.setAutoCommit(false);
+            try {
+                Map<String, Object> datosAnteriores = AuditoriaDAO.capturar(
+                        conexion, modulo.tabla(), modulo.id(), id);
+                try (PreparedStatement sentencia = conexion.prepareStatement(consultaSql)) {
+                    sentencia.setInt(1, id);
+                    sentencia.executeUpdate();
+                }
+                AuditoriaDAO.registrar(conexion, "ELIMINAR", modulo.titulo(), Integer.toString(id),
+                        datosAnteriores, Map.of());
+                conexion.commit();
+            } catch (Exception excepcion) {
+                conexion.rollback();
+                if (excepcion instanceof SQLException excepcionSql) throw excepcionSql;
+                throw new SQLException("No se pudo eliminar el registro", excepcion);
+            } finally {
+                conexion.setAutoCommit(true);
+            }
         }
     }
 
     public static void cancelarReserva(int idReserva) throws SQLException {
         // Conserva la reserva y cambia su estado para mantener el historial.
         validarAcceso(RESERVAS);
-        try (Connection conexion = Conexion.obtener();
-             PreparedStatement sentencia = conexion.prepareStatement(
-                     "UPDATE reservas SET estadoReserva = 'CANCELADA' WHERE idReserva = ?")) {
-            sentencia.setInt(1, idReserva);
-            if (sentencia.executeUpdate() == 0) throw new SQLException("No se encontró la reserva.");
+        try (Connection conexion = Conexion.obtener()) {
+            conexion.setAutoCommit(false);
+            try {
+                Map<String, Object> anterior = AuditoriaDAO.capturar(conexion, "reservas", "idReserva", idReserva);
+                try (PreparedStatement sentencia = conexion.prepareStatement(
+                        "UPDATE reservas SET estadoReserva = 'CANCELADA' WHERE idReserva = ?")) {
+                    sentencia.setInt(1, idReserva);
+                    if (sentencia.executeUpdate() == 0) throw new SQLException("No se encontró la reserva.");
+                }
+                Map<String, Object> nuevo = AuditoriaDAO.capturar(conexion, "reservas", "idReserva", idReserva);
+                AuditoriaDAO.registrar(conexion, "CANCELAR", "Reservas", Integer.toString(idReserva), anterior, nuevo);
+                conexion.commit();
+            } catch (Exception excepcion) {
+                conexion.rollback();
+                if (excepcion instanceof SQLException excepcionSql) throw excepcionSql;
+                throw new SQLException("No se pudo cancelar la reserva", excepcion);
+            } finally {
+                conexion.setAutoCommit(true);
+            }
         }
     }
 
@@ -411,27 +470,55 @@ public final class GestionDAO {
         return SesionActual.get() != null && "LIMPIEZA".equals(SesionActual.get().getRol());
     }
 
-    private static void validarHabitacionDeLimpieza(Connection conexion, int id) throws SQLException {
-        try (PreparedStatement sentencia = conexion.prepareStatement(
-                "SELECT tipo FROM alojamientos WHERE idAlojamiento = ?")) {
-            sentencia.setInt(1, id);
-            try (ResultSet resultados = sentencia.executeQuery()) {
-                if (!resultados.next() || !"Habitación".equals(resultados.getString(1))) {
-                    throw new IllegalArgumentException("El rol Limpieza solo puede actualizar habitaciones.");
-                }
-            }
+    private static boolean esRecepcion() {
+        return SesionActual.get() != null && "RECEPCION".equals(SesionActual.get().getRol());
+    }
+
+    private static boolean esSuperAdmin() {
+        return SesionActual.get() != null && "SUPERADMIN".equals(SesionActual.get().getRol());
+    }
+
+    private static void validarCambioEstadoAlojamiento(Integer id, String nuevoEstado,
+                                                        boolean rolLimpieza) throws SQLException {
+        if (id == null) throw new SQLException("No se encontró el alojamiento seleccionado.");
+        List<String> estadosPermitidos = rolLimpieza
+                ? List.of("Limpieza", "Disponible")
+                : List.of("Disponible", "Reservado", "Mantenimiento");
+        if (!estadosPermitidos.contains(nuevoEstado)) {
+            throw new SQLException(rolLimpieza
+                    ? "Limpieza solo puede marcar un alojamiento como Limpieza o Disponible."
+                    : "Recepción solo puede elegir Disponible, Reservado o Mantenimiento.");
         }
     }
 
-    private static void validarEstadoSinPermiso(Connection conexion, Integer id, Object nuevoEstado) throws SQLException {
-        if (id == null) return;
-        try (PreparedStatement sentencia = conexion.prepareStatement(
-                "SELECT estado FROM alojamientos WHERE idAlojamiento = ?")) {
-            sentencia.setInt(1, id);
-            try (ResultSet resultados = sentencia.executeQuery()) {
-                if (!resultados.next()) throw new IllegalArgumentException("No se encontró la habitación.");
-                if (!java.util.Objects.equals(resultados.getString(1), nuevoEstado)) {
-                    throw new IllegalArgumentException("Solo el rol Limpieza puede cambiar el estado de las habitaciones.");
+    private static void validarRolUsuario(Map<String, Object> datos, Integer id) throws SQLException {
+        if (SesionActual.get() == null || !List.of("ADMINISTRADOR", "SUPERADMIN").contains(SesionActual.get().getRol())) {
+            throw new SQLException("Solo un administrador puede gestionar usuarios.");
+        }
+        Object rolNuevo = datos.get("rol");
+        if ("SUPERADMIN".equals(rolNuevo)) {
+            boolean yaEsSuperAdmin = false;
+            if (id != null) {
+                try (Connection conexion = Conexion.obtener(); PreparedStatement sentencia = conexion.prepareStatement(
+                        "SELECT rol FROM usuarios WHERE idUsuario = ?")) {
+                    sentencia.setInt(1, id);
+                    try (ResultSet resultados = sentencia.executeQuery()) {
+                        yaEsSuperAdmin = resultados.next() && "SUPERADMIN".equals(resultados.getString(1));
+                    }
+                }
+            }
+            if (!yaEsSuperAdmin) {
+                throw new SQLException("El rol SUPERADMIN solo se asigna directamente en la base de datos.");
+            }
+        }
+        if (id != null && !esSuperAdmin()) {
+            try (Connection conexion = Conexion.obtener(); PreparedStatement sentencia = conexion.prepareStatement(
+                    "SELECT rol FROM usuarios WHERE idUsuario = ?")) {
+                sentencia.setInt(1, id);
+                try (ResultSet resultados = sentencia.executeQuery()) {
+                    if (resultados.next() && "SUPERADMIN".equals(resultados.getString(1))) {
+                        throw new SQLException("Solo un SuperAdmin puede modificar una cuenta SuperAdmin.");
+                    }
                 }
             }
         }

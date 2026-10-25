@@ -8,6 +8,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLIntegrityConstraintViolationException;
+import java.sql.Statement;
 
 public class UsuarioDAO {
 
@@ -43,13 +44,15 @@ public class UsuarioDAO {
         String consultaSql = "INSERT INTO usuarios (nombre, apellido, email, password_hash, rol) "
                    + "VALUES (?, ?, ?, ?, 'RECEPCION')";
 
-        try (Connection conexion = Conexion.obtener();
-             PreparedStatement sentencia = conexion.prepareStatement(consultaSql)) {
+        try (Connection conexion = Conexion.obtener()) {
+            conexion.setAutoCommit(false);
+            try (PreparedStatement sentencia = conexion.prepareStatement(consultaSql, Statement.RETURN_GENERATED_KEYS)) {
             try (PreparedStatement consultaExistente = conexion.prepareStatement(
                     "SELECT 1 FROM usuarios WHERE LOWER(email) = LOWER(?) LIMIT 1")) {
                 consultaExistente.setString(1, correo);
                 try (ResultSet resultados = consultaExistente.executeQuery()) {
                     if (resultados.next()) {
+                        conexion.rollback();
                         return false;
                     }
                 }
@@ -59,7 +62,21 @@ public class UsuarioDAO {
             sentencia.setString(3, correo);
             sentencia.setString(4, hashContrasena);
             sentencia.executeUpdate();
+            try (ResultSet claves = sentencia.getGeneratedKeys()) {
+                if (!claves.next()) throw new SQLException("No se obtuvo el id del usuario creado");
+                int idUsuario = claves.getInt(1);
+                AuditoriaDAO.registrar(conexion, "CREAR", "Usuarios", Integer.toString(idUsuario),
+                        java.util.Map.of(), AuditoriaDAO.capturar(conexion, "usuarios", "idUsuario", idUsuario));
+            }
+            conexion.commit();
             return true;
+            } catch (Exception excepcion) {
+                conexion.rollback();
+                if (excepcion instanceof SQLException excepcionSql) throw excepcionSql;
+                throw new SQLException("No se pudo crear la cuenta", excepcion);
+            } finally {
+                conexion.setAutoCommit(true);
+            }
         } catch (SQLIntegrityConstraintViolationException excepcion) {
             if (excepcion.getErrorCode() == 1062) {
                 return false;

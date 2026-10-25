@@ -24,6 +24,8 @@ import javax.swing.SwingWorker;
 import javax.swing.table.DefaultTableModel;
 import java.awt.BorderLayout;
 import java.awt.GridLayout;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.math.BigDecimal;
@@ -58,15 +60,15 @@ public class VentanaGestion extends JFrame {
         // Ajusta los botones visibles segun los permisos y las reglas de cada modulo.
         boolean pagosSoloLectura = "pago".equals(modulo.tabla());
         boolean soloAltaInscripcion = "inscripcionActividad".equals(modulo.tabla());
-        boolean altaUsuarioAdmin = "usuarios".equals(modulo.tabla()) && esAdministrador();
-        // Los alojamientos se crean en la web; aqui solo se crean inscripciones y usuarios administradores.
-        botonNuevo.setVisible(soloAltaInscripcion || altaUsuarioAdmin);
-        if (pagosSoloLectura) {
+        boolean altaUsuarioAdmin = "usuarios".equals(modulo.tabla()) && puedeGestionarUsuarios();
+        // Los alojamientos se crean en la web, salvo cuando la sesion es SuperAdmin.
+        botonNuevo.setVisible(esSuperAdmin() || soloAltaInscripcion || altaUsuarioAdmin);
+        if (pagosSoloLectura && !esSuperAdmin()) {
             botonNuevo.setVisible(false);
             botonEditar.setVisible(false);
             botonEliminar.setVisible(false);
         }
-        if (soloAltaInscripcion) {
+        if (soloAltaInscripcion && !esSuperAdmin()) {
             botonEditar.setVisible(false);
             botonEliminar.setVisible(false);
         }
@@ -74,7 +76,11 @@ public class VentanaGestion extends JFrame {
             botonNuevo.setVisible(false);
             botonEliminar.setVisible(false);
         }
-        if ("usuarios".equals(modulo.tabla()) && !esAdministrador()) {
+        if ("alojamientos".equals(modulo.tabla()) && esRecepcion()) {
+            botonNuevo.setVisible(false);
+            botonEliminar.setVisible(false);
+        }
+        if ("usuarios".equals(modulo.tabla()) && !puedeGestionarUsuarios()) {
             botonNuevo.setVisible(false);
             botonEditar.setVisible(false);
             botonEliminar.setVisible(false);
@@ -116,18 +122,34 @@ public class VentanaGestion extends JFrame {
         botonVolver.setOpaque(true);
         botonVolver.setContentAreaFilled(true);
         JButton botonActualizar = new JButton("Actualizar");
+        botonEditar.setText("Editar seleccionado");
+        botonEditar.setToolTipText("Seleccioná una fila y abrí el formulario de edición");
         botonVolver.addActionListener(evento -> dispose());
         botonActualizar.addActionListener(evento -> cargar());
         botonNuevo.addActionListener(evento -> mostrarFormulario(null));
         botonEditar.addActionListener(evento -> editarSeleccionado());
         botonEliminar.addActionListener(evento -> eliminarSeleccionado());
+        tabla.addMouseListener(new MouseAdapter() {
+            @Override public void mouseClicked(MouseEvent evento) {
+                if (evento.getClickCount() == 2) {
+                    int fila = tabla.rowAtPoint(evento.getPoint());
+                    if (fila >= 0) {
+                        tabla.setRowSelectionInterval(fila, fila);
+                        editarSeleccionado();
+                    }
+                }
+            }
+        });
 
-        JPanel herramientas = new JPanel();
-        herramientas.add(botonVolver);
-        herramientas.add(botonNuevo);
-        herramientas.add(botonEditar);
-        herramientas.add(botonEliminar);
-        herramientas.add(botonActualizar);
+        JPanel acciones = new JPanel();
+        acciones.add(botonVolver);
+        acciones.add(botonNuevo);
+        acciones.add(botonEditar);
+        acciones.add(botonEliminar);
+        acciones.add(botonActualizar);
+        JPanel herramientas = new JPanel(new BorderLayout());
+        herramientas.add(acciones, BorderLayout.WEST);
+        herramientas.add(FiltroTabla.crear(tabla), BorderLayout.EAST);
         herramientas.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
         JPanel arriba = new JPanel(new BorderLayout());
         arriba.add(new JLabel("  " + modulo.titulo()), BorderLayout.NORTH);
@@ -177,46 +199,39 @@ public class VentanaGestion extends JFrame {
 
     private void editarSeleccionado() {
         // Comprueba la fila elegida y prepara sus datos para abrir el formulario.
-        int fila = tabla.getSelectedRow();
-        if (fila < 0) {
+        int filaVista = tabla.getSelectedRow();
+        if (filaVista < 0) {
             JOptionPane.showMessageDialog(this, "Seleccioná un registro de la tabla.",
                     "Editar", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
-        if ("usuarios".equals(modulo.tabla()) && !esAdministrador()) {
+        int fila = tabla.convertRowIndexToModel(filaVista);
+        if ("usuarios".equals(modulo.tabla())) {
             int columnaRol = 1 + indiceVisible("rol");
-            if (columnaRol > 0 && "ADMINISTRADOR".equals(modelo.getValueAt(fila, columnaRol))) {
-                JOptionPane.showMessageDialog(this, "Solo un administrador puede modificar esa cuenta.",
+            if (columnaRol > 0 && "SUPERADMIN".equals(modelo.getValueAt(fila, columnaRol)) && !esSuperAdmin()) {
+                JOptionPane.showMessageDialog(this, "Solo un SuperAdmin puede modificar esa cuenta.",
                         "Acción no permitida", JOptionPane.WARNING_MESSAGE);
                 return;
             }
         }
-        int identificadorSeleccionado = (int) modelo.getValueAt(fila, 0);
-        if (esModuloActividades()) {
-            try {
-                Map<String, Object> valores = GestionDAO.buscarPorId(modulo, identificadorSeleccionado);
-                if (valores.isEmpty()) {
-                    JOptionPane.showMessageDialog(this, "La actividad ya no existe. Actualizá la lista.",
-                            "Editar actividad", JOptionPane.INFORMATION_MESSAGE);
-                    cargar();
-                    return;
-                }
-                mostrarFormulario(new Registro(identificadorSeleccionado, valores));
-            } catch (Exception excepcion) {
-                mostrarError("No se pudo abrir la actividad", excepcion);
+        int identificadorSeleccionado = ((Number) modelo.getValueAt(fila, 0)).intValue();
+        try {
+            Map<String, Object> valores = GestionDAO.buscarPorId(modulo, identificadorSeleccionado);
+            if (valores.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "El registro ya no existe. Actualizá la lista.",
+                        "Editar", JOptionPane.INFORMATION_MESSAGE);
+                cargar();
+                return;
             }
-            return;
+            mostrarFormulario(new Registro(identificadorSeleccionado, valores));
+        } catch (Exception excepcion) {
+            mostrarError("No se pudo abrir " + modulo.titulo().toLowerCase(), excepcion);
         }
-        Map<String, Object> valores = new LinkedHashMap<>();
-        for (int indice = 0; indice < visibles.size(); indice++) {
-            valores.put(visibles.get(indice).columna(), modelo.getValueAt(fila, indice + 1));
-        }
-        mostrarFormulario(new Registro((int) modelo.getValueAt(fila, 0), valores));
     }
 
     private void mostrarFormulario(Registro original) {
         // Crea un formulario dinamico a partir de los campos definidos en el modulo.
-        if ("usuarios".equals(modulo.tabla()) && !esAdministrador()) {
+        if ("usuarios".equals(modulo.tabla()) && !puedeGestionarUsuarios()) {
             JOptionPane.showMessageDialog(this, "Solo un administrador puede gestionar usuarios.",
                     "Acción no permitida", JOptionPane.WARNING_MESSAGE);
             return;
@@ -233,22 +248,22 @@ public class VentanaGestion extends JFrame {
         formulario.setBorder(BorderFactory.createEmptyBorder(14, 18, 14, 18));
         Map<Campo, java.awt.Component> componentes = new LinkedHashMap<>();
         List<Campo> camposFormulario = modulo.campos();
-        if (esLimpieza() && "alojamientos".equals(modulo.tabla())) {
+        if ((esLimpieza() || esRecepcion()) && "alojamientos".equals(modulo.tabla())) {
             camposFormulario = camposFormulario.stream().filter(campo -> "estado".equals(campo.columna())).toList();
         }
 
         try {
             for (Campo campo : camposFormulario) {
                 JLabel etiqueta = new JLabel(campo.etiqueta() + (campo.obligatorio() ? " *" : ""));
-                boolean estadoBloqueado = "alojamientos".equals(modulo.tabla())
-                        && "estado".equals(campo.columna()) && !esLimpieza();
+                Object valor = original == null ? null : original.valores().get(campo.columna());
+                boolean estadoBloqueado = "alojamientos".equals(modulo.tabla()) && "estado".equals(campo.columna())
+                        && !esSuperAdmin() && !esRecepcion() && !esLimpieza();
                 etiqueta.setEnabled(!estadoBloqueado);
                 formulario.add(etiqueta);
                 java.awt.Component componente = crearEditor(campo);
                 componente.setEnabled(!estadoBloqueado);
                 componentes.put(campo, componente);
                 formulario.add(componente);
-                Object valor = original == null ? null : original.valores().get(campo.columna());
                 configurarEditor(campo, componente, valor, original == null);
             }
         } catch (Exception excepcion) {
@@ -328,7 +343,11 @@ public class VentanaGestion extends JFrame {
                         selector.addItem(new OpcionEnum("", "— Sin especificar —"));
                     }
                     for (String opcion : campo.opciones()) {
-                        if ("rol".equals(campo.columna()) && "ADMINISTRADOR".equals(opcion) && !esAdministrador()) continue;
+                        if ("alojamientos".equals(modulo.tabla()) && "estado".equals(campo.columna())) {
+                            if (esRecepcion() && "Limpieza".equals(opcion)) continue;
+                            if (esLimpieza() && !List.of("Limpieza", "Disponible").contains(opcion)) continue;
+                        }
+                        if ("rol".equals(campo.columna()) && "SUPERADMIN".equals(opcion)) continue;
                         selector.addItem(esEnumActividad(campo.columna())
                                 ? new OpcionEnum(opcion, etiquetaEnumActividad(campo.columna(), opcion)) : opcion);
                     }
@@ -373,6 +392,18 @@ public class VentanaGestion extends JFrame {
                         break;
                     }
                 }
+            } else if ("rol".equals(campo.columna()) && "SUPERADMIN".equals(valor) && esSuperAdmin()) {
+                selector.setSelectedItem("SUPERADMIN");
+            } else if ("alojamientos".equals(modulo.tabla()) && "estado".equals(campo.columna()) && valor != null) {
+                boolean opcionVisible = false;
+                for (int indice = 0; indice < selector.getItemCount(); indice++) {
+                    if (valor.toString().equals(selector.getItemAt(indice))) {
+                        opcionVisible = true;
+                        break;
+                    }
+                }
+                if (opcionVisible) selector.setSelectedItem(valor.toString());
+                else selector.setSelectedIndex(-1);
             } else if (valor != null) {
                 selector.setSelectedItem(valor.toString());
             } else if (!campo.obligatorio() && selector.getItemCount() > 0
@@ -447,10 +478,10 @@ public class VentanaGestion extends JFrame {
                     "Acción no permitida", JOptionPane.WARNING_MESSAGE);
             return;
         }
-        if ("usuarios".equals(modulo.tabla()) && !esAdministrador()) {
+        if ("usuarios".equals(modulo.tabla())) {
             int columnaRol = 1 + indiceVisible("rol");
-            if (columnaRol > 0 && "ADMINISTRADOR".equals(modelo.getValueAt(fila, columnaRol))) {
-                JOptionPane.showMessageDialog(this, "Solo un administrador puede eliminar esa cuenta.",
+            if (columnaRol > 0 && "SUPERADMIN".equals(modelo.getValueAt(fila, columnaRol)) && !esSuperAdmin()) {
+                JOptionPane.showMessageDialog(this, "Solo un SuperAdmin puede eliminar esa cuenta.",
                         "Acción no permitida", JOptionPane.WARNING_MESSAGE);
                 return;
             }
@@ -492,13 +523,26 @@ public class VentanaGestion extends JFrame {
     }
 
     private boolean esAdministrador() {
-        // Centraliza la comprobacion del rol de administrador.
-        return SesionActual.get() != null && "ADMINISTRADOR".equals(SesionActual.get().getRol());
+        // Reconoce tanto al administrador de usuarios como al SuperAdmin.
+        return puedeGestionarUsuarios();
+    }
+
+    private boolean puedeGestionarUsuarios() {
+        return SesionActual.get() != null
+                && List.of("ADMINISTRADOR", "SUPERADMIN").contains(SesionActual.get().getRol());
+    }
+
+    private boolean esSuperAdmin() {
+        return SesionActual.get() != null && "SUPERADMIN".equals(SesionActual.get().getRol());
     }
 
     private boolean esLimpieza() {
         // Centraliza la comprobacion del rol de limpieza.
         return SesionActual.get() != null && "LIMPIEZA".equals(SesionActual.get().getRol());
+    }
+
+    private boolean esRecepcion() {
+        return SesionActual.get() != null && "RECEPCION".equals(SesionActual.get().getRol());
     }
 
     private boolean esModuloActividades() {

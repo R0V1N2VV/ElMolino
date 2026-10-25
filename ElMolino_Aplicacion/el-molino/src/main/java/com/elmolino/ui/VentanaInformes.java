@@ -54,10 +54,10 @@ public class VentanaInformes extends JFrame {
         barra.add(actualizar, BorderLayout.EAST);
 
         JTabbedPane pestañas = new JTabbedPane();
-        pestañas.addTab("Reservas", new JScrollPane(reservas));
-        pestañas.addTab("Alojamientos", new JScrollPane(alojamientos));
-        pestañas.addTab("Actividades", new JScrollPane(actividades));
-        pestañas.addTab("Pagos", new JScrollPane(pagos));
+        pestañas.addTab("Reservas", panelTabla(reservas));
+        pestañas.addTab("Alojamientos", panelTabla(alojamientos));
+        pestañas.addTab("Actividades", panelTabla(actividades));
+        pestañas.addTab("Pagos", panelTabla(pagos));
         add(barra, BorderLayout.NORTH);
         add(pestañas, BorderLayout.CENTER);
         add(estado, BorderLayout.SOUTH);
@@ -75,6 +75,13 @@ public class VentanaInformes extends JFrame {
         return new JTable(new DefaultTableModel() {
             @Override public boolean isCellEditable(int fila, int columna) { return false; }
         });
+    }
+
+    private JPanel panelTabla(JTable tabla) {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.add(FiltroTabla.crear(tabla), BorderLayout.NORTH);
+        panel.add(new JScrollPane(tabla), BorderLayout.CENTER);
+        return panel;
     }
 
     private void cargarInformes() {

@@ -38,10 +38,25 @@ public class ReservaAcompananteDAO {
         // Crea el vinculo con parametros para evitar insertar datos en la consulta.
         GestionDAO.validarAccesoAcompanantesReserva();
         String consultaSql = "INSERT INTO `reservaAcompañante` (idReserva, idAcompañante) VALUES (?, ?)";
-        try (Connection conexion = Conexion.obtener(); PreparedStatement sentencia = conexion.prepareStatement(consultaSql)) {
-            sentencia.setInt(1, idReserva);
-            sentencia.setInt(2, idAcompanante);
-            sentencia.executeUpdate();
+        try (Connection conexion = Conexion.obtener()) {
+            conexion.setAutoCommit(false);
+            try {
+                try (PreparedStatement sentencia = conexion.prepareStatement(consultaSql)) {
+                    sentencia.setInt(1, idReserva);
+                    sentencia.setInt(2, idAcompanante);
+                    sentencia.executeUpdate();
+                }
+                AuditoriaDAO.registrar(conexion, "CREAR", "Acompañantes por reserva",
+                        idReserva + ":" + idAcompanante, java.util.Map.of(),
+                        java.util.Map.of("idReserva", idReserva, "idAcompañante", idAcompanante));
+                conexion.commit();
+            } catch (Exception excepcion) {
+                conexion.rollback();
+                if (excepcion instanceof SQLException excepcionSql) throw excepcionSql;
+                throw new SQLException("No se pudo asociar el acompañante", excepcion);
+            } finally {
+                conexion.setAutoCommit(true);
+            }
         }
     }
 
@@ -49,11 +64,28 @@ public class ReservaAcompananteDAO {
         // Reemplaza el acompanante asociado a esa reserva.
         GestionDAO.validarAccesoAcompanantesReserva();
         String consultaSql = "UPDATE `reservaAcompañante` SET idAcompañante = ? WHERE idReserva = ? AND idAcompañante = ?";
-        try (Connection conexion = Conexion.obtener(); PreparedStatement sentencia = conexion.prepareStatement(consultaSql)) {
-            sentencia.setInt(1, idNuevo);
-            sentencia.setInt(2, idReserva);
-            sentencia.setInt(3, idAnterior);
-            sentencia.executeUpdate();
+        try (Connection conexion = Conexion.obtener()) {
+            conexion.setAutoCommit(false);
+            try {
+                int filas;
+                try (PreparedStatement sentencia = conexion.prepareStatement(consultaSql)) {
+                    sentencia.setInt(1, idNuevo);
+                    sentencia.setInt(2, idReserva);
+                    sentencia.setInt(3, idAnterior);
+                    filas = sentencia.executeUpdate();
+                }
+                if (filas > 0) AuditoriaDAO.registrar(conexion, "EDITAR", "Acompañantes por reserva",
+                        idReserva + ":" + idAnterior,
+                        java.util.Map.of("idReserva", idReserva, "idAcompañante", idAnterior),
+                        java.util.Map.of("idReserva", idReserva, "idAcompañante", idNuevo));
+                conexion.commit();
+            } catch (Exception excepcion) {
+                conexion.rollback();
+                if (excepcion instanceof SQLException excepcionSql) throw excepcionSql;
+                throw new SQLException("No se pudo editar la asociación", excepcion);
+            } finally {
+                conexion.setAutoCommit(true);
+            }
         }
     }
 
@@ -61,10 +93,26 @@ public class ReservaAcompananteDAO {
         // Quita solo el vinculo seleccionado; no borra la reserva ni al acompanante.
         GestionDAO.validarAccesoAcompanantesReserva();
         String consultaSql = "DELETE FROM `reservaAcompañante` WHERE idReserva = ? AND idAcompañante = ?";
-        try (Connection conexion = Conexion.obtener(); PreparedStatement sentencia = conexion.prepareStatement(consultaSql)) {
-            sentencia.setInt(1, idReserva);
-            sentencia.setInt(2, idAcompanante);
-            sentencia.executeUpdate();
+        try (Connection conexion = Conexion.obtener()) {
+            conexion.setAutoCommit(false);
+            try {
+                int filas;
+                try (PreparedStatement sentencia = conexion.prepareStatement(consultaSql)) {
+                    sentencia.setInt(1, idReserva);
+                    sentencia.setInt(2, idAcompanante);
+                    filas = sentencia.executeUpdate();
+                }
+                if (filas > 0) AuditoriaDAO.registrar(conexion, "ELIMINAR", "Acompañantes por reserva",
+                        idReserva + ":" + idAcompanante,
+                        java.util.Map.of("idReserva", idReserva, "idAcompañante", idAcompanante), java.util.Map.of());
+                conexion.commit();
+            } catch (Exception excepcion) {
+                conexion.rollback();
+                if (excepcion instanceof SQLException excepcionSql) throw excepcionSql;
+                throw new SQLException("No se pudo eliminar la asociación", excepcion);
+            } finally {
+                conexion.setAutoCommit(true);
+            }
         }
     }
 }
