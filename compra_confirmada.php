@@ -59,13 +59,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <main class="contenedor contenido-compra">
         <p class="texto-destacado">PEDIDO #<?= (int) $pedido['idPedido'] ?></p>
         <h1>Recibimos tu pedido</h1>
-        <?php if ($errores): ?><div class="mensaje mensaje-error" role="alert"><?= Utilidades::escapar(implode(' ', $errores)) ?></div><?php endif; ?>
-        <div class="mensaje <?= $correoEnviado ? 'mensaje-exito' : 'mensaje-error' ?>" role="status"><?= Utilidades::escapar($mensaje) ?></div>
+        <?php if ($errores): ?><p class="aviso-estadia" role="alert"><?= Utilidades::escapar(implode(' ', $errores)) ?></p><?php endif; ?>
+        <p class="estado-pedido-correo" role="status"><?= Utilidades::escapar($mensaje) ?></p>
         <p>Estado del pedido: <strong><?= Utilidades::escapar($pedido['estadoPedido']) ?></strong> · Estado del pago: <strong><?= Utilidades::escapar($pedido['estadoPago']) ?></strong></p>
         <p>Forma de pago elegida: <strong><?= Utilidades::escapar($pedido['metodoPago']) ?></strong>. No se realizó ningún cobro en línea.</p>
         <section class="resumen-compra">
             <?php foreach ($pedido['lineas'] as $linea): ?>
-                <article class="linea-resumen-compra"><div><h2><?= Utilidades::escapar($linea['alojamientoTipo']) ?> · <?= Utilidades::escapar($linea['alojamientoNumero']) ?></h2><p><?= Utilidades::escapar($linea['fechaIngreso']) ?> al <?= Utilidades::escapar($linea['fechaEgreso']) ?> · <?= (int) $linea['noches'] ?> noches · <?= (int) $linea['cantidadPersonas'] ?> personas</p><p>$<?= number_format((float) $linea['precioPorNoche'], 2, ',', '.') ?> por noche</p><strong>Subtotal: $<?= number_format((float) $linea['subtotal'], 2, ',', '.') ?></strong></div></article>
+                <article class="linea-resumen-compra"><div><h2><?= Utilidades::escapar($linea['alojamientoTipo']) ?></h2><p><?= Utilidades::escapar($linea['fechaIngreso']) ?> al <?= Utilidades::escapar($linea['fechaEgreso']) ?> · <?= (int) $linea['noches'] ?> noches · <?= (int) $linea['cantidadPersonas'] ?> personas</p><p>$<?= number_format((float) $linea['precioPorNoche'], 2, ',', '.') ?> por noche</p><strong>Subtotal: $<?= number_format((float) $linea['subtotal'], 2, ',', '.') ?></strong></div></article>
             <?php endforeach; ?>
             <div class="resumen-carrito-alojamiento"><span>Total</span><strong>$<?= number_format((float) $pedido['total'], 2, ',', '.') ?></strong></div>
         </section>

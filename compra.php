@@ -64,7 +64,7 @@ if (!$usuario) {
         }
     }
 }
-$mensaje = Sesion::tomarMensaje();
+Sesion::tomarMensaje();
 ?>
 <!DOCTYPE html>
 <html lang="es-AR">
@@ -80,8 +80,7 @@ $mensaje = Sesion::tomarMensaje();
     <main class="contenedor contenido-compra">
         <p class="texto-destacado">FINALIZAR COMPRA</p>
         <h1>Resumen del pedido</h1>
-        <?php if ($errores): ?><div class="mensaje mensaje-error" role="alert"><?= Utilidades::escapar(implode(' ', $errores)) ?></div><?php endif; ?>
-        <?php if ($mensaje): ?><div class="mensaje mensaje-<?= Utilidades::escapar($mensaje['tipo']) ?>" role="status"><?= Utilidades::escapar($mensaje['texto']) ?></div><?php endif; ?>
+        <?php if ($errores): ?><p class="aviso-estadia" role="alert"><?= Utilidades::escapar(implode(' ', $errores)) ?></p><?php endif; ?>
         <?php if (!$usuario): ?>
             <section class="bloque-cuenta-compra">
                 <h2>Para confirmar necesitás una cuenta</h2>

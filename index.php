@@ -65,8 +65,8 @@ $cantidadCarrito = is_array($carritoSesion) ? count($carritoSesion) : 0;
 
                 <div class="imagen-portada" aria-label="Instalaciones deportivas de El Molino">
                     <figure class="foto-portada foto-portada-principal">
-                        <img src="imgs/futb.jpg" alt="Vista aérea de las canchas de fútbol de El Molino" width="596" height="335">
-                        <figcaption>Canchas y espacios al aire libre</figcaption>
+                        <img src="imgs/cancha.jpg" alt="Vista aérea de las canchas de fútbol de El Molino" width="596" height="335">
+                        
                     </figure>
                 </div>
             </div>
@@ -123,21 +123,21 @@ $cantidadCarrito = is_array($carritoSesion) ? count($carritoSesion) : 0;
                 <div class="grilla-alojamientos">
                     <article class="tarjeta-alojamiento">
                         <h3>Habitaciones</h3>
-                        <p>Una alternativa práctica para descansar y seguir disfrutando del complejo.</p>
-                        <p class="por-confirmar">Consultá capacidad, precio y fechas disponibles.</p>
-                        <a class="boton boton-secundario boton-alojamiento" href="alojamientos.php">Ver opciones</a>
+                        <p>Opciones dobles, familiares y grupales cerca de todos los espacios.</p>
+                        <p class="por-confirmar">Compará capacidades, servicios, precios y fechas.</p>
+                        <a class="boton boton-secundario boton-alojamiento" href="alojamientos.php?tipo=habitaciones">Ver opciones</a>
                     </article>
                     <article class="tarjeta-alojamiento">
                         <h3>Cabañas</h3>
-                        <p>Un espacio propio para compartir la estadía y volver después de cada actividad.</p>
-                        <p class="por-confirmar">Consultá capacidad, precio y fechas disponibles.</p>
-                        <a class="boton boton-secundario boton-alojamiento" href="alojamientos.php">Ver opciones</a>
+                        <p>Espacios independientes para 2, 4 o 6 personas, con cocina y parrilla.</p>
+                        <p class="por-confirmar">Compará capacidades, servicios, precios y fechas.</p>
+                        <a class="boton boton-secundario boton-alojamiento" href="alojamientos.php?tipo=cabanas">Ver opciones</a>
                     </article>
                     <article class="tarjeta-alojamiento">
-                        <h3>Departamentos</h3>
-                        <p>Una opción para organizar los días con mayor independencia dentro del complejo.</p>
-                        <p class="por-confirmar">Consultá capacidad, precio y fechas disponibles.</p>
-                        <a class="boton boton-secundario boton-alojamiento" href="alojamientos.php">Ver opciones</a>
+                        <h3>Hoteles</h3>
+                        <p>Habitaciones con desayuno, limpieza diaria y acceso a espacios comunes.</p>
+                        <p class="por-confirmar">Compará capacidades, servicios, precios y fechas.</p>
+                        <a class="boton boton-secundario boton-alojamiento" href="alojamientos.php?tipo=hoteles">Ver opciones</a>
                     </article>
                 </div>
 
@@ -168,7 +168,7 @@ $cantidadCarrito = is_array($carritoSesion) ? count($carritoSesion) : 0;
                 <div class="encabezado-seccion two-columns">
                     <div>
                         <p class="texto-destacado">Espacios</p>
-                        <h2>Todo lo necesario, dentro del complejo.</h2>
+                            <h2>Todo lo necesario, dentro del complejo.</h2>
                     </div>
                     <p class="introduccion-seccion">Además de los alojamientos y las actividades, El Molino cuenta con espacios para comer, reunirse y disfrutar del tiempo libre.</p>
                 </div>

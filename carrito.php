@@ -7,7 +7,7 @@ require_once __DIR__ . '/php/Vista.php';
 
 Sesion::iniciar();
 $errores = [];
-$mensaje = Sesion::tomarMensaje();
+Sesion::tomarMensaje();
 $elementos = [];
 $totalCentavos = 0;
 try {
@@ -17,7 +17,6 @@ try {
             $errores[] = 'La sesión del formulario venció. Volvé a intentarlo.';
         } elseif ((string) ($_POST['accion'] ?? '') === 'quitar') {
             $gestor->quitar((string) ($_POST['clave'] ?? ''));
-            Sesion::guardarMensaje('exito', 'El alojamiento se quitó de tu estadía.');
             Utilidades::redirigir('carrito.php');
         }
     }
@@ -43,8 +42,7 @@ $usuario = Sesion::usuario();
     <main class="contenedor contenido-compra">
         <p class="texto-destacado">MI ESTADÍA</p>
         <h1>Tu estadía</h1>
-        <?php if ($errores): ?><div class="mensaje mensaje-error" role="alert"><?= Utilidades::escapar(implode(' ', $errores)) ?></div><?php endif; ?>
-        <?php if ($mensaje): ?><div class="mensaje mensaje-<?= Utilidades::escapar($mensaje['tipo']) ?>" role="status"><?= Utilidades::escapar($mensaje['texto']) ?></div><?php endif; ?>
+        <?php if ($errores): ?><p class="aviso-estadia" role="alert"><?= Utilidades::escapar(implode(' ', $errores)) ?></p><?php endif; ?>
         <?php if (!$elementos): ?>
             <section class="estado-vacio-compra estado-vacio-estadia"><div><h2>Empezá eligiendo un alojamiento</h2><p>Podés consultar las opciones, elegir las fechas y definir cuántas personas se van a hospedar.</p></div><a class="boton boton-principal" href="alojamientos.php">Elegir alojamiento</a></section>
         <?php else: ?>

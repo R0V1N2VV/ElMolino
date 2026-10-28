@@ -10,8 +10,16 @@ $zona = new DateTimeZone('America/Argentina/Buenos_Aires');
 $manana = new DateTimeImmutable('tomorrow', $zona);
 $entrada = (string) ($_GET['entrada'] ?? $manana->format('Y-m-d'));
 $salida = (string) ($_GET['salida'] ?? $manana->modify('+1 day')->format('Y-m-d'));
+$tiposAlojamiento = [
+    'cabanas' => ['nombre' => 'Cabañas', 'descripcion' => 'Espacios independientes para 2, 4 o 6 personas.'],
+    'habitaciones' => ['nombre' => 'Habitaciones', 'descripcion' => 'Opciones dobles, familiares y grupales dentro del complejo.'],
+    'hoteles' => ['nombre' => 'Hoteles', 'descripcion' => 'Habitaciones con servicios diarios y espacios comunes.'],
+];
+$tipoSeleccionado = (string) ($_POST['tipoSeleccionado'] ?? $_GET['tipo'] ?? '');
+if (!isset($tiposAlojamiento[$tipoSeleccionado])) $tipoSeleccionado = '';
 $errores = [];
-$mensaje = Sesion::tomarMensaje();
+$grupoConError = '';
+Sesion::tomarMensaje();
 $alojamientos = [];
 
 try {
@@ -20,14 +28,17 @@ try {
         if (!Sesion::validarCsrf($_POST['token_csrf'] ?? null)) {
             $errores[] = 'La sesión del formulario venció. Volvé a intentarlo.';
         } elseif ((string) ($_POST['accion'] ?? '') === 'agregar') {
+            $tipoReserva = (string) ($_POST['tipoAlojamiento'] ?? '');
+            $capacidadReserva = (int) ($_POST['capacidadAlojamiento'] ?? 0);
+            $grupoConError = $tipoReserva . '-' . $capacidadReserva;
             try {
-                $gestor->agregar(
-                    (int) ($_POST['idAlojamiento'] ?? 0),
+                $gestor->agregarPorTipoCapacidad(
+                    $tipoReserva,
+                    $capacidadReserva,
                     (string) ($_POST['fechaIngreso'] ?? ''),
                     (string) ($_POST['fechaEgreso'] ?? ''),
                     (int) ($_POST['cantidadPersonas'] ?? 0)
                 );
-                Sesion::guardarMensaje('exito', 'La estadía se agregó correctamente.');
                 Utilidades::redirigir('carrito.php');
             } catch (RuntimeException $e) {
                 $errores[] = $e->getMessage();
@@ -36,10 +47,20 @@ try {
             }
         }
     }
-    $alojamientos = $gestor->catalogo();
+    $alojamientos = $gestor->catalogoAgrupado($entrada, $salida);
 } catch (PDOException $e) {
     error_log('No se pudo cargar el catálogo de alojamientos: ' . $e->getMessage());
     $errores[] = 'No se pudieron cargar los alojamientos. Revisá la conexión con la base de datos.';
+}
+$alojamientosVisibles = $tipoSeleccionado === '' ? [] : array_values(array_filter(
+    $alojamientos,
+    static fn(array $alojamiento): bool => (string) $alojamiento['tipoClave'] === $tipoSeleccionado
+));
+if ($grupoConError !== '' && !array_filter(
+    $alojamientosVisibles,
+    static fn(array $alojamiento): bool => (string) $alojamiento['tipoClave'] . '-' . (int) $alojamiento['capacidad'] === $grupoConError
+)) {
+    $grupoConError = '';
 }
 $usuario = Sesion::usuario();
 $cantidadCarrito = isset($gestor) ? $gestor->cantidad() : 0;
@@ -70,43 +91,65 @@ $cantidadCarrito = isset($gestor) ? $gestor->cantidad() : 0;
     <main class="contenedor contenido-compra">
         <section class="portada-alojamientos">
             <p class="texto-destacado">ALOJAMIENTOS</p>
-            <h1>Elegí dónde quedarte</h1>
-            <p class="introduccion-compra">Consultá las opciones disponibles y armá tu estadía con las fechas y la cantidad de personas.</p>
+            <h1>Elegí cómo querés alojarte</h1>
+            <p class="introduccion-compra">Primero elegí el tipo de alojamiento. Después vas a poder comparar capacidades, servicios y fechas.</p>
         </section>
-        <?php if ($errores): ?><div class="mensaje mensaje-error" role="alert"><?= Utilidades::escapar(implode(' ', $errores)) ?></div><?php endif; ?>
-        <?php if ($mensaje): ?><div class="mensaje mensaje-<?= Utilidades::escapar($mensaje['tipo']) ?>" role="status"><?= Utilidades::escapar($mensaje['texto']) ?></div><?php endif; ?>
+        <?php if ($errores && $grupoConError === ''): ?><p class="aviso-estadia" role="alert"><?= Utilidades::escapar(implode(' ', $errores)) ?></p><?php endif; ?>
 
-        <?php if (!$alojamientos): ?>
-            <section class="estado-vacio-compra" id="alojamientos-disponibles"><h2>Todavía no hay alojamientos cargados</h2><p>Cuando haya habitaciones, cabañas o departamentos disponibles, van a aparecer acá.</p></section>
+        <?php if ($tipoSeleccionado === ''): ?>
+            <section class="selector-tipo-alojamiento" aria-labelledby="titulo-tipos-alojamiento">
+                <div class="encabezado-packs"><div><h2 id="titulo-tipos-alojamiento">¿Qué estás buscando?</h2></div><p>Elegí una opción para ver los alojamientos</p></div>
+                <div class="grilla-tipos-alojamiento">
+                    <?php foreach ($tiposAlojamiento as $clave => $tipo): ?>
+                        <a class="tarjeta-tipo-alojamiento" href="alojamientos.php?tipo=<?= rawurlencode($clave) ?>">
+                            <div><h2><?= Utilidades::escapar($tipo['nombre']) ?></h2><p><?= Utilidades::escapar($tipo['descripcion']) ?></p></div>
+                            <span class="accion-tipo-alojamiento">Ver opciones <span aria-hidden="true">→</span></span>
+                        </a>
+                    <?php endforeach; ?>
+                </div>
+            </section>
         <?php else: ?>
+            <nav class="navegacion-tipos-alojamiento" aria-label="Tipos de alojamiento">
+                <a href="alojamientos.php">Todos los tipos</a>
+                <?php foreach ($tiposAlojamiento as $clave => $tipo): ?><a href="alojamientos.php?tipo=<?= rawurlencode($clave) ?>"<?= $tipoSeleccionado === $clave ? ' class="activo" aria-current="page"' : '' ?>><?= Utilidades::escapar($tipo['nombre']) ?></a><?php endforeach; ?>
+            </nav>
             <div class="encabezado-packs" id="alojamientos-disponibles">
-                <div><h2>Opciones disponibles</h2></div>
-                <p><?= count($alojamientos) ?> <?= count($alojamientos) === 1 ? 'opción disponible' : 'opciones disponibles' ?></p>
+                <div><p class="texto-destacado">TIPO DE ALOJAMIENTO</p><h2><?= Utilidades::escapar($tiposAlojamiento[$tipoSeleccionado]['nombre']) ?></h2></div>
+                <p><?= count($alojamientosVisibles) ?> <?= count($alojamientosVisibles) === 1 ? 'opción' : 'opciones' ?></p>
             </div>
-            <div class="grilla-productos-alojamiento">
-                <?php foreach ($alojamientos as $alojamiento): ?>
-                    <?php $disponible = strtolower(trim((string) $alojamiento['estado'])) === 'disponible'; ?>
+            <?php if (!$alojamientosVisibles): ?>
+                <section class="estado-vacio-compra estado-vacio-catalogo"><h2>No hay <?= Utilidades::escapar(strtolower($tiposAlojamiento[$tipoSeleccionado]['nombre'])) ?> disponibles en este momento</h2><p>Podés volver y elegir otro tipo de alojamiento o consultar nuevamente más adelante.</p><a class="boton boton-secundario" href="alojamientos.php">Elegir otro tipo</a></section>
+            <?php else: ?>
+                <div class="grilla-productos-alojamiento">
+                <?php foreach ($alojamientosVisibles as $alojamiento): ?>
+                    <?php $detalle = GestorCarritoAlojamiento::detallesPublicos($alojamiento); ?>
+                    <?php $claveGrupo = (string) $alojamiento['tipoClave'] . '-' . (int) $alojamiento['capacidad']; ?>
                     <article class="producto-alojamiento">
                         <div class="contenido-pack-alojamiento">
-                        <div class="etiquetas-pack"><span class="estado-alojamiento <?= $disponible ? 'estado-disponible' : 'estado-no-disponible' ?>"><?= $disponible ? 'Disponible' : 'No disponible' ?></span></div>
-                        <h2><?= Utilidades::escapar($alojamiento['tipo']) ?> <?= Utilidades::escapar($alojamiento['numero']) ?></h2>
-                        <p class="capacidad-pack">Capacidad: hasta <strong><?= (int) $alojamiento['capacidad'] ?> personas</strong></p>
+                        <h2><?= Utilidades::escapar($detalle['titulo']) ?></h2>
+                        <p class="descripcion-alojamiento"><?= Utilidades::escapar($detalle['descripcion']) ?></p>
                         <p class="precio-alojamiento">$<?= number_format((float) $alojamiento['precioPorNoche'], 2, ',', '.') ?> <span>por noche</span></p>
-                        <?php if ($disponible): ?>
+                        <div class="servicios-alojamiento"><h3>Incluye</h3><ul><?php foreach ($detalle['servicios'] as $servicio): ?><li><?= Utilidades::escapar($servicio) ?></li><?php endforeach; ?></ul></div>
+                        <details class="reserva-alojamiento"<?= $grupoConError === $claveGrupo ? ' open' : '' ?>>
+                            <summary>Reservar</summary>
                             <form method="post" class="formulario-alojamiento">
                                 <input type="hidden" name="token_csrf" value="<?= Utilidades::escapar(Sesion::tokenCsrf()) ?>">
                                 <input type="hidden" name="accion" value="agregar">
-                                <input type="hidden" name="idAlojamiento" value="<?= (int) $alojamiento['idAlojamiento'] ?>">
+                                <input type="hidden" name="tipoAlojamiento" value="<?= Utilidades::escapar($alojamiento['tipoClave']) ?>">
+                                <input type="hidden" name="capacidadAlojamiento" value="<?= (int) $alojamiento['capacidad'] ?>">
+                                <input type="hidden" name="tipoSeleccionado" value="<?= Utilidades::escapar($tipoSeleccionado) ?>">
                                 <label>Ingreso<input type="date" name="fechaIngreso" min="<?= $manana->format('Y-m-d') ?>" value="<?= Utilidades::escapar($entrada) ?>" required></label>
                                 <label>Egreso<input type="date" name="fechaEgreso" min="<?= $manana->modify('+1 day')->format('Y-m-d') ?>" value="<?= Utilidades::escapar($salida) ?>" required></label>
                                 <label>Personas<input type="number" name="cantidadPersonas" min="1" max="<?= (int) $alojamiento['capacidad'] ?>" value="1" required></label>
+                                <?php if ($errores && $grupoConError === $claveGrupo): ?><p class="aviso-estadia aviso-estadia-formulario" role="alert"><?= Utilidades::escapar(implode(' ', $errores)) ?></p><?php endif; ?>
                                 <button class="boton boton-principal" type="submit">Agregar a mi estadía</button>
                             </form>
-                        <?php endif; ?>
+                        </details>
                         </div>
                     </article>
                 <?php endforeach; ?>
-            </div>
+                </div>
+            <?php endif; ?>
         <?php endif; ?>
     </main>
 </body>

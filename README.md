@@ -60,10 +60,24 @@ La página y la aplicación reconocen tanto el rol Java `COORDINADOR` como el ro
 
 Las cuentas nuevas usan el mismo formato de contraseña PBKDF2 en PHP y Java. Las cuentas web anteriores, protegidas con el formato de PHP, se convierten automáticamente al formato compartido la próxima vez que ingresan correctamente en la página; después de ese ingreso también pueden usarse en la app Java.
 
+## Alojamientos y compras
+
+El catálogo público comienza con tres tipos: **Cabañas**, **Habitaciones** y **Hoteles**. Después de elegir uno, muestra una sola opción por capacidad, los servicios incluidos, el precio por noche y un formulario desplegable para seleccionar ingreso, egreso y cantidad de personas. Los números internos de las unidades no se muestran al huésped.
+
+El valor de `alojamientos.estado` se conserva en la base para que la aplicación Java lo consulte y lo actualice. No se muestra como una etiqueta al huésped. La web reconoce `Disponible`, `Reservado`, `En limpieza` y `Fuera de servicio`; las unidades que no están habilitadas se excluyen del catálogo y la disponibilidad por fechas se vuelve a validar antes de reservar.
+
+Agregar una opción a **Mi estadía** no bloquea el alojamiento para las demás personas. El sistema busca automáticamente una unidad física disponible del tipo y capacidad elegidos. Al confirmar el pedido vuelve a buscar y asignar una unidad dentro de una transacción; si la primera dejó de estar libre, usa otra equivalente. Si no queda ninguna para esas fechas, informa que no hay disponibilidad y permite elegir otras fechas u otro tipo. De esta forma, dos personas pueden comparar la misma opción en sus carritos, pero no confirmar la misma unidad en fechas superpuestas.
+
+En una base existente, ejecutá una vez `BD/actualizacion_catalogo_alojamientos.sql` para agregar 5 unidades de cada tipo y capacidad —45 unidades en total—, y `BD/actualizacion_compras_alojamiento.sql` para las tablas de compra. El script puede volver a ejecutarse sin duplicar esas unidades. Los precios iniciales se pueden modificar desde la base o desde la aplicación. En una instalación nueva, el catálogo y las tablas necesarias ya están incluidos en `BD/s27_El_Molino_completa.sql`.
+
 ## Registro e inicio de sesión
 
-1. La base completa (`BD/s27_El_Molino_completa.sql`) ya incluye `registro_pendiente`. Si importás otra base, ejecutá `BD/registro_pendiente.sql` en `s27_El Molino`; también actualiza instalaciones anteriores de esa tabla.
+1. La base completa (`BD/s27_El_Molino_completa.sql`) ya incluye `registro_pendiente` y el soporte para acompañantes. Si la base ya estaba instalada, ejecutá una vez `BD/actualizacion_registro_acompanantes.sql`. Si importás otra base, ejecutá `BD/registro_pendiente.sql` en `s27_El Molino`; también actualiza instalaciones anteriores de esa tabla.
 2. Completá `registro/mail_config.php` con los datos del correo emisor.
 3. Si tu MySQL no usa `root` sin contraseña, definí las variables de entorno `EL_MOLINO_DB_HOST`, `EL_MOLINO_DB_PUERTO`, `EL_MOLINO_DB_NOMBRE`, `EL_MOLINO_DB_USUARIO` y `EL_MOLINO_DB_CONTRASENA`.
 
-El alta ocurre en tres pasos: datos personales, contraseña y verificación por correo. Al confirmar el código, se crean los registros de `cliente` y `usuarios` dentro de una misma transacción.
+El alta ocurre en tres pasos: datos personales y acompañantes, contraseña y verificación por correo. En el primer paso la persona puede registrar hasta ocho acompañantes con nombre, apellido, DNI, edad y vínculo. Al confirmar el código, se crean `cliente`, `usuarios` y todos los acompañantes dentro de una misma transacción; si algo falla no queda un alta incompleta.
+
+Los acompañantes quedan asociados a la cuenta y aparecen automáticamente en la ficha de cada actividad. Allí se puede inscribir solo al titular, solo a uno o más acompañantes, o a todos juntos. Cada persona seleccionada descuenta un lugar del cupo.
+
+La página **Mi cuenta** consulta la misma base y reúne las actividades inscriptas, las personas que participan, las reservas de alojamiento, sus fechas, cantidad de huéspedes y estado. Los números internos de las unidades no se muestran al cliente. Los mensajes de confirmación y error se presentan como texto breve, sin carteles verdes o rojos.
