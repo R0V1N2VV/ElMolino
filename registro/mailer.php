@@ -60,14 +60,13 @@ final class Correo
         $textoLineas = [];
         foreach (($pedido['lineas'] ?? []) as $linea) {
             $tipo = Utilidades::escapar((string) ($linea['alojamientoTipo'] ?? 'Alojamiento'));
-            $numero = Utilidades::escapar((string) ($linea['alojamientoNumero'] ?? ''));
             $entrada = Utilidades::escapar((string) ($linea['fechaIngreso'] ?? ''));
             $salida = Utilidades::escapar((string) ($linea['fechaEgreso'] ?? ''));
             $personas = (int) ($linea['cantidadPersonas'] ?? 0);
             $noches = (int) ($linea['noches'] ?? 0);
             $subtotal = number_format((float) ($linea['subtotal'] ?? 0), 2, ',', '.');
-            $filas .= "<tr><td>{$tipo} · {$numero}</td><td>{$entrada} al {$salida}</td><td>{$personas}</td><td>{$noches}</td><td>$ {$subtotal}</td></tr>";
-            $textoLineas[] = "{$tipo} {$numero}: {$entrada} al {$salida}, {$personas} personas, {$noches} noches, subtotal $ {$subtotal}";
+            $filas .= "<tr><td>{$tipo}</td><td>{$entrada} al {$salida}</td><td>{$personas}</td><td>{$noches}</td><td>$ {$subtotal}</td></tr>";
+            $textoLineas[] = "{$tipo}: {$entrada} al {$salida}, {$personas} personas, {$noches} noches, subtotal $ {$subtotal}";
         }
 
         $mail = new PHPMailer(true);

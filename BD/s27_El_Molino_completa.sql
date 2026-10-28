@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS `registro_pendiente` (
   `telefono` VARCHAR(20) NOT NULL,
   `email` VARCHAR(100) NOT NULL,
   `direccion` VARCHAR(150) NOT NULL,
+  `acompanantes_json` LONGTEXT DEFAULT NULL,
   `password_hash` VARCHAR(255) NOT NULL,
   `codigo_hash` VARCHAR(255) NOT NULL,
   `vence_en` DATETIME NOT NULL,
@@ -91,6 +92,19 @@ CREATE TABLE IF NOT EXISTS `alojamientos` (
   UNIQUE KEY `uk_alojamiento_numero` (`numero`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+-- Cinco unidades por tipo y capacidad. La aplicación y la web leen esta misma tabla.
+-- Los números son internos y no se muestran al huésped.
+INSERT IGNORE INTO `alojamientos` (`numero`, `tipo`, `capacidad`, `precioPorNoche`, `estado`) VALUES
+('CAB2-01', 'Cabaña', 2, 65000.00, 'Disponible'), ('CAB2-02', 'Cabaña', 2, 65000.00, 'Disponible'), ('CAB2-03', 'Cabaña', 2, 65000.00, 'Disponible'), ('CAB2-04', 'Cabaña', 2, 65000.00, 'Disponible'), ('CAB2-05', 'Cabaña', 2, 65000.00, 'Disponible'),
+('CAB4-01', 'Cabaña', 4, 85000.00, 'Disponible'), ('CAB4-02', 'Cabaña', 4, 85000.00, 'Disponible'), ('CAB4-03', 'Cabaña', 4, 85000.00, 'Disponible'), ('CAB4-04', 'Cabaña', 4, 85000.00, 'Disponible'), ('CAB4-05', 'Cabaña', 4, 85000.00, 'Disponible'),
+('CAB6-01', 'Cabaña', 6, 105000.00, 'Disponible'), ('CAB6-02', 'Cabaña', 6, 105000.00, 'Disponible'), ('CAB6-03', 'Cabaña', 6, 105000.00, 'Disponible'), ('CAB6-04', 'Cabaña', 6, 105000.00, 'Disponible'), ('CAB6-05', 'Cabaña', 6, 105000.00, 'Disponible'),
+('HAB2-01', 'Habitación', 2, 42000.00, 'Disponible'), ('HAB2-02', 'Habitación', 2, 42000.00, 'Disponible'), ('HAB2-03', 'Habitación', 2, 42000.00, 'Disponible'), ('HAB2-04', 'Habitación', 2, 42000.00, 'Disponible'), ('HAB2-05', 'Habitación', 2, 42000.00, 'Disponible'),
+('HAB4-01', 'Habitación', 4, 65000.00, 'Disponible'), ('HAB4-02', 'Habitación', 4, 65000.00, 'Disponible'), ('HAB4-03', 'Habitación', 4, 65000.00, 'Disponible'), ('HAB4-04', 'Habitación', 4, 65000.00, 'Disponible'), ('HAB4-05', 'Habitación', 4, 65000.00, 'Disponible'),
+('HAB6-01', 'Habitación', 6, 82000.00, 'Disponible'), ('HAB6-02', 'Habitación', 6, 82000.00, 'Disponible'), ('HAB6-03', 'Habitación', 6, 82000.00, 'Disponible'), ('HAB6-04', 'Habitación', 6, 82000.00, 'Disponible'), ('HAB6-05', 'Habitación', 6, 82000.00, 'Disponible'),
+('HOT2-01', 'Hotel', 2, 55000.00, 'Disponible'), ('HOT2-02', 'Hotel', 2, 55000.00, 'Disponible'), ('HOT2-03', 'Hotel', 2, 55000.00, 'Disponible'), ('HOT2-04', 'Hotel', 2, 55000.00, 'Disponible'), ('HOT2-05', 'Hotel', 2, 55000.00, 'Disponible'),
+('HOT4-01', 'Hotel', 4, 78000.00, 'Disponible'), ('HOT4-02', 'Hotel', 4, 78000.00, 'Disponible'), ('HOT4-03', 'Hotel', 4, 78000.00, 'Disponible'), ('HOT4-04', 'Hotel', 4, 78000.00, 'Disponible'), ('HOT4-05', 'Hotel', 4, 78000.00, 'Disponible'),
+('HOT6-01', 'Hotel', 6, 95000.00, 'Disponible'), ('HOT6-02', 'Hotel', 6, 95000.00, 'Disponible'), ('HOT6-03', 'Hotel', 6, 95000.00, 'Disponible'), ('HOT6-04', 'Hotel', 6, 95000.00, 'Disponible'), ('HOT6-05', 'Hotel', 6, 95000.00, 'Disponible');
+
 CREATE TABLE IF NOT EXISTS `Actividad` (
   `idActividad` INT NOT NULL AUTO_INCREMENT,
   `nombre` VARCHAR(50) NOT NULL,
@@ -131,6 +145,44 @@ CREATE TABLE IF NOT EXISTS `reservas` (
     ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `fk_reserva_alojamiento`
     FOREIGN KEY (`idAlojamiento`) REFERENCES `alojamientos` (`idAlojamiento`)
+    ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS `pedido_alojamiento` (
+  `idPedido` INT NOT NULL AUTO_INCREMENT,
+  `idCliente` INT NOT NULL,
+  `total` DECIMAL(10,2) NOT NULL,
+  `metodoPago` VARCHAR(50) NOT NULL,
+  `estadoPedido` VARCHAR(30) NOT NULL DEFAULT 'PENDIENTE',
+  `estadoPago` VARCHAR(30) NOT NULL DEFAULT 'PENDIENTE',
+  `creadoEn` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`idPedido`),
+  KEY `idx_pedido_alojamiento_cliente` (`idCliente`),
+  CONSTRAINT `fk_pedido_alojamiento_cliente`
+    FOREIGN KEY (`idCliente`) REFERENCES `cliente` (`idCliente`)
+    ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS `detalle_pedido_alojamiento` (
+  `idDetalle` INT NOT NULL AUTO_INCREMENT,
+  `idPedido` INT NOT NULL,
+  `idReserva` INT NOT NULL,
+  `alojamientoNumero` VARCHAR(10) NOT NULL,
+  `alojamientoTipo` VARCHAR(20) NOT NULL,
+  `fechaIngreso` DATE NOT NULL,
+  `fechaEgreso` DATE NOT NULL,
+  `cantidadPersonas` INT NOT NULL,
+  `noches` INT NOT NULL,
+  `precioPorNoche` DECIMAL(10,2) NOT NULL,
+  `subtotal` DECIMAL(10,2) NOT NULL,
+  PRIMARY KEY (`idDetalle`),
+  UNIQUE KEY `uk_detalle_pedido_reserva` (`idReserva`),
+  KEY `idx_detalle_pedido_alojamiento` (`idPedido`),
+  CONSTRAINT `fk_detalle_pedido_alojamiento_pedido`
+    FOREIGN KEY (`idPedido`) REFERENCES `pedido_alojamiento` (`idPedido`)
+    ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_detalle_pedido_alojamiento_reserva`
+    FOREIGN KEY (`idReserva`) REFERENCES `reservas` (`idReserva`)
     ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 

@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS `registro_pendiente` (
   `telefono` varchar(20) NOT NULL,
   `email` varchar(100) NOT NULL,
   `direccion` varchar(150) NOT NULL,
+  `acompanantes_json` longtext DEFAULT NULL,
   `password_hash` varchar(255) NOT NULL,
   `codigo_hash` varchar(255) NOT NULL,
   `vence_en` datetime NOT NULL,
@@ -23,3 +24,18 @@ CREATE TABLE IF NOT EXISTS `registro_pendiente` (
 ALTER TABLE `registro_pendiente`
   MODIFY COLUMN `dni` varchar(10) NOT NULL,
   MODIFY COLUMN `telefono` varchar(20) NOT NULL;
+
+SET @acompanantes_json_existe := (
+  SELECT COUNT(*) FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'registro_pendiente'
+    AND COLUMN_NAME = 'acompanantes_json'
+);
+SET @agregar_acompanantes_json := IF(
+  @acompanantes_json_existe = 0,
+  'ALTER TABLE registro_pendiente ADD COLUMN acompanantes_json LONGTEXT DEFAULT NULL AFTER direccion',
+  'SELECT 1'
+);
+PREPARE sentencia_acompanantes_json FROM @agregar_acompanantes_json;
+EXECUTE sentencia_acompanantes_json;
+DEALLOCATE PREPARE sentencia_acompanantes_json;

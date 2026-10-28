@@ -87,7 +87,11 @@ final class Vista
             . '<div class="seccion-accesibilidad"><span>Opciones de accesibilidad</span>'
             . '<button class="interruptor-dislexia" type="button" role="switch" aria-checked="false" aria-label="Activar modo dislexia con tipografía Sarakanda">'
             . '<span>Modo dislexia</span><span class="pista-interruptor" aria-hidden="true"><span class="circulo-interruptor"></span></span>'
-            . '</button></div></div></div>';
+            . '</button>'
+            . '<div class="control-idioma"><span>Idioma</span><div class="opciones-idioma" role="group" aria-label="Seleccionar idioma">'
+            . '<button type="button" data-idioma="es" aria-pressed="true">ES</button>'
+            . '<button type="button" data-idioma="en" aria-pressed="false">EN</button>'
+            . '</div></div></div></div></div>';
     }
 
     public static function botonModoEdicion(?array $usuario, string $destino = 'administrar-actividades.php', string $texto = 'Modo edición'): string

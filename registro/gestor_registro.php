@@ -7,12 +7,52 @@ final class Registro
 
     public function validarDatos(array $entrada): array
     {
-        $datos = ['nombre' => trim((string) ($entrada['nombre'] ?? '')), 'apellido' => trim((string) ($entrada['apellido'] ?? '')), 'dni' => preg_replace('/\D+/', '', (string) ($entrada['dni'] ?? '')), 'telefono' => preg_replace('/\D+/', '', (string) ($entrada['telefono'] ?? '')), 'email' => strtolower(trim((string) ($entrada['email'] ?? ''))), 'direccion' => trim((string) ($entrada['direccion'] ?? ''))];
+        $datos = [
+            'nombre' => trim((string) ($entrada['nombre'] ?? '')),
+            'apellido' => trim((string) ($entrada['apellido'] ?? '')),
+            'dni' => preg_replace('/\D+/', '', (string) ($entrada['dni'] ?? '')),
+            'telefono' => preg_replace('/\D+/', '', (string) ($entrada['telefono'] ?? '')),
+            'email' => strtolower(trim((string) ($entrada['email'] ?? ''))),
+            'direccion' => trim((string) ($entrada['direccion'] ?? '')),
+        ];
         $errores = [];
         foreach (['nombre' => 'nombre', 'apellido' => 'apellido', 'dni' => 'DNI', 'telefono' => 'teléfono', 'direccion' => 'domicilio'] as $campo => $etiqueta) if ($datos[$campo] === '') $errores[] = "Completá el campo {$etiqueta}.";
         if (!filter_var($datos['email'], FILTER_VALIDATE_EMAIL)) $errores[] = 'Ingresá un correo electrónico válido.';
         if (strlen($datos['dni']) < 7 || strlen($datos['dni']) > 8 || strlen($datos['telefono']) < 8 || strlen($datos['telefono']) > 15) $errores[] = 'Revisá el DNI y el teléfono ingresados.';
         if (!$errores && $this->datosYaRegistrados($datos)) $errores[] = 'Ya existe una cuenta con esos datos.';
+
+        $entradasAcompanantes = is_array($entrada['acompanantes'] ?? null) ? $entrada['acompanantes'] : [];
+        $acompanantes = [];
+        foreach ($entradasAcompanantes as $acompanante) {
+            if (!is_array($acompanante)) continue;
+            $normalizado = [
+                'nombre' => trim((string) ($acompanante['nombre'] ?? '')),
+                'apellido' => trim((string) ($acompanante['apellido'] ?? '')),
+                'dni' => preg_replace('/\D+/', '', (string) ($acompanante['dni'] ?? '')),
+                'edad' => preg_replace('/\D+/', '', (string) ($acompanante['edad'] ?? '')),
+                'parentesco' => trim((string) ($acompanante['parentesco'] ?? '')),
+            ];
+            if (implode('', $normalizado) === '') continue;
+            $acompanantes[] = $normalizado;
+        }
+
+        if (count($acompanantes) > 8) $errores[] = 'Podés registrar hasta 8 acompañantes.';
+        $dnisUsados = [$datos['dni']];
+        foreach (array_slice($acompanantes, 0, 8) as $indice => $acompanante) {
+            $numero = $indice + 1;
+            if ($acompanante['nombre'] === '' || $acompanante['apellido'] === '' || $acompanante['dni'] === '' || $acompanante['edad'] === '' || $acompanante['parentesco'] === '') {
+                $errores[] = "Completá todos los datos del acompañante {$numero}.";
+                continue;
+            }
+            if (strlen($acompanante['dni']) < 7 || strlen($acompanante['dni']) > 8) $errores[] = "Revisá el DNI del acompañante {$numero}.";
+            if ((int) $acompanante['edad'] < 0 || (int) $acompanante['edad'] > 120) $errores[] = "Revisá la edad del acompañante {$numero}.";
+            if (in_array($acompanante['dni'], $dnisUsados, true)) $errores[] = "El DNI del acompañante {$numero} está repetido.";
+            $dnisUsados[] = $acompanante['dni'];
+        }
+        if (!$errores && $this->acompanantesYaRegistrados($acompanantes)) {
+            $errores[] = 'Uno de los acompañantes ya está registrado en otra cuenta.';
+        }
+        $datos['acompanantes'] = array_slice($acompanantes, 0, 8);
         return ['datos' => $datos, 'errores' => $errores];
     }
 
@@ -23,11 +63,23 @@ final class Registro
         if ($contrasena !== $repetirContrasena) $errores[] = 'Las contraseñas no coinciden.';
         if ($errores) return ['errores' => $errores];
         $codigo = Utilidades::codigoVerificacion();
-        $pendiente = [...$datos, 'password_hash' => SeguridadPassword::crearHash($contrasena), 'codigo_hash' => password_hash($codigo, PASSWORD_DEFAULT)];
+        $acompanantesJson = json_encode($datos['acompanantes'] ?? [], JSON_UNESCAPED_UNICODE);
+        if ($acompanantesJson === false) return ['errores' => ['No se pudieron procesar los datos de los acompañantes. Revisalos e intentá nuevamente.']];
+        $pendiente = [
+            'dni' => $datos['dni'],
+            'nombre' => $datos['nombre'],
+            'apellido' => $datos['apellido'],
+            'telefono' => $datos['telefono'],
+            'email' => $datos['email'],
+            'direccion' => $datos['direccion'],
+            'acompanantes_json' => $acompanantesJson,
+            'password_hash' => SeguridadPassword::crearHash($contrasena),
+            'codigo_hash' => password_hash($codigo, PASSWORD_DEFAULT),
+        ];
         try {
             $this->conexion->beginTransaction();
             $this->conexion->prepare('DELETE FROM registro_pendiente WHERE email = :email OR dni = :dni')->execute(['email' => $datos['email'], 'dni' => $datos['dni']]);
-            $this->conexion->prepare('INSERT INTO registro_pendiente (dni, nombre, apellido, telefono, email, direccion, password_hash, codigo_hash, vence_en) VALUES (:dni, :nombre, :apellido, :telefono, :email, :direccion, :password_hash, :codigo_hash, DATE_ADD(NOW(), INTERVAL 15 MINUTE))')->execute($pendiente);
+            $this->conexion->prepare('INSERT INTO registro_pendiente (dni, nombre, apellido, telefono, email, direccion, acompanantes_json, password_hash, codigo_hash, vence_en) VALUES (:dni, :nombre, :apellido, :telefono, :email, :direccion, :acompanantes_json, :password_hash, :codigo_hash, DATE_ADD(NOW(), INTERVAL 15 MINUTE))')->execute($pendiente);
             $id = (int) $this->conexion->lastInsertId();
             $this->conexion->commit();
             $this->correo->enviarCodigoRegistro($datos['email'], $datos['nombre'], $codigo);
@@ -68,6 +120,20 @@ final class Registro
             $this->conexion->beginTransaction();
             $this->conexion->prepare('INSERT INTO cliente (dni, nombre, apellido, telefono, email, direccion) VALUES (:dni, :nombre, :apellido, :telefono, :email, :direccion)')->execute(['dni' => $pendiente['dni'], 'nombre' => $pendiente['nombre'], 'apellido' => $pendiente['apellido'], 'telefono' => $pendiente['telefono'], 'email' => $pendiente['email'], 'direccion' => $pendiente['direccion']]);
             $idCliente = (int) $this->conexion->lastInsertId();
+            $acompanantes = json_decode((string) ($pendiente['acompanantes_json'] ?? '[]'), true);
+            if (!is_array($acompanantes)) $acompanantes = [];
+            $crearAcompanante = $this->conexion->prepare('INSERT INTO `acompañante` (idCliente, dni, nombre, apellido, edad, parentesco) VALUES (:cliente, :dni, :nombre, :apellido, :edad, :parentesco)');
+            foreach ($acompanantes as $acompanante) {
+                if (!is_array($acompanante)) continue;
+                $crearAcompanante->execute([
+                    'cliente' => $idCliente,
+                    'dni' => (string) ($acompanante['dni'] ?? ''),
+                    'nombre' => (string) ($acompanante['nombre'] ?? ''),
+                    'apellido' => (string) ($acompanante['apellido'] ?? ''),
+                    'edad' => (int) ($acompanante['edad'] ?? 0),
+                    'parentesco' => (string) ($acompanante['parentesco'] ?? ''),
+                ]);
+            }
             $this->conexion->prepare('INSERT INTO usuarios (nombre, apellido, email, password_hash, rol) VALUES (:nombre, :apellido, :email, :password_hash, :rol)')->execute(['nombre' => $pendiente['nombre'], 'apellido' => $pendiente['apellido'], 'email' => $pendiente['email'], 'password_hash' => $pendiente['password_hash'], 'rol' => 'cliente']);
             $idUsuario = (int) $this->conexion->lastInsertId();
             $this->conexion->prepare('DELETE FROM registro_pendiente WHERE idRegistroPendiente = :id')->execute(['id' => $id]);
@@ -99,5 +165,16 @@ final class Registro
         $usuario = $this->conexion->prepare('SELECT 1 FROM usuarios WHERE email = :email LIMIT 1');
         $usuario->execute(['email' => $datos['email']]);
         return (bool) ($consulta->fetch() || $usuario->fetch());
+    }
+
+    private function acompanantesYaRegistrados(array $acompanantes): bool
+    {
+        if (!$acompanantes) return false;
+        $consulta = $this->conexion->prepare('SELECT 1 FROM `acompañante` WHERE dni = :dni LIMIT 1');
+        foreach ($acompanantes as $acompanante) {
+            $consulta->execute(['dni' => (string) ($acompanante['dni'] ?? '')]);
+            if ($consulta->fetchColumn()) return true;
+        }
+        return false;
     }
 }
