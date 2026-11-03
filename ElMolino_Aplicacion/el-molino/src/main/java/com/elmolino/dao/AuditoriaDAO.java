@@ -16,8 +16,14 @@ import java.util.Map;
 /** Guarda y consulta el historial de cambios realizados desde la aplicacion. */
 public final class AuditoriaDAO {
 
+    /**
+     * Construye el objeto, guarda sus datos iniciales y deja sus componentes preparados para usarse.
+     */
     private AuditoriaDAO() { }
 
+    /**
+     * Ejecuta la lógica de “capturar” en AuditoriaDAO.java.
+     */
     public static Map<String, Object> capturar(Connection conexion, String tabla, String columnaId, int id)
             throws SQLException {
         String consultaSql = "SELECT * FROM " + identificador(tabla) + " WHERE "
@@ -37,6 +43,9 @@ public final class AuditoriaDAO {
         }
     }
 
+    /**
+     * Valida y guarda la información en el destino correspondiente.
+     */
     public static void registrar(Connection conexion, String accion, String seccion, String idAfectado,
                                  Map<String, ?> anterior, Map<String, ?> nuevo) throws SQLException {
         Usuario usuario = SesionActual.get();
@@ -60,6 +69,9 @@ public final class AuditoriaDAO {
         }
     }
 
+    /**
+     * Carga los datos que necesita esta parte del sistema.
+     */
     public static List<Object[]> listar() throws SQLException {
         validarAcceso();
         String consultaSql = "SELECT fechaHora, usuario, rolUsuario, accion, seccion, "
@@ -78,6 +90,9 @@ public final class AuditoriaDAO {
         return filas;
     }
 
+    /**
+     * Comprueba acceso y evita continuar cuando hay información inválida.
+     */
     public static void validarAcceso() throws SQLException {
         Usuario usuario = SesionActual.get();
         if (usuario == null || !List.of("GERENCIA", "ADMINISTRACION", "ADMINISTRADOR", "SUPERADMIN")
@@ -86,16 +101,25 @@ public final class AuditoriaDAO {
         }
     }
 
+    /**
+     * Ejecuta la lógica de “identificador” en AuditoriaDAO.java.
+     */
     private static String identificador(String valor) {
         return "`" + valor.replace("`", "``") + "`";
     }
 
+    /**
+     * Comprueba es dato sensible y devuelve verdadero o falso según se cumpla la condición.
+     */
     private static boolean esDatoSensible(String columna) {
         String normalizada = columna.toLowerCase();
         return normalizada.contains("password") || normalizada.contains("contrasena")
                 || normalizada.contains("clave") || normalizada.contains("hash");
     }
 
+    /**
+     * Ejecuta la lógica de “a json” en AuditoriaDAO.java.
+     */
     private static String aJson(Map<String, ?> datos) {
         StringBuilder json = new StringBuilder("{");
         boolean primero = true;
@@ -112,6 +136,9 @@ public final class AuditoriaDAO {
         return json.append('}').toString();
     }
 
+    /**
+     * Ejecuta la lógica de “cadena json” en AuditoriaDAO.java.
+     */
     private static String cadenaJson(String valor) {
         StringBuilder texto = new StringBuilder("\"");
         for (int indice = 0; indice < valor.length(); indice++) {

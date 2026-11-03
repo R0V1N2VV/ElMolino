@@ -40,6 +40,9 @@ import java.util.concurrent.ExecutionException;
 public class VentanaGestion extends JFrame {
 
     private record OpcionEnum(String valor, String etiqueta) {
+        /**
+         * Devuelve el texto que representa al objeto cuando se muestra en listas, tablas o mensajes.
+         */
         @Override public String toString() { return etiqueta; }
     }
 
@@ -53,6 +56,9 @@ public class VentanaGestion extends JFrame {
     private final JButton botonEditar = new JButton("Editar");
     private final JButton botonEliminar = new JButton("Eliminar");
 
+    /**
+     * Construye el objeto, guarda sus datos iniciales y deja sus componentes preparados para usarse.
+     */
     public VentanaGestion(VentanaPrincipal principal, Modulo modulo) {
         super("El Molino - " + modulo.titulo());
         this.principal = principal;
@@ -99,6 +105,9 @@ public class VentanaGestion extends JFrame {
             for (int indice = 0; indice < visibles.size(); indice++) columnas[indice + 1] = visibles.get(indice).etiqueta();
         }
         this.modelo = new DefaultTableModel(columnas, 0) {
+            /**
+             * Indica si una celda de la tabla puede ser modificada por el usuario.
+             */
             @Override public boolean isCellEditable(int fila, int columna) { return false; }
         };
         this.tabla = new JTable(modelo);
@@ -130,6 +139,9 @@ public class VentanaGestion extends JFrame {
         botonEditar.addActionListener(evento -> editarSeleccionado());
         botonEliminar.addActionListener(evento -> eliminarSeleccionado());
         tabla.addMouseListener(new MouseAdapter() {
+            /**
+             * Ejecuta la lógica de “mouse clicked” en VentanaGestion.java.
+             */
             @Override public void mouseClicked(MouseEvent evento) {
                 if (evento.getClickCount() == 2) {
                     int fila = tabla.rowAtPoint(evento.getPoint());
@@ -163,6 +175,9 @@ public class VentanaGestion extends JFrame {
         add(abajo, BorderLayout.SOUTH);
 
         addWindowListener(new WindowAdapter() {
+            /**
+             * Ejecuta la lógica de “window closed” en VentanaGestion.java.
+             */
             @Override public void windowClosed(WindowEvent evento) {
                 principal.setVisible(true);
                 principal.toFront();
@@ -171,6 +186,9 @@ public class VentanaGestion extends JFrame {
         cargar();
     }
 
+    /**
+     * Carga los datos que necesita esta parte del sistema.
+     */
     private void cargar() {
         // Consulta los datos fuera del hilo grafico y luego actualiza la tabla.
         estado.setText("Cargando...");
@@ -178,9 +196,15 @@ public class VentanaGestion extends JFrame {
         botonEditar.setEnabled(false);
         botonEliminar.setEnabled(false);
         new SwingWorker<List<Object[]>, Void>() {
+            /**
+             * Ejecuta la tarea pesada en segundo plano para que la interfaz no se congele.
+             */
             @Override protected List<Object[]> doInBackground() throws Exception {
                 return GestionDAO.listar(modulo);
             }
+            /**
+             * Recibe en la interfaz el resultado de la tarea en segundo plano y actualiza la pantalla.
+             */
             @Override protected void done() {
                 botonNuevo.setEnabled(botonNuevo.isVisible());
                 botonEditar.setEnabled(botonEditar.isVisible());
@@ -197,6 +221,9 @@ public class VentanaGestion extends JFrame {
         }.execute();
     }
 
+    /**
+     * Ejecuta la lógica de “editar seleccionado” en VentanaGestion.java.
+     */
     private void editarSeleccionado() {
         // Comprueba la fila elegida y prepara sus datos para abrir el formulario.
         int filaVista = tabla.getSelectedRow();
@@ -229,6 +256,9 @@ public class VentanaGestion extends JFrame {
         }
     }
 
+    /**
+     * Prepara y muestra formulario.
+     */
     private void mostrarFormulario(Registro original) {
         // Crea un formulario dinamico a partir de los campos definidos en el modulo.
         if ("usuarios".equals(modulo.tabla()) && !puedeGestionarUsuarios()) {
@@ -298,10 +328,16 @@ public class VentanaGestion extends JFrame {
             cancelar.setEnabled(false);
             estado.setText("Guardando...");
             new SwingWorker<Void, Void>() {
+                /**
+                 * Ejecuta la tarea pesada en segundo plano para que la interfaz no se congele.
+                 */
                 @Override protected Void doInBackground() throws Exception {
                     GestionDAO.guardar(modulo, original == null ? null : original.id(), datos);
                     return null;
                 }
+                /**
+                 * Recibe en la interfaz el resultado de la tarea en segundo plano y actualiza la pantalla.
+                 */
                 @Override protected void done() {
                     try {
                         get();
@@ -324,6 +360,9 @@ public class VentanaGestion extends JFrame {
         dialogo.setVisible(true);
     }
 
+    /**
+     * Crea editor a partir de los datos recibidos.
+     */
     private java.awt.Component crearEditor(Campo campo) throws Exception {
         // Elige un control segun el tipo de campo: texto, clave, lista u opcion.
         if (campo.tipo() == Tipo.CLAVE) return new JPasswordField(20);
@@ -363,6 +402,9 @@ public class VentanaGestion extends JFrame {
         return new JTextField(20);
     }
 
+    /**
+     * Ejecuta la lógica de “configurar editor” en VentanaGestion.java.
+     */
     private void configurarEditor(Campo campo, java.awt.Component componente, Object valor, boolean nuevo) {
         // Rellena cada control con el valor guardado o con un valor inicial util.
         if (componente instanceof JPasswordField clave) {
@@ -418,6 +460,9 @@ public class VentanaGestion extends JFrame {
         }
     }
 
+    /**
+     * Ejecuta la lógica de “leer editor” en VentanaGestion.java.
+     */
     private String leerEditor(Campo campo, java.awt.Component componente) {
         // Convierte el contenido de cualquier control a texto para validarlo y guardarlo.
         if (componente instanceof JPasswordField clave) return new String(clave.getPassword());
@@ -437,6 +482,9 @@ public class VentanaGestion extends JFrame {
         return ((JTextField) componente).getText().trim();
     }
 
+    /**
+     * Comprueba formulario y evita continuar cuando hay información inválida.
+     */
     private void validarFormulario(Map<String, String> datos, boolean edicion) {
         // Revisa campos obligatorios y formatos antes de llamar al DAO.
         for (Campo campo : modulo.campos()) {
@@ -464,6 +512,9 @@ public class VentanaGestion extends JFrame {
         }
     }
 
+    /**
+     * Elimina seleccionado del sistema.
+     */
     private void eliminarSeleccionado() {
         // Una reserva cambia a estado cancelada; las demas filas siguen la regla de borrado.
         int fila = tabla.getSelectedRow();
@@ -493,11 +544,17 @@ public class VentanaGestion extends JFrame {
         if (JOptionPane.showConfirmDialog(this, pregunta, "Confirmar acción",
                 JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE) != JOptionPane.YES_OPTION) return;
         new SwingWorker<Void, Void>() {
+            /**
+             * Ejecuta la tarea pesada en segundo plano para que la interfaz no se congele.
+             */
             @Override protected Void doInBackground() throws Exception {
                 if (esReserva) GestionDAO.cancelarReserva(id);
                 else GestionDAO.eliminar(modulo, id);
                 return null;
             }
+            /**
+             * Recibe en la interfaz el resultado de la tarea en segundo plano y actualiza la pantalla.
+             */
             @Override protected void done() {
                 try { get(); cargar(); }
                 catch (Exception excepcion) { mostrarError("No se pudo eliminar. Puede tener datos relacionados", excepcion); }
@@ -505,6 +562,9 @@ public class VentanaGestion extends JFrame {
         }.execute();
     }
 
+    /**
+     * Prepara y muestra error.
+     */
     private void mostrarError(String mensaje, Exception excepcion) {
         // Busca la causa mas especifica para mostrar un error entendible.
         Throwable causa = excepcion;
@@ -514,6 +574,9 @@ public class VentanaGestion extends JFrame {
         JOptionPane.showMessageDialog(this, mensaje + detalle, "Error", JOptionPane.ERROR_MESSAGE);
     }
 
+    /**
+     * Ejecuta la lógica de “indice visible” en VentanaGestion.java.
+     */
     private int indiceVisible(String columna) {
         // Busca la posicion de una columna en la tabla que muestra solo campos visibles.
         for (int indice = 0; indice < visibles.size(); indice++) {
@@ -522,43 +585,70 @@ public class VentanaGestion extends JFrame {
         return -1;
     }
 
+    /**
+     * Comprueba es administrador y devuelve verdadero o falso según se cumpla la condición.
+     */
     private boolean esAdministrador() {
         // Reconoce tanto al administrador de usuarios como al SuperAdmin.
         return puedeGestionarUsuarios();
     }
 
+    /**
+     * Comprueba puede gestionar usuarios y devuelve verdadero o falso según se cumpla la condición.
+     */
     private boolean puedeGestionarUsuarios() {
         return SesionActual.get() != null
                 && List.of("ADMINISTRADOR", "SUPERADMIN").contains(SesionActual.get().getRol());
     }
 
+    /**
+     * Comprueba es super admin y devuelve verdadero o falso según se cumpla la condición.
+     */
     private boolean esSuperAdmin() {
         return SesionActual.get() != null && "SUPERADMIN".equals(SesionActual.get().getRol());
     }
 
+    /**
+     * Comprueba es limpieza y devuelve verdadero o falso según se cumpla la condición.
+     */
     private boolean esLimpieza() {
         // Centraliza la comprobacion del rol de limpieza.
         return SesionActual.get() != null && "LIMPIEZA".equals(SesionActual.get().getRol());
     }
 
+    /**
+     * Comprueba es recepcion y devuelve verdadero o falso según se cumpla la condición.
+     */
     private boolean esRecepcion() {
         return SesionActual.get() != null && "RECEPCION".equals(SesionActual.get().getRol());
     }
 
+    /**
+     * Comprueba es modulo actividades y devuelve verdadero o falso según se cumpla la condición.
+     */
     private boolean esModuloActividades() {
         return "Actividad".equals(modulo.tabla());
     }
 
+    /**
+     * Comprueba es enum actividad y devuelve verdadero o falso según se cumpla la condición.
+     */
     private boolean esEnumActividad(String columna) {
         return esModuloActividades() && ("momentoDia".equals(columna)
                 || "edadRecomendada".equals(columna) || "modalidad".equals(columna));
     }
 
+    /**
+     * Comprueba es texto largo y devuelve verdadero o falso según se cumpla la condición.
+     */
     private boolean esTextoLargo(Campo campo) {
         return esModuloActividades() && List.of("descripcion", "requisitos", "informacionImportante")
                 .contains(campo.columna());
     }
 
+    /**
+     * Ejecuta la lógica de “etiqueta enum actividad” en VentanaGestion.java.
+     */
     private String etiquetaEnumActividad(String columna, String valor) {
         // Muestra etiquetas en espanol sin cambiar los valores guardados en la base.
         if ("momentoDia".equals(columna)) {

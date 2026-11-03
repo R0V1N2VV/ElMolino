@@ -13,6 +13,9 @@ import java.util.Collections;
 
 public class Main {
 
+    /**
+     * Es el punto de entrada de la aplicación: configura el entorno e inicia la primera ventana.
+     */
     public static void main(String[] argumentos) {
         // Prepara FlatLaf y configura colores y letras antes de crear las ventanas.
         FlatLaf.setGlobalExtraDefaults(Collections.singletonMap("@accentColor", "#4F7358"));
@@ -23,6 +26,9 @@ public class Main {
     }
 
     // Define los colores y la letra base que comparten las pantallas.
+    /**
+     * Ejecuta la lógica de “aplicar paleta natural” en Main.java.
+     */
     private static void aplicarPaletaNatural() {
         Color crema = new Color(0xF4FAF8);
         Color marfil = new Color(0xF0EDE4);

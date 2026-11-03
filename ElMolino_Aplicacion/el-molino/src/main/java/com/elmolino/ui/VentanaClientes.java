@@ -30,6 +30,9 @@ public class VentanaClientes extends JFrame {
     private final ClienteDAO accesoDatosCliente = new ClienteDAO();
     private final DefaultTableModel modelo = new DefaultTableModel(
             new String[]{"ID", "DNI", "Apellido", "Nombre", "Teléfono", "Email", "Dirección"}, 0) {
+        /**
+         * Indica si una celda de la tabla puede ser modificada por el usuario.
+         */
         @Override
         public boolean isCellEditable(int fila, int columna) {
             return false;
@@ -38,6 +41,9 @@ public class VentanaClientes extends JFrame {
     private final JTable tabla = new JTable(modelo);
     private final JLabel estado = new JLabel(" ");
 
+    /**
+     * Construye el objeto, guarda sus datos iniciales y deja sus componentes preparados para usarse.
+     */
     public VentanaClientes(VentanaPrincipal ventanaPrincipal) {
         super("El Molino - Clientes");
         this.ventanaPrincipal = ventanaPrincipal;
@@ -81,6 +87,9 @@ public class VentanaClientes extends JFrame {
         add(abajo, BorderLayout.SOUTH);
 
         addWindowListener(new WindowAdapter() {
+            /**
+             * Ejecuta la lógica de “window closed” en VentanaClientes.java.
+             */
             @Override
             public void windowClosed(WindowEvent evento) {
                 ventanaPrincipal.setVisible(true);
@@ -91,11 +100,17 @@ public class VentanaClientes extends JFrame {
         cargarClientes();
     }
 
+    /**
+     * Ejecuta la lógica de “volver al menu” en VentanaClientes.java.
+     */
     private void volverAlMenu() {
         // Cierra esta pantalla; el evento de cierre vuelve a mostrar el menu principal.
         dispose();
     }
 
+    /**
+     * Ejecuta la lógica de “editar seleccionado” en VentanaClientes.java.
+     */
     private void editarSeleccionado() {
         // Copia la fila elegida a un formulario y valida los datos antes de guardarlos.
         int filaVista = tabla.getSelectedRow();
@@ -114,11 +129,17 @@ public class VentanaClientes extends JFrame {
         mostrarFormulario(cliente);
     }
 
+    /**
+     * Ejecuta la lógica de “texto celda” en VentanaClientes.java.
+     */
     private String textoCelda(int fila, int columna) {
         Object valor = modelo.getValueAt(fila, columna);
         return valor == null ? "" : valor.toString();
     }
 
+    /**
+     * Prepara y muestra formulario.
+     */
     private void mostrarFormulario(Cliente original) {
         // Si no hay cliente original, crea uno nuevo; si existe, guarda sus cambios.
         boolean edicion = original != null;
@@ -176,6 +197,9 @@ public class VentanaClientes extends JFrame {
                 telefonoTexto, correoTexto, direccion.getText().trim());
         estado.setText(edicion ? "Guardando cambios..." : "Creando cliente...");
         new SwingWorker<Boolean, Void>() {
+            /**
+             * Ejecuta la tarea pesada en segundo plano para que la interfaz no se congele.
+             */
             @Override
             protected Boolean doInBackground() throws Exception {
                 if (edicion) {
@@ -185,6 +209,9 @@ public class VentanaClientes extends JFrame {
                 return true;
             }
 
+            /**
+             * Recibe en la interfaz el resultado de la tarea en segundo plano y actualiza la pantalla.
+             */
             @Override
             protected void done() {
                 try {
@@ -201,6 +228,9 @@ public class VentanaClientes extends JFrame {
         }.execute();
     }
 
+    /**
+     * Elimina seleccionado del sistema.
+     */
     private void eliminarSeleccionado() {
         // Pide confirmacion antes de borrar para evitar una eliminacion por error.
         int filaVista = tabla.getSelectedRow();
@@ -220,11 +250,17 @@ public class VentanaClientes extends JFrame {
 
         estado.setText("Eliminando cliente...");
         new SwingWorker<Boolean, Void>() {
+            /**
+             * Ejecuta la tarea pesada en segundo plano para que la interfaz no se congele.
+             */
             @Override
             protected Boolean doInBackground() throws Exception {
                 return accesoDatosCliente.eliminar(id);
             }
 
+            /**
+             * Recibe en la interfaz el resultado de la tarea en segundo plano y actualiza la pantalla.
+             */
             @Override
             protected void done() {
                 try {
@@ -241,6 +277,9 @@ public class VentanaClientes extends JFrame {
         }.execute();
     }
 
+    /**
+     * Prepara y muestra error.
+     */
     private void mostrarError(String mensaje, Exception excepcion) {
         Throwable causa = excepcion;
         while (causa.getCause() != null) {
@@ -256,11 +295,17 @@ public class VentanaClientes extends JFrame {
         // Actualiza la tabla y el estado cuando termina la consulta.
         estado.setText("Cargando...");
         new SwingWorker<List<Cliente>, Void>() {
+            /**
+             * Ejecuta la tarea pesada en segundo plano para que la interfaz no se congele.
+             */
             @Override
             protected List<Cliente> doInBackground() throws Exception {
                 return accesoDatosCliente.listarTodos();
             }
 
+            /**
+             * Recibe en la interfaz el resultado de la tarea en segundo plano y actualiza la pantalla.
+             */
             @Override
             protected void done() {
                 try {

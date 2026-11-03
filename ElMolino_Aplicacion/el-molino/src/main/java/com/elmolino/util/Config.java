@@ -17,9 +17,15 @@ public final class Config {
     private static final String ARCHIVO = "config.properties";
     private static Properties propiedades;
 
+    /**
+     * Construye el objeto, guarda sus datos iniciales y deja sus componentes preparados para usarse.
+     */
     private Config() {
     }
 
+    /**
+     * Carga los datos que necesita esta parte del sistema.
+     */
     private static synchronized Properties cargar() {
         if (propiedades == null) {
             // Carga el archivo una sola vez y conserva sus valores en memoria.
@@ -39,6 +45,9 @@ public final class Config {
         return propiedades;
     }
 
+    /**
+     * Devuelve el valor solicitado para que otra parte del programa pueda utilizarlo.
+     */
     public static String get(String clave) {
         // Revisa que la clave exista para avisar si falta una configuracion.
         String valor = cargar().getProperty(clave);

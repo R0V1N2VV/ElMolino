@@ -41,6 +41,9 @@ public class VentanaPrincipal extends JFrame {
     private static final Color NARANJA = new Color(0xC97B3D);
     private final float escala;
 
+    /**
+     * Construye el objeto, guarda sus datos iniciales y deja sus componentes preparados para usarse.
+     */
     public VentanaPrincipal() {
         super("El Molino | Gestión");
         escala = calcularEscala();
@@ -60,6 +63,9 @@ public class VentanaPrincipal extends JFrame {
         setExtendedState(JFrame.MAXIMIZED_BOTH);
     }
 
+    /**
+     * Calcula escala y devuelve el resultado.
+     */
     private float calcularEscala() {
         // Limita el escalado para que el contenido siga siendo legible en distintas pantallas.
         Dimension pantalla = java.awt.Toolkit.getDefaultToolkit().getScreenSize();
@@ -68,10 +74,16 @@ public class VentanaPrincipal extends JFrame {
         return Math.max(0.95f, Math.min(1.45f, Math.min(escalaHorizontal, escalaVertical)));
     }
 
+    /**
+     * Comprueba escalar y devuelve verdadero o falso según se cumpla la condición.
+     */
     private int escalar(int medida) {
         return Math.round(medida * escala);
     }
 
+    /**
+     * Crea encabezado a partir de los datos recibidos.
+     */
     private JPanel crearEncabezado(Usuario usuario) {
         // Muestra la marca, el saludo de empleado y la accion para cerrar sesion.
         JPanel encabezado = new JPanel(new BorderLayout(18, 0));
@@ -114,6 +126,9 @@ public class VentanaPrincipal extends JFrame {
         return encabezado;
     }
 
+    /**
+     * Crea contenido a partir de los datos recibidos.
+     */
     private JScrollPane crearContenido(List<Acceso> accesos) {
         // Presenta el titulo y acomoda las secciones en una grilla que cambia con el ancho.
         JPanel contenido = new JPanel(new BorderLayout(0, escalar(24)));
@@ -170,6 +185,9 @@ public class VentanaPrincipal extends JFrame {
         return scroll;
     }
 
+    /**
+     * Crea tarjeta a partir de los datos recibidos.
+     */
     private JButton crearTarjeta(Acceso acceso, int indice) {
         // Cada seccion recibe un tono suave y un acento de la paleta natural.
         Color[] fondos = {new Color(0xF1F7F2), new Color(0xEAF5F3), new Color(0xFAF8F3), new Color(0xEDF5E9)};
@@ -195,6 +213,9 @@ public class VentanaPrincipal extends JFrame {
         return boton;
     }
 
+    /**
+     * Prepara y muestra accesos.
+     */
     private List<Acceso> armarAccesos(String rol) {
         // Define las secciones visibles segun el rol que inicio sesion.
         List<Acceso> accesos = new ArrayList<>();
@@ -254,6 +275,9 @@ public class VentanaPrincipal extends JFrame {
         return accesos;
     }
 
+    /**
+     * Ejecuta la lógica de “modulo” en VentanaPrincipal.java.
+     */
     private Acceso modulo(String titulo, String descripcion, GestionDAO.Modulo modulo) {
         // Oculta el menu y abre la pantalla indicada cuando se pulsa una tarjeta.
         return new Acceso(titulo, descripcion, () -> {
@@ -263,24 +287,36 @@ public class VentanaPrincipal extends JFrame {
         });
     }
 
+    /**
+     * Abre acompanantes y prepara sus datos iniciales.
+     */
     private void abrirAcompanantes() {
         // La relacion de acompanantes usa una pantalla propia.
         setVisible(false);
         new VentanaAcompanantesReserva(this).setVisible(true);
     }
 
+    /**
+     * Abre informes y prepara sus datos iniciales.
+     */
     private void abrirInformes() {
         // Abre los informes desde el menu general.
         setVisible(false);
         new VentanaInformes(this).setVisible(true);
     }
 
+    /**
+     * Abre auditoria y prepara sus datos iniciales.
+     */
     private void abrirAuditoria() {
         // Solo estos roles ven esta seccion; el DAO valida el permiso al consultar.
         setVisible(false);
         new VentanaAuditoria(this).setVisible(true);
     }
 
+    /**
+     * Ejecuta la lógica de “nombre rol” en VentanaPrincipal.java.
+     */
     private String nombreRol(String rol) {
         return switch (rol) {
             case "SUPERADMIN" -> "SuperAdmin";
@@ -301,6 +337,9 @@ public class VentanaPrincipal extends JFrame {
         private final Color fondoTarjeta;
         private final Color acentoTarjeta;
 
+        /**
+         * Construye el objeto, guarda sus datos iniciales y deja sus componentes preparados para usarse.
+         */
         private TarjetaAcceso(String texto, Color fondoTarjeta, Color acentoTarjeta) {
             super(texto);
             this.fondoTarjeta = fondoTarjeta;
@@ -311,6 +350,9 @@ public class VentanaPrincipal extends JFrame {
             setMaximumSize(new Dimension(escalar(560), escalar(190)));
         }
 
+        /**
+         * Dibuja de forma personalizada este componente cada vez que Swing necesita repintarlo.
+         */
         @Override
         protected void paintComponent(Graphics graficos) {
             // Pinta el fondo y el acento antes de que Swing dibuje el texto del boton.

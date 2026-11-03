@@ -10,9 +10,15 @@ import java.sql.SQLException;
  */
 public final class Conexion {
 
+    /**
+     * Construye el objeto, guarda sus datos iniciales y deja sus componentes preparados para usarse.
+     */
     private Conexion() {
     }
 
+    /**
+     * Devuelve el dato solicitado; si corresponde, lo recupera primero de su origen persistente.
+     */
     public static Connection obtener() throws SQLException {
         // Lee los parametros locales sin guardar credenciales dentro del codigo.
         String servidor = Config.get("db.host");

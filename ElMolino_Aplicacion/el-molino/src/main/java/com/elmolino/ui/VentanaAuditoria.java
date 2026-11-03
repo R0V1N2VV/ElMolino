@@ -28,11 +28,17 @@ public class VentanaAuditoria extends JFrame {
     private final VentanaPrincipal principal;
     private final DefaultTableModel modelo = new DefaultTableModel(new String[]{
             "Fecha y hora", "Usuario", "Rol", "Acción", "Sección", "ID afectado", "Antes", "Después"}, 0) {
+        /**
+         * Indica si una celda de la tabla puede ser modificada por el usuario.
+         */
         @Override public boolean isCellEditable(int fila, int columna) { return false; }
     };
     private final JTable tabla = new JTable(modelo);
     private final JLabel estado = new JLabel(" ");
 
+    /**
+     * Construye el objeto, guarda sus datos iniciales y deja sus componentes preparados para usarse.
+     */
     public VentanaAuditoria(VentanaPrincipal principal) {
         super("El Molino - Registro de auditoría");
         this.principal = principal;
@@ -49,6 +55,9 @@ public class VentanaAuditoria extends JFrame {
         verInformacion.setToolTipText("Abrí los detalles completos del cambio seleccionado");
         verInformacion.addActionListener(evento -> mostrarInformacion());
         tabla.addMouseListener(new MouseAdapter() {
+            /**
+             * Ejecuta la lógica de “mouse clicked” en VentanaAuditoria.java.
+             */
             @Override public void mouseClicked(MouseEvent evento) {
                 if (evento.getClickCount() == 2 && tabla.rowAtPoint(evento.getPoint()) >= 0) {
                     tabla.setRowSelectionInterval(tabla.rowAtPoint(evento.getPoint()), tabla.rowAtPoint(evento.getPoint()));
@@ -69,6 +78,9 @@ public class VentanaAuditoria extends JFrame {
         add(new JScrollPane(tabla), BorderLayout.CENTER);
         add(estado, BorderLayout.SOUTH);
         addWindowListener(new java.awt.event.WindowAdapter() {
+            /**
+             * Ejecuta la lógica de “window closed” en VentanaAuditoria.java.
+             */
             @Override public void windowClosed(java.awt.event.WindowEvent evento) {
                 principal.setVisible(true);
                 principal.toFront();
@@ -77,6 +89,9 @@ public class VentanaAuditoria extends JFrame {
         cargar();
     }
 
+    /**
+     * Prepara y muestra informacion.
+     */
     private void mostrarInformacion() {
         int filaVista = tabla.getSelectedRow();
         if (filaVista < 0) {
@@ -123,6 +138,9 @@ public class VentanaAuditoria extends JFrame {
         dialogo.setVisible(true);
     }
 
+    /**
+     * Crea panel texto a partir de los datos recibidos.
+     */
     private JPanel crearPanelTexto(String texto, String textoVacio) {
         JTextArea area = new JTextArea(texto.isBlank() ? textoVacio : texto);
         area.setEditable(false);
@@ -135,11 +153,17 @@ public class VentanaAuditoria extends JFrame {
         return panel;
     }
 
+    /**
+     * Ejecuta la lógica de “texto celda” en VentanaAuditoria.java.
+     */
     private String textoCelda(int fila, int columna) {
         Object valor = modelo.getValueAt(fila, columna);
         return valor == null ? "" : valor.toString();
     }
 
+    /**
+     * Ajusta json a un formato uniforme y seguro para compararlo o mostrarlo.
+     */
     private String formatearJson(String json) {
         if (json.isBlank()) return "";
         StringBuilder formato = new StringBuilder();
@@ -181,12 +205,21 @@ public class VentanaAuditoria extends JFrame {
         return formato.toString();
     }
 
+    /**
+     * Carga los datos que necesita esta parte del sistema.
+     */
     private void cargar() {
         estado.setText("Cargando historial...");
         new SwingWorker<List<Object[]>, Void>() {
+            /**
+             * Ejecuta la tarea pesada en segundo plano para que la interfaz no se congele.
+             */
             @Override protected List<Object[]> doInBackground() throws Exception {
                 return AuditoriaDAO.listar();
             }
+            /**
+             * Recibe en la interfaz el resultado de la tarea en segundo plano y actualiza la pantalla.
+             */
             @Override protected void done() {
                 try {
                     List<Object[]> filas = get();

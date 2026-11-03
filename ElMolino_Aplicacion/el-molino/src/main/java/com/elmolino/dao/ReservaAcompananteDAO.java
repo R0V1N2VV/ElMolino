@@ -15,6 +15,9 @@ public class ReservaAcompananteDAO {
     // Representa una fila de la relacion entre una reserva y un acompanante.
     public record Vinculo(int idReserva, String reserva, int idAcompanante, String acompanante) { }
 
+    /**
+     * Carga los datos que necesita esta parte del sistema.
+     */
     public List<Vinculo> listar() throws SQLException {
         // Une reservas, clientes y acompanantes para mostrar nombres legibles.
         GestionDAO.validarAccesoAcompanantesReserva();
@@ -34,6 +37,9 @@ public class ReservaAcompananteDAO {
         return vinculos;
     }
 
+    /**
+     * Agrega el elemento recibido a la colección o proceso actual.
+     */
     public void agregar(int idReserva, int idAcompanante) throws SQLException {
         // Crea el vinculo con parametros para evitar insertar datos en la consulta.
         GestionDAO.validarAccesoAcompanantesReserva();
@@ -60,6 +66,9 @@ public class ReservaAcompananteDAO {
         }
     }
 
+    /**
+     * Actualiza la información visible para reflejar el estado más reciente.
+     */
     public void actualizar(int idReserva, int idAnterior, int idNuevo) throws SQLException {
         // Reemplaza el acompanante asociado a esa reserva.
         GestionDAO.validarAccesoAcompanantesReserva();
@@ -89,6 +98,9 @@ public class ReservaAcompananteDAO {
         }
     }
 
+    /**
+     * Elimina el elemento indicado del sistema.
+     */
     public void eliminar(int idReserva, int idAcompanante) throws SQLException {
         // Quita solo el vinculo seleccionado; no borra la reserva ni al acompanante.
         GestionDAO.validarAccesoAcompanantesReserva();

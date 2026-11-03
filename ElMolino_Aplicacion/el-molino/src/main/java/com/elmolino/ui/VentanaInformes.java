@@ -30,6 +30,9 @@ public class VentanaInformes extends JFrame {
     private final JTable actividades = tabla();
     private final JTable pagos = tabla();
 
+    /**
+     * Construye el objeto, guarda sus datos iniciales y deja sus componentes preparados para usarse.
+     */
     public VentanaInformes(VentanaPrincipal principal) {
         super("El Molino - Informes");
         this.principal = principal;
@@ -62,6 +65,9 @@ public class VentanaInformes extends JFrame {
         add(pestañas, BorderLayout.CENTER);
         add(estado, BorderLayout.SOUTH);
         addWindowListener(new WindowAdapter() {
+            /**
+             * Ejecuta la lógica de “window closed” en VentanaInformes.java.
+             */
             @Override public void windowClosed(WindowEvent evento) {
                 principal.setVisible(true);
                 principal.toFront();
@@ -70,13 +76,22 @@ public class VentanaInformes extends JFrame {
         cargarInformes();
     }
 
+    /**
+     * Ejecuta la lógica de “tabla” en VentanaInformes.java.
+     */
     private JTable tabla() {
         // Las tablas de informe son de solo lectura.
         return new JTable(new DefaultTableModel() {
+            /**
+             * Indica si una celda de la tabla puede ser modificada por el usuario.
+             */
             @Override public boolean isCellEditable(int fila, int columna) { return false; }
         });
     }
 
+    /**
+     * Ejecuta la lógica de “panel tabla” en VentanaInformes.java.
+     */
     private JPanel panelTabla(JTable tabla) {
         JPanel panel = new JPanel(new BorderLayout());
         panel.add(FiltroTabla.crear(tabla), BorderLayout.NORTH);
@@ -84,6 +99,9 @@ public class VentanaInformes extends JFrame {
         return panel;
     }
 
+    /**
+     * Carga informes que necesita esta parte del sistema.
+     */
     private void cargarInformes() {
         // Inicia una consulta por cada grupo de datos que se muestra en las pestanas.
         cargar(reservas, "SELECT estadoReserva AS Estado, COUNT(*) AS Cantidad, "
@@ -102,11 +120,20 @@ public class VentanaInformes extends JFrame {
                 + "GROUP BY DATE_FORMAT(fechaPago, '%Y-%m'), metodoPago ORDER BY Mes DESC");
     }
 
+    /**
+     * Carga los datos que necesita esta parte del sistema.
+     */
     private void cargar(JTable tabla, String consultaSql) {
         // Ejecuta cada consulta en segundo plano y coloca sus resultados en la tabla.
         new SwingWorker<DefaultTableModel, Void>() {
+            /**
+             * Ejecuta la tarea pesada en segundo plano para que la interfaz no se congele.
+             */
             @Override protected DefaultTableModel doInBackground() throws Exception {
                 DefaultTableModel modelo = new DefaultTableModel() {
+                    /**
+                     * Indica si una celda de la tabla puede ser modificada por el usuario.
+                     */
                     @Override public boolean isCellEditable(int fila, int columna) { return false; }
                 };
                 try (Connection conexion = Conexion.obtener();
@@ -122,6 +149,9 @@ public class VentanaInformes extends JFrame {
                 }
                 return modelo;
             }
+            /**
+             * Recibe en la interfaz el resultado de la tarea en segundo plano y actualiza la pantalla.
+             */
             @Override protected void done() {
                 try {
                     tabla.setModel(get());

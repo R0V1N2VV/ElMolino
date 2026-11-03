@@ -39,6 +39,9 @@ public class VentanaLogin extends JFrame {
     private final JButton botonIngresar = new JButton("Ingresar");
     private final JLabel estado = new JLabel(" ", SwingConstants.CENTER);
 
+    /**
+     * Construye el objeto, guarda sus datos iniciales y deja sus componentes preparados para usarse.
+     */
     public VentanaLogin() {
         super("El Molino - Iniciar sesión");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
@@ -170,6 +173,9 @@ public class VentanaLogin extends JFrame {
         getRootPane().setDefaultButton(botonIngresar);
     }
 
+    /**
+     * Ejecuta la lógica de “intentar login” en VentanaLogin.java.
+     */
     private void intentarLogin() {
         // Valida los campos antes de consultar la cuenta y comprobar su clave.
         String correo = campoCorreo.getText().trim();
@@ -185,6 +191,9 @@ public class VentanaLogin extends JFrame {
 
         // La consulta se ejecuta fuera del hilo grafico para mantener la ventana activa.
         new SwingWorker<Usuario, Void>() {
+            /**
+             * Ejecuta la tarea pesada en segundo plano para que la interfaz no se congele.
+             */
             @Override
             protected Usuario doInBackground() throws Exception {
                 Usuario usuario = accesoDatosUsuario.buscarPorEmail(correo);
@@ -199,6 +208,9 @@ public class VentanaLogin extends JFrame {
                 return null;
             }
 
+            /**
+             * Recibe en la interfaz el resultado de la tarea en segundo plano y actualiza la pantalla.
+             */
             @Override
             protected void done() {
                 botonIngresar.setEnabled(true);
@@ -223,6 +235,9 @@ public class VentanaLogin extends JFrame {
         }.execute();
     }
 
+    /**
+     * Prepara y muestra registro.
+     */
     private void mostrarRegistro() {
         // El formulario registra una cuenta nueva con el rol inicial definido por el DAO.
         JDialog dialogo = new JDialog(this, "Crear cuenta", true);
@@ -310,12 +325,18 @@ public class VentanaLogin extends JFrame {
             cancelar.setEnabled(false);
             mensaje.setText("Creando cuenta...");
             new SwingWorker<Boolean, Void>() {
+                /**
+                 * Ejecuta la tarea pesada en segundo plano para que la interfaz no se congele.
+                 */
                 @Override
                 protected Boolean doInBackground() throws Exception {
                     String huella = SeguridadPassword.crearHash(clave);
                     return accesoDatosUsuario.crearCuenta(nombreValor, apellidoValor, correoValor, huella);
                 }
 
+                /**
+                 * Recibe en la interfaz el resultado de la tarea en segundo plano y actualiza la pantalla.
+                 */
                 @Override
                 protected void done() {
                     crear.setEnabled(true);

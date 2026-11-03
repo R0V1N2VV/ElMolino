@@ -28,12 +28,18 @@ public final class GestionDAO {
 
     // Opcion con identificador para listas que se cargan desde otra tabla.
     public record Opcion(int id, String nombre) {
+        /**
+         * Devuelve el texto que representa al objeto cuando se muestra en listas, tablas o mensajes.
+         */
         @Override public String toString() { return nombre; }
     }
 
     // Describe un campo, su etiqueta, reglas y posibles opciones de seleccion.
     public record Campo(String columna, String etiqueta, Tipo tipo, boolean obligatorio,
                         boolean visible, List<String> opciones, String consultaOpciones) {
+        /**
+         * Construye el objeto, guarda sus datos iniciales y deja sus componentes preparados para usarse.
+         */
         public Campo(String columna, String etiqueta, Tipo tipo, boolean obligatorio) {
             this(columna, etiqueta, tipo, obligatorio, true, List.of(), null);
         }
@@ -41,39 +47,72 @@ public final class GestionDAO {
 
     // Agrupa los datos necesarios para presentar y guardar una seccion.
     public record Modulo(String titulo, String tabla, String id, List<Campo> campos) {
+        /**
+         * Construye el objeto, guarda sus datos iniciales y deja sus componentes preparados para usarse.
+         */
         public Modulo {
             campos = List.copyOf(campos);
         }
     }
 
     // Estos metodos cortos crean campos requeridos, opcionales y relacionados.
+    /**
+     * Ejecuta la lógica de “texto” en GestionDAO.java.
+     */
     private static Campo texto(String columna, String etiqueta, boolean requerido) {
         return new Campo(columna, etiqueta, Tipo.TEXTO, requerido);
     }
+    /**
+     * Ejecuta la lógica de “entero” en GestionDAO.java.
+     */
     private static Campo entero(String columna, String etiqueta) {
         return new Campo(columna, etiqueta, Tipo.ENTERO, true);
     }
+    /**
+     * Ejecuta la lógica de “decimal” en GestionDAO.java.
+     */
     private static Campo decimal(String columna, String etiqueta) {
         return new Campo(columna, etiqueta, Tipo.DECIMAL, true);
     }
+    /**
+     * Ejecuta la lógica de “fecha” en GestionDAO.java.
+     */
     private static Campo fecha(String columna, String etiqueta) {
         return new Campo(columna, etiqueta, Tipo.FECHA, true);
     }
+    /**
+     * Ejecuta la lógica de “hora” en GestionDAO.java.
+     */
     private static Campo hora(String columna, String etiqueta) {
         return new Campo(columna, etiqueta, Tipo.HORA, true);
     }
+    /**
+     * Ejecuta la lógica de “booleano” en GestionDAO.java.
+     */
     private static Campo booleano(String columna, String etiqueta) {
         return new Campo(columna, etiqueta, Tipo.BOOLEANO, true);
     }
+    /**
+     * Ejecuta la lógica de “opcion” en GestionDAO.java.
+     */
     private static Campo opcion(String columna, String etiqueta, List<String> valores) {
         return new Campo(columna, etiqueta, Tipo.OPCION, true, true, valores, null);
     }
+    /**
+     * Ejecuta la lógica de “opcion opcional” en GestionDAO.java.
+     */
     private static Campo opcionOpcional(String columna, String etiqueta, List<String> valores) {
         return new Campo(columna, etiqueta, Tipo.OPCION, false, true, valores, null);
     }
+    /**
+     * Ejecuta la lógica de “relacion” en GestionDAO.java.
+     */
     private static Campo relacion(String columna, String etiqueta, String consultaSql) {
         return new Campo(columna, etiqueta, Tipo.OPCION, true, true, List.of(), consultaSql);
     }
+    /**
+     * Ejecuta la lógica de “relacion opcional” en GestionDAO.java.
+     */
     private static Campo relacionOpcional(String columna, String etiqueta, String consultaSql) {
         return new Campo(columna, etiqueta, Tipo.OPCION, false, true, List.of(), consultaSql);
     }
@@ -134,29 +173,47 @@ public final class GestionDAO {
             opcion("rol", "Rol", List.of("SUPERADMIN", "ADMINISTRADOR", "RECEPCION", "ADMINISTRACION", "COORDINADOR", "GERENCIA", "LIMPIEZA")),
             new Campo("password_hash", "Contraseña (dejar vacía para conservarla)", Tipo.CLAVE, false, false, List.of(), null)));
 
+    /**
+     * Construye el objeto, guarda sus datos iniciales y deja sus componentes preparados para usarse.
+     */
     private GestionDAO() { }
 
     // Valida el permiso antes de consultar o cambiar cualquier modulo.
+    /**
+     * Comprueba acceso y evita continuar cuando hay información inválida.
+     */
     public static void validarAcceso(Modulo modulo) throws SQLException {
         if (SesionActual.get() == null || !tieneAccesoTabla(modulo.tabla(), SesionActual.get().getRol())) {
             throw new SQLException("Tu rol no tiene acceso a la sección " + modulo.titulo() + ".");
         }
     }
 
+    /**
+     * Comprueba acceso clientes y evita continuar cuando hay información inválida.
+     */
     public static void validarAccesoClientes() throws SQLException {
         validarAccesoTabla("cliente", "Clientes");
     }
 
+    /**
+     * Comprueba acceso acompanantes reserva y evita continuar cuando hay información inválida.
+     */
     public static void validarAccesoAcompanantesReserva() throws SQLException {
         validarAccesoTabla("reservaAcompañante", "Acompañantes por reserva");
     }
 
+    /**
+     * Comprueba acceso tabla y evita continuar cuando hay información inválida.
+     */
     private static void validarAccesoTabla(String tabla, String seccion) throws SQLException {
         if (SesionActual.get() == null || !tieneAccesoTabla(tabla, SesionActual.get().getRol())) {
             throw new SQLException("Tu rol no tiene acceso a la sección " + seccion + ".");
         }
     }
 
+    /**
+     * Comprueba tiene acceso tabla y devuelve verdadero o falso según se cumpla la condición.
+     */
     private static boolean tieneAccesoTabla(String tabla, String rol) {
         // Esta lista tambien protege las operaciones que llegan directo al DAO.
         return switch (rol) {
@@ -171,10 +228,16 @@ public final class GestionDAO {
             default -> false;
         };
     }
+    /**
+     * Ejecuta la lógica de “campos visibles” en GestionDAO.java.
+     */
     public static List<Campo> camposVisibles(Modulo modulo) {
         return modulo.campos().stream().filter(Campo::visible).toList();
     }
 
+    /**
+     * Ejecuta la lógica de “opciones” en GestionDAO.java.
+     */
     public static List<Opcion> opciones(String consultaSql) throws SQLException {
         // Ejecuta la consulta que llena una lista desplegable.
         List<Opcion> resultado = new ArrayList<>();
@@ -188,6 +251,9 @@ public final class GestionDAO {
         return resultado;
     }
 
+    /**
+     * Carga los datos que necesita esta parte del sistema.
+     */
     public static List<Object[]> listar(Modulo modulo) throws SQLException {
         // Arma la consulta de lista segun la definicion del modulo.
         validarAcceso(modulo);
@@ -213,6 +279,9 @@ public final class GestionDAO {
         return filas;
     }
 
+    /**
+     * Carga actividades que necesita esta parte del sistema.
+     */
     private static List<Object[]> listarActividades() throws SQLException {
         // Incluye cupos y estado calculados para mostrar informacion util de actividades.
         String consultaSql = "SELECT a.idActividad, a.nombre, a.descripcionCorta, a.horario, a.dias, a.momentoDia, "
@@ -246,6 +315,9 @@ public final class GestionDAO {
         return filas;
     }
 
+    /**
+     * Ejecuta la lógica de “etiqueta momento dia” en GestionDAO.java.
+     */
     private static String etiquetaMomentoDia(String valor) {
         if (valor == null) return "";
         return switch (valor) {
@@ -256,6 +328,9 @@ public final class GestionDAO {
         };
     }
 
+    /**
+     * Ejecuta la lógica de “etiqueta edad” en GestionDAO.java.
+     */
     private static String etiquetaEdad(String valor) {
         if (valor == null) return "";
         return switch (valor) {
@@ -267,6 +342,9 @@ public final class GestionDAO {
         };
     }
 
+    /**
+     * Ejecuta la lógica de “etiqueta modalidad” en GestionDAO.java.
+     */
     private static String etiquetaModalidad(String valor) {
         if (valor == null) return "";
         return switch (valor) {
@@ -276,6 +354,9 @@ public final class GestionDAO {
         };
     }
 
+    /**
+     * Busca por id y devuelve el resultado encontrado.
+     */
     public static Map<String, Object> buscarPorId(Modulo modulo, int id) throws SQLException {
         // Carga todos los valores de una fila para abrir el formulario de edicion.
         validarAcceso(modulo);
@@ -298,6 +379,9 @@ public final class GestionDAO {
         }
     }
 
+    /**
+     * Valida y guarda la información en el destino correspondiente.
+     */
     public static void guardar(Modulo modulo, Integer id, Map<String, String> valores) throws SQLException {
         // Revisa permisos, convierte datos y guarda una fila nueva o sus cambios.
         validarAcceso(modulo);
@@ -386,6 +470,9 @@ public final class GestionDAO {
         }
     }
 
+    /**
+     * Elimina el elemento indicado del sistema.
+     */
     public static void eliminar(Modulo modulo, int id) throws SQLException {
         // Verifica permisos y relaciones antes de borrar el registro.
         validarAcceso(modulo);
@@ -441,6 +528,9 @@ public final class GestionDAO {
         }
     }
 
+    /**
+     * Cancela reserva de manera controlada.
+     */
     public static void cancelarReserva(int idReserva) throws SQLException {
         // Conserva la reserva y cambia su estado para mantener el historial.
         validarAcceso(RESERVAS);
@@ -466,18 +556,30 @@ public final class GestionDAO {
         }
     }
 
+    /**
+     * Comprueba es limpieza y devuelve verdadero o falso según se cumpla la condición.
+     */
     private static boolean esLimpieza() {
         return SesionActual.get() != null && "LIMPIEZA".equals(SesionActual.get().getRol());
     }
 
+    /**
+     * Comprueba es recepcion y devuelve verdadero o falso según se cumpla la condición.
+     */
     private static boolean esRecepcion() {
         return SesionActual.get() != null && "RECEPCION".equals(SesionActual.get().getRol());
     }
 
+    /**
+     * Comprueba es super admin y devuelve verdadero o falso según se cumpla la condición.
+     */
     private static boolean esSuperAdmin() {
         return SesionActual.get() != null && "SUPERADMIN".equals(SesionActual.get().getRol());
     }
 
+    /**
+     * Comprueba cambio estado alojamiento y evita continuar cuando hay información inválida.
+     */
     private static void validarCambioEstadoAlojamiento(Integer id, String nuevoEstado,
                                                         boolean rolLimpieza) throws SQLException {
         if (id == null) throw new SQLException("No se encontró el alojamiento seleccionado.");
@@ -491,6 +593,9 @@ public final class GestionDAO {
         }
     }
 
+    /**
+     * Comprueba rol usuario y evita continuar cuando hay información inválida.
+     */
     private static void validarRolUsuario(Map<String, Object> datos, Integer id) throws SQLException {
         if (SesionActual.get() == null || !List.of("ADMINISTRADOR", "SUPERADMIN").contains(SesionActual.get().getRol())) {
             throw new SQLException("Solo un administrador puede gestionar usuarios.");
@@ -524,6 +629,9 @@ public final class GestionDAO {
         }
     }
 
+    /**
+     * Convierte los datos al formato que necesita el resto del sistema.
+     */
     private static Object convertir(Campo campo, String valor) {
         // Convierte el texto del formulario al tipo que espera JDBC.
         return switch (campo.tipo()) {
@@ -545,12 +653,18 @@ public final class GestionDAO {
         };
     }
 
+    /**
+     * Comprueba email y evita continuar cuando hay información inválida.
+     */
     private static void validarEmail(String correo) {
         if (correo == null || !correo.trim().matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")) {
             throw new IllegalArgumentException("Ingresá un email válido.");
         }
     }
 
+    /**
+     * Comprueba reserva y evita continuar cuando hay información inválida.
+     */
     private static void validarReserva(Connection conexion, Map<String, Object> datos, Integer id) throws SQLException {
         // Evita fechas invalidas, exceso de ocupantes y cruces con otras reservas.
         LocalDate ingreso = ((Date) datos.get("fechaIngreso")).toLocalDate();
@@ -587,6 +701,9 @@ public final class GestionDAO {
         }
     }
 
+    /**
+     * Comprueba cupo y evita continuar cuando hay información inválida.
+     */
     private static void validarCupo(Connection conexion, Map<String, Object> datos) throws SQLException {
         // Bloquea la inscripcion si la actividad esta inactiva o ya no tiene lugares.
         int cupoMax;
@@ -610,6 +727,9 @@ public final class GestionDAO {
         }
     }
 
+    /**
+     * Comprueba actividad y evita continuar cuando hay información inválida.
+     */
     private static void validarActividad(Map<String, Object> datos) {
         // Aplica limites basicos antes de guardar los datos de la actividad.
         if (((Integer) datos.get("cupoMax")) < 1) {
@@ -620,6 +740,9 @@ public final class GestionDAO {
         }
     }
 
+    /**
+     * Ejecuta la lógica de “q” en GestionDAO.java.
+     */
     private static String q(String identificador) {
         // Acepta solo nombres SQL simples antes de agregarlos a una consulta.
         if (!identificador.matches("[\\p{L}_][\\p{L}\\p{N}_]*")) {

@@ -17,6 +17,9 @@ import java.util.List;
  */
 public class ClienteDAO {
 
+    /**
+     * Carga todos que necesita esta parte del sistema.
+     */
     public List<Cliente> listarTodos() throws SQLException {
         // Comprueba el rol y devuelve los clientes ordenados por apellido y nombre.
         GestionDAO.validarAccesoClientes();
@@ -80,6 +83,9 @@ public class ClienteDAO {
         }
     }
 
+    /**
+     * Actualiza la información visible para reflejar el estado más reciente.
+     */
     public boolean actualizar(Cliente cliente) throws SQLException {
         // Cambia los datos del cliente indicado y devuelve si se actualizo una fila.
         GestionDAO.validarAccesoClientes();
@@ -116,6 +122,9 @@ public class ClienteDAO {
         }
     }
 
+    /**
+     * Elimina el elemento indicado del sistema.
+     */
     public boolean eliminar(int idCliente) throws SQLException {
         // Elimina el cliente solo si la base permite borrar sus datos relacionados.
         GestionDAO.validarAccesoClientes();

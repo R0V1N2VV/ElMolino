@@ -26,12 +26,18 @@ public class VentanaAcompanantesReserva extends JFrame {
     private final ReservaAcompananteDAO accesoDatos = new ReservaAcompananteDAO();
     private final DefaultTableModel modelo = new DefaultTableModel(
             new String[]{"ID reserva", "Reserva / cliente", "ID acompañante", "Acompañante"}, 0) {
+        /**
+         * Indica si una celda de la tabla puede ser modificada por el usuario.
+         */
         @Override public boolean isCellEditable(int fila, int columna) { return false; }
     };
     private final JTable tabla = new JTable(modelo);
     private final JLabel estado = new JLabel(" ");
     private final JComboBox<GestionDAO.Opcion> acompanantes = new JComboBox<>();
 
+    /**
+     * Construye el objeto, guarda sus datos iniciales y deja sus componentes preparados para usarse.
+     */
     public VentanaAcompanantesReserva(VentanaPrincipal principal) {
         super("El Molino - Acompañantes por reserva");
         this.principal = principal;
@@ -67,6 +73,9 @@ public class VentanaAcompanantesReserva extends JFrame {
         add(new JScrollPane(tabla), BorderLayout.CENTER);
         add(estado, BorderLayout.SOUTH);
         addWindowListener(new WindowAdapter() {
+            /**
+             * Ejecuta la lógica de “window closed” en VentanaAcompanantesReserva.java.
+             */
             @Override public void windowClosed(WindowEvent evento) {
                 principal.setVisible(true);
                 principal.toFront();
@@ -76,6 +85,9 @@ public class VentanaAcompanantesReserva extends JFrame {
         cargar();
     }
 
+    /**
+     * Carga opciones que necesita esta parte del sistema.
+     */
     private void cargarOpciones() {
         // Carga las opciones de acompanante para el selector de la pantalla.
         try {
@@ -88,10 +100,16 @@ public class VentanaAcompanantesReserva extends JFrame {
         }
     }
 
+    /**
+     * Carga los datos que necesita esta parte del sistema.
+     */
     private void cargar() {
         // Consulta y muestra todos los vinculos sin bloquear la interfaz.
         estado.setText("Cargando asociaciones...");
         new SwingWorker<List<Vinculo>, Void>() {
+            /**
+             * Ejecuta la tarea pesada en segundo plano para que la interfaz no se congele.
+             */
             @Override protected List<Vinculo> doInBackground() throws Exception { return accesoDatos.listar(); }
             @Override protected void done() {
                 try {
@@ -104,6 +122,9 @@ public class VentanaAcompanantesReserva extends JFrame {
         }.execute();
     }
 
+    /**
+     * Ejecuta la lógica de “editar” en VentanaAcompanantesReserva.java.
+     */
     private void editar() {
         // Reemplaza el acompanante asociado a la reserva seleccionada.
         int filaVista = tabla.getSelectedRow();
@@ -131,9 +152,15 @@ public class VentanaAcompanantesReserva extends JFrame {
         GestionDAO.Opcion nuevo = (GestionDAO.Opcion) acompanantes.getSelectedItem();
         if (nuevo == null) return;
         new SwingWorker<Void, Void>() {
+            /**
+             * Ejecuta la tarea pesada en segundo plano para que la interfaz no se congele.
+             */
             @Override protected Void doInBackground() throws Exception {
                 accesoDatos.actualizar(idReserva, idAnterior, nuevo.id()); return null;
             }
+            /**
+             * Recibe en la interfaz el resultado de la tarea en segundo plano y actualiza la pantalla.
+             */
             @Override protected void done() {
                 try { get(); cargar(); }
                 catch (Exception excepcion) { error("No se pudo editar. Revisá si ya estaba asociado", excepcion); }
@@ -141,6 +168,9 @@ public class VentanaAcompanantesReserva extends JFrame {
         }.execute();
     }
 
+    /**
+     * Elimina el elemento indicado del sistema.
+     */
     private void eliminar() {
         // Pide confirmacion antes de quitar el vinculo elegido.
         int filaVista = tabla.getSelectedRow();
@@ -153,9 +183,15 @@ public class VentanaAcompanantesReserva extends JFrame {
         int idReserva = ((Number) modelo.getValueAt(fila, 0)).intValue();
         int idAcompanante = ((Number) modelo.getValueAt(fila, 2)).intValue();
         new SwingWorker<Void, Void>() {
+            /**
+             * Ejecuta la tarea pesada en segundo plano para que la interfaz no se congele.
+             */
             @Override protected Void doInBackground() throws Exception {
                 accesoDatos.eliminar(idReserva, idAcompanante); return null;
             }
+            /**
+             * Recibe en la interfaz el resultado de la tarea en segundo plano y actualiza la pantalla.
+             */
             @Override protected void done() {
                 try { get(); cargar(); }
                 catch (Exception excepcion) { error("No se pudo quitar la asociación", excepcion); }
@@ -163,6 +199,9 @@ public class VentanaAcompanantesReserva extends JFrame {
         }.execute();
     }
 
+    /**
+     * Ejecuta la lógica de “error” en VentanaAcompanantesReserva.java.
+     */
     private void error(String mensaje, Exception excepcion) {
         // Muestra la causa del error para ayudar a identificar el problema.
         Throwable causa = excepcion;

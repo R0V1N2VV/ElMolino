@@ -16,9 +16,15 @@ public final class SeguridadPassword {
     private static final int CANTIDAD_BYTES_SAL = 16;
     private static final SecureRandom ALEATORIO = new SecureRandom();
 
+    /**
+     * Construye el objeto, guarda sus datos iniciales y deja sus componentes preparados para usarse.
+     */
     private SeguridadPassword() {
     }
 
+    /**
+     * Convierte la contraseña en un hash seguro antes de guardarla en la base de datos.
+     */
     public static String crearHash(char[] contrasena) {
         // Genera una sal distinta y deriva una huella para guardar en la base.
         byte[] sal = new byte[CANTIDAD_BYTES_SAL];
@@ -58,11 +64,17 @@ public final class SeguridadPassword {
         }
     }
 
+    /**
+     * Comprueba necesita migracion y devuelve verdadero o falso según se cumpla la condición.
+     */
     public static boolean necesitaMigracion(String guardada) {
         // Indica si la clave guardada aun necesita pasar al formato seguro.
         return guardada == null || !guardada.startsWith(PREFIJO + "$");
     }
 
+    /**
+     * Ejecuta la lógica de “derivar” en SeguridadPassword.java.
+     */
     private static byte[] derivar(char[] contrasena, byte[] sal, int iteraciones) {
         // Aplica PBKDF2 con la sal y la cantidad de iteraciones indicada.
         PBEKeySpec especificacion = new PBEKeySpec(contrasena, sal, iteraciones, CANTIDAD_BITS);
