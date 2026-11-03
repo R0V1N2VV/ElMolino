@@ -1,0 +1,82 @@
+/* ==========================================================================
+   Cierre de página y pie
+   Procedencia: líneas 828-904 del CSS original.
+   No cambiar el orden de carga: las reglas posteriores completan o ajustan estas.
+   ========================================================================== */
+
+/* =========================================================
+   9. Cierre y pie de página
+   ========================================================= */
+.cierre {
+    padding-block: 68px;
+    color: var(--verde-oscuro);
+    background: linear-gradient(180deg, var(--crema) 0%, var(--verde-claro) 100%);
+}
+
+.contenido-cierre {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 40px;
+}
+
+.cierre .texto-destacado {
+    color: var(--naranja-oscuro);
+}
+
+.cierre h2 {
+    max-width: 760px;
+    color: var(--verde-oscuro);
+}
+
+.pie-pagina {
+    padding-top: 64px;
+    color: var(--celeste);
+    background: var(--verde-oscuro);
+}
+
+.grilla-pie {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 60px;
+    padding-bottom: 52px;
+}
+
+.marca-pie .simbolo-marca {
+    color: var(--azul-oscuro);
+    background: var(--blanco-calido);
+}
+
+.marca-pie .nombre-marca {
+    color: var(--blanco);
+}
+
+.grilla-pie > div > p {
+    max-width: 390px;
+    margin-top: 20px;
+}
+
+.grilla-pie nav {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
+    align-content: start;
+    gap: 14px 32px;
+}
+
+.grilla-pie nav a {
+    font-size: 0.92rem;
+}
+
+.grilla-pie nav a:hover {
+    color: var(--naranja-claro);
+}
+
+.pie-inferior {
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+    padding-block: 24px;
+    color: var(--celeste);
+    border-top: 1px solid rgba(255, 255, 255, 0.16);
+    font-size: 0.8rem;
+}

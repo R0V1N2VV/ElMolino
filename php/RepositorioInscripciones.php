@@ -1,10 +1,29 @@
 <?php
+/**
+ * ARCHIVO EXPLICADO: php/RepositorioInscripciones.php
+ *
+ * Gestiona inscripciones del titular y sus acompañantes, incluyendo los cupos.
+ * Las funciones de este archivo están documentadas junto a su declaración.
+ */
+
 declare(strict_types=1);
 
 final class RepositorioInscripciones
 {
+    /**
+     * Inicializa el objeto y deja preparadas las dependencias que utilizarán sus demás métodos.
+     *
+     * @param mixed $conexion Valor de conexion que recibe la función.
+     */
     public function __construct(private PDO $conexion) {}
 
+    /**
+     * Comprueba esta inscripto y devuelve verdadero o falso según se cumpla la condición.
+     *
+     * @param mixed $idActividad Valor de id actividad que recibe la función.
+     * @param mixed $idCliente Valor de id cliente que recibe la función.
+     * @return bool Resultado producido por esta operación.
+     */
     public function estaInscripto(int $idActividad, int $idCliente): bool
     {
         $consulta = $this->conexion->prepare(
@@ -15,6 +34,13 @@ final class RepositorioInscripciones
         return (bool) $consulta->fetchColumn();
     }
 
+    /**
+     * Ejecuta la lógica de “titular participa” en RepositorioInscripciones.php.
+     *
+     * @param mixed $idActividad Valor de id actividad que recibe la función.
+     * @param mixed $idCliente Valor de id cliente que recibe la función.
+     * @return bool Resultado producido por esta operación.
+     */
     public function titularParticipa(int $idActividad, int $idCliente): bool
     {
         $consulta = $this->conexion->prepare(
@@ -35,6 +61,7 @@ final class RepositorioInscripciones
         );
         $consulta->execute(['idCliente' => $idCliente]);
         return array_map(
+            // Esta función anónima procesa cada elemento recibido sin crear un método público adicional.
             static fn (array $fila): array => [
                 'id' => (int) $fila['id'], 'nombre' => (string) $fila['nombre'],
                 'apellido' => (string) $fila['apellido'], 'dni' => (string) $fila['dni'],
@@ -127,6 +154,12 @@ final class RepositorioInscripciones
         }
     }
 
+    /**
+     * Cancela la operación de manera controlada.
+     *
+     * @param mixed $idActividad Valor de id actividad que recibe la función.
+     * @param mixed $idCliente Valor de id cliente que recibe la función.
+     */
     public function cancelar(int $idActividad, int $idCliente): void
     {
         try {
@@ -153,6 +186,13 @@ final class RepositorioInscripciones
         }
     }
 
+    /**
+     * Ejecuta la lógica de “bloquear actividad” en RepositorioInscripciones.php.
+     *
+     * @param mixed $idActividad Valor de id actividad que recibe la función.
+     * @param mixed $exigirActiva Valor de exigir activa que recibe la función.
+     * @return array Resultado producido por esta operación.
+     */
     private function bloquearActividad(int $idActividad, bool $exigirActiva = true): array
     {
         $actividad = $this->conexion->prepare(
@@ -167,6 +207,12 @@ final class RepositorioInscripciones
         return $datos;
     }
 
+    /**
+     * Calcula cantidad inscriptos y devuelve el resultado.
+     *
+     * @param mixed $idActividad Valor de id actividad que recibe la función.
+     * @return int Resultado producido por esta operación.
+     */
     private function cantidadInscriptos(int $idActividad): int
     {
         $cantidad = $this->conexion->prepare(
@@ -186,6 +232,7 @@ final class RepositorioInscripciones
     {
         $idsSolicitados = array_values(array_unique(array_filter(
             array_map('intval', $idsSolicitados),
+            // Esta función anónima procesa cada elemento recibido sin crear un método público adicional.
             static fn (int $id): bool => $id > 0
         )));
         if ($idsSolicitados === []) return [];
@@ -222,6 +269,12 @@ final class RepositorioInscripciones
         }
     }
 
+    /**
+     * Ejecuta la lógica de “mensaje cupo” en RepositorioInscripciones.php.
+     *
+     * @param mixed $lugares Valor de lugares que recibe la función.
+     * @return string Resultado producido por esta operación.
+     */
     private function mensajeCupo(int $lugares): string
     {
         return $lugares === 1

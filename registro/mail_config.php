@@ -1,4 +1,10 @@
 <?php
+/**
+ * ARCHIVO EXPLICADO: registro/mail_config.php
+ *
+ * Forma parte del flujo “mail config” del sitio El Molino.
+ * Las funciones de este archivo están documentadas junto a su declaración.
+ */
 
 return [
     'host' => 'smtp.gmail.com',

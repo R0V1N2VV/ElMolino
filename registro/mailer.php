@@ -1,4 +1,11 @@
 <?php
+/**
+ * ARCHIVO EXPLICADO: registro/mailer.php
+ *
+ * Prepara y envía los correos de registro y de confirmación de compra.
+ * Las funciones de este archivo están documentadas junto a su declaración.
+ */
+
 declare(strict_types=1);
 
 use PHPMailer\PHPMailer\Exception;
@@ -12,12 +19,22 @@ final class Correo
 {
     private array $configuracion;
 
+    /**
+     * Inicializa el objeto y deja preparadas las dependencias que utilizarán sus demás métodos.
+     */
     public function __construct()
     {
         $archivo = __DIR__ . '/mail_config.php';
         $this->configuracion = file_exists($archivo) ? require $archivo : require __DIR__ . '/mail_config.example.php';
     }
 
+    /**
+     * Envía codigo registro al destinatario correspondiente.
+     *
+     * @param mixed $destinatario Valor de destinatario que recibe la función.
+     * @param mixed $nombre Valor de nombre que recibe la función.
+     * @param mixed $codigo Valor de codigo que recibe la función.
+     */
     public function enviarCodigoRegistro(string $destinatario, string $nombre, string $codigo): void
     {
         if (empty($this->configuracion['username']) || empty($this->configuracion['password']) || empty($this->configuracion['from_email'])) {
@@ -45,6 +62,11 @@ final class Correo
         }
     }
 
+    /**
+     * Envía resumen compra al destinatario correspondiente.
+     *
+     * @param mixed $pedido Valor de pedido que recibe la función.
+     */
     public function enviarResumenCompra(array $pedido): void
     {
         if (empty($this->configuracion['username']) || empty($this->configuracion['password']) || empty($this->configuracion['from_email'])) {

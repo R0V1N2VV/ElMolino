@@ -1,31 +1,74 @@
 <?php
+/**
+ * ARCHIVO EXPLICADO: php/Vista.php
+ *
+ * Contiene ayudantes para generar HTML reutilizable de forma segura.
+ * Las funciones de este archivo están documentadas junto a su declaración.
+ */
+
 declare(strict_types=1);
 
 final class Vista
 {
+    /**
+     * Inicializa el objeto y deja preparadas las dependencias que utilizarán sus demás métodos.
+     */
     private function __construct() {}
 
+    /**
+     * Convierte caracteres especiales antes de imprimir texto en HTML y así evita inyectar código.
+     *
+     * @param mixed $valor Valor de valor que recibe la función.
+     * @return string Resultado producido por esta operación.
+     */
     public static function escapar(string|int|float|null $valor): string
     {
         return htmlspecialchars((string) $valor, ENT_QUOTES, 'UTF-8');
     }
 
+    /**
+     * Ejecuta la lógica de “precio” en Vista.php.
+     *
+     * @param mixed $actividad Valor de actividad que recibe la función.
+     * @return string Resultado producido por esta operación.
+     */
     public static function precio(Actividad $actividad): string
     {
         if ($actividad->modalidad === 'incluida' || $actividad->precio <= 0) return 'Incluida en la estadía';
         return '$' . number_format($actividad->precio, 0, ',', '.');
     }
 
+    /**
+     * Ejecuta la lógica de “seleccionado” en Vista.php.
+     *
+     * @param mixed $actual Valor de actual que recibe la función.
+     * @param mixed $opcion Valor de opcion que recibe la función.
+     * @return string Resultado producido por esta operación.
+     */
     public static function seleccionado(string $actual, string $opcion): string
     {
         return $actual === $opcion ? ' selected' : '';
     }
 
+    /**
+     * Ejecuta la lógica de “marcado” en Vista.php.
+     *
+     * @param mixed $valor Valor de valor que recibe la función.
+     * @return string Resultado producido por esta operación.
+     */
     public static function marcado(bool $valor): string
     {
         return $valor ? ' checked' : '';
     }
 
+    /**
+     * Ejecuta la lógica de “marca” en Vista.php.
+     *
+     * @param mixed $prefijo Valor de prefijo que recibe la función.
+     * @param mixed $destino Valor de destino que recibe la función.
+     * @param mixed $pie Valor de pie que recibe la función.
+     * @return string Resultado producido por esta operación.
+     */
     public static function marca(string $prefijo = '', string $destino = 'index.php', bool $pie = false): string
     {
         $clase = $pie ? 'marca marca-logo marca-pie' : 'marca marca-logo';
@@ -35,6 +78,13 @@ final class Vista
             . '</a>';
     }
 
+    /**
+     * Ejecuta la lógica de “tarjeta actividad” en Vista.php.
+     *
+     * @param mixed $actividad Valor de actividad que recibe la función.
+     * @param mixed $destacada Valor de destacada que recibe la función.
+     * @return string Resultado producido por esta operación.
+     */
     public static function tarjetaActividad(Actividad $actividad, bool $destacada = false): string
     {
         $clase = $destacada ? ' tarjeta-actividad-destacada' : '';
@@ -69,6 +119,13 @@ final class Vista
         HTML;
     }
 
+    /**
+     * Ejecuta la lógica de “acceso cuenta” en Vista.php.
+     *
+     * @param mixed $usuario Valor de usuario que recibe la función.
+     * @param mixed $prefijo Valor de prefijo que recibe la función.
+     * @return string Resultado producido por esta operación.
+     */
     public static function accesoCuenta(?array $usuario, string $prefijo = ''): string
     {
         $destino = $usuario ? $prefijo . 'registro/cuenta.php' : $prefijo . 'registro/login.php';
@@ -94,6 +151,14 @@ final class Vista
             . '</div></div></div></div></div>';
     }
 
+    /**
+     * Ejecuta la lógica de “boton modo edicion” en Vista.php.
+     *
+     * @param mixed $usuario Valor de usuario que recibe la función.
+     * @param mixed $destino Valor de destino que recibe la función.
+     * @param mixed $texto Valor de texto que recibe la función.
+     * @return string Resultado producido por esta operación.
+     */
     public static function botonModoEdicion(?array $usuario, string $destino = 'administrar-actividades.php', string $texto = 'Modo edición'): string
     {
         if (!Autorizacion::esCoordinador($usuario)) return '';

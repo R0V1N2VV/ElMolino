@@ -1,10 +1,29 @@
 <?php
+/**
+ * ARCHIVO EXPLICADO: registro/gestor_registro.php
+ *
+ * Valida el alta de clientes, acompañantes y códigos de verificación.
+ * Las funciones de este archivo están documentadas junto a su declaración.
+ */
+
 declare(strict_types=1);
 
 final class Registro
 {
+    /**
+     * Inicializa el objeto y deja preparadas las dependencias que utilizarán sus demás métodos.
+     *
+     * @param mixed $conexion Valor de conexion que recibe la función.
+     * @param mixed $correo Valor de correo que recibe la función.
+     */
     public function __construct(private PDO $conexion, private Correo $correo) {}
 
+    /**
+     * Comprueba datos y evita continuar cuando hay información inválida.
+     *
+     * @param mixed $entrada Valor de entrada que recibe la función.
+     * @return array Resultado producido por esta operación.
+     */
     public function validarDatos(array $entrada): array
     {
         $datos = [
@@ -56,6 +75,14 @@ final class Registro
         return ['datos' => $datos, 'errores' => $errores];
     }
 
+    /**
+     * Crea pendiente a partir de los datos recibidos.
+     *
+     * @param mixed $datos Valor de datos que recibe la función.
+     * @param mixed $contrasena Valor de contrasena que recibe la función.
+     * @param mixed $repetirContrasena Valor de repetir contrasena que recibe la función.
+     * @return array Resultado producido por esta operación.
+     */
     public function crearPendiente(array $datos, string $contrasena, string $repetirContrasena): array
     {
         $errores = [];
@@ -104,6 +131,13 @@ final class Registro
         }
     }
 
+    /**
+     * Comprueba los datos recibidos y evita continuar cuando hay información inválida.
+     *
+     * @param mixed $id Valor de id que recibe la función.
+     * @param mixed $codigo Valor de codigo que recibe la función.
+     * @return array Resultado producido por esta operación.
+     */
     public function verificar(int $id, string $codigo): array
     {
         $consulta = $this->conexion->prepare('SELECT *, (vence_en <= NOW()) AS codigo_vencido FROM registro_pendiente WHERE idRegistroPendiente = :id LIMIT 1');
@@ -145,6 +179,12 @@ final class Registro
         }
     }
 
+    /**
+     * Ejecuta la lógica de “reenviar codigo” en gestor_registro.php.
+     *
+     * @param mixed $id Valor de id que recibe la función.
+     * @return string Resultado producido por esta operación.
+     */
     public function reenviarCodigo(int $id): string
     {
         $consulta = $this->conexion->prepare('SELECT *, (actualizado_en > DATE_SUB(NOW(), INTERVAL 60 SECOND)) AS espera_reenvio FROM registro_pendiente WHERE idRegistroPendiente = :id LIMIT 1');
@@ -158,6 +198,12 @@ final class Registro
         return 'Te enviamos un nuevo código.';
     }
 
+    /**
+     * Ejecuta la lógica de “datos ya registrados” en gestor_registro.php.
+     *
+     * @param mixed $datos Valor de datos que recibe la función.
+     * @return bool Resultado producido por esta operación.
+     */
     private function datosYaRegistrados(array $datos): bool
     {
         $consulta = $this->conexion->prepare('SELECT 1 FROM cliente WHERE email = :email OR dni = :dni OR telefono = :telefono LIMIT 1');
@@ -167,6 +213,12 @@ final class Registro
         return (bool) ($consulta->fetch() || $usuario->fetch());
     }
 
+    /**
+     * Ejecuta la lógica de “acompanantes ya registrados” en gestor_registro.php.
+     *
+     * @param mixed $acompanantes Valor de acompanantes que recibe la función.
+     * @return bool Resultado producido por esta operación.
+     */
     private function acompanantesYaRegistrados(array $acompanantes): bool
     {
         if (!$acompanantes) return false;

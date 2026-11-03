@@ -1,0 +1,73 @@
+/* ==========================================================================
+   Resumen de alojamientos en el inicio
+   Procedencia: líneas 596-663 del CSS original.
+   No cambiar el orden de carga: las reglas posteriores completan o ajustan estas.
+   ========================================================================== */
+
+/* =========================================================
+   5. Alojamientos
+   ========================================================= */
+.alojamientos {
+    background: var(--crema);
+}
+
+.alojamientos .encabezado-seccion {
+    margin-inline: auto;
+    text-align: center;
+}
+
+.alojamientos .encabezado-seccion h2,
+.alojamientos .encabezado-seccion > p:not(.texto-destacado) {
+    margin-inline: auto;
+}
+
+.grilla-alojamientos {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}
+
+.tarjeta-alojamiento {
+    min-height: 250px;
+    display: flex;
+    flex-direction: column;
+    padding: 30px;
+    background: var(--blanco-calido);
+    border-top: 5px solid var(--verde-suave);
+    border-radius: 12px;
+}
+
+.tarjeta-alojamiento:nth-child(2) {
+    border-top-color: var(--naranja-medio);
+}
+
+.tarjeta-alojamiento:nth-child(3) {
+    border-top-color: var(--verde-medio);
+}
+
+.tarjeta-alojamiento h3 {
+    margin-bottom: 14px;
+    font-size: 1.8rem;
+}
+
+.tarjeta-alojamiento > p:not(.por-confirmar) {
+    color: var(--verde-medio);
+}
+
+.por-confirmar {
+    margin-top: auto;
+    padding-top: 22px;
+    color: var(--naranja-oscuro);
+    font-size: 0.88rem;
+    font-weight: 700;
+}
+
+.nota-seccion {
+    margin-top: 28px;
+    padding: 16px 20px;
+    color: var(--verde-oscuro);
+    background: var(--verde-claro);
+    border-left: 4px solid var(--verde-medio);
+    border-radius: 6px;
+    font-size: 0.92rem;
+}

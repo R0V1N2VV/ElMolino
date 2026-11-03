@@ -1,0 +1,80 @@
+/* ==========================================================================
+   Información para la visita
+   Procedencia: líneas 753-827 del CSS original.
+   No cambiar el orden de carga: las reglas posteriores completan o ajustan estas.
+   ========================================================================== */
+
+/* =========================================================
+   8. Información de visita
+   ========================================================= */
+.visita {
+    background: linear-gradient(180deg, var(--verde-claro) 0%, var(--crema) 100%);
+}
+
+.visita h2 {
+    color: var(--verde-oscuro);
+}
+
+.grilla-visita {
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    align-items: start;
+    gap: 90px;
+}
+
+.texto-visita > p:not(.texto-destacado) {
+    margin-top: 22px;
+    color: var(--verde-medio);
+    font-size: 1.04rem;
+}
+
+.texto-visita .boton {
+    margin-top: 28px;
+}
+
+.preguntas-frecuentes {
+    display: grid;
+    gap: 12px;
+}
+
+.preguntas-frecuentes details {
+    padding-inline: 20px;
+    background: rgba(255, 255, 255, 0.84);
+    border: 1px solid rgba(46, 125, 50, 0.24);
+    border-radius: 12px;
+}
+
+.preguntas-frecuentes summary {
+    position: relative;
+    padding: 24px 44px 24px 0;
+    color: var(--azul-oscuro);
+    font-size: 1.06rem;
+    font-weight: 750;
+    cursor: pointer;
+    list-style: none;
+}
+
+.preguntas-frecuentes summary::-webkit-details-marker {
+    display: none;
+}
+
+.preguntas-frecuentes summary::after {
+    content: "+";
+    position: absolute;
+    top: 50%;
+    right: 4px;
+    color: var(--naranja-oscuro);
+    font-size: 1.45rem;
+    font-weight: 400;
+    transform: translateY(-50%);
+}
+
+.preguntas-frecuentes details[abierto] summary::after {
+    content: "−";
+}
+
+.preguntas-frecuentes details p {
+    max-width: 620px;
+    padding: 0 44px 24px 0;
+    color: var(--verde-medio);
+}

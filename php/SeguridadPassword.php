@@ -1,4 +1,11 @@
 <?php
+/**
+ * ARCHIVO EXPLICADO: php/SeguridadPassword.php
+ *
+ * Crea y verifica contraseñas sin guardar nunca el texto original.
+ * Las funciones de este archivo están documentadas junto a su declaración.
+ */
+
 declare(strict_types=1);
 
 final class SeguridadPassword
@@ -8,8 +15,17 @@ final class SeguridadPassword
     private const BYTES_SALT = 16;
     private const BYTES_HASH = 32;
 
+    /**
+     * Inicializa el objeto y deja preparadas las dependencias que utilizarán sus demás métodos.
+     */
     private function __construct() {}
 
+    /**
+     * Convierte la contraseña en un hash seguro antes de guardarla en la base de datos.
+     *
+     * @param mixed $contrasena Valor de contrasena que recibe la función.
+     * @return string Resultado producido por esta operación.
+     */
     public static function crearHash(string $contrasena): string
     {
         $salt = random_bytes(self::BYTES_SALT);
@@ -26,6 +42,13 @@ final class SeguridadPassword
             . base64_encode($salt) . '$' . base64_encode($hash);
     }
 
+    /**
+     * Comprueba los datos recibidos y evita continuar cuando hay información inválida.
+     *
+     * @param mixed $contrasena Valor de contrasena que recibe la función.
+     * @param mixed $guardada Valor de guardada que recibe la función.
+     * @return bool Resultado producido por esta operación.
+     */
     public static function verificar(string $contrasena, string $guardada): bool
     {
         if (str_starts_with($guardada, self::PREFIJO . '$')) {
@@ -39,11 +62,24 @@ final class SeguridadPassword
         return hash_equals($guardada, $contrasena);
     }
 
+    /**
+     * Comprueba necesita migracion y devuelve verdadero o falso según se cumpla la condición.
+     *
+     * @param mixed $guardada Valor de guardada que recibe la función.
+     * @return bool Resultado producido por esta operación.
+     */
     public static function necesitaMigracion(string $guardada): bool
     {
         return !str_starts_with($guardada, self::PREFIJO . '$');
     }
 
+    /**
+     * Comprueba una contraseña antigua guardada con PBKDF2 para permitir su migración segura.
+     *
+     * @param mixed $contrasena Valor de contrasena que recibe la función.
+     * @param mixed $guardada Valor de guardada que recibe la función.
+     * @return bool Resultado producido por esta operación.
+     */
     private static function verificarPbkdf2(string $contrasena, string $guardada): bool
     {
         $partes = explode('$', $guardada);

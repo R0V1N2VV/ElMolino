@@ -1,4 +1,11 @@
 <?php
+/**
+ * ARCHIVO EXPLICADO: php/CatalogoActividadesPredeterminadas.php
+ *
+ * Forma parte del flujo “catalogo actividades predeterminadas” del sitio El Molino.
+ * Las funciones de este archivo están documentadas junto a su declaración.
+ */
+
 declare(strict_types=1);
 
 final class CatalogoActividadesPredeterminadas implements FuenteActividades
@@ -12,6 +19,7 @@ final class CatalogoActividadesPredeterminadas implements FuenteActividades
         }
 
         return array_map(
+            // Esta función anónima procesa cada elemento recibido sin crear un método público adicional.
             static fn (array $categoria): CategoriaActividad => new CategoriaActividad(
                 $categoria['id'],
                 $categoria['slug'],
@@ -24,6 +32,12 @@ final class CatalogoActividadesPredeterminadas implements FuenteActividades
         );
     }
 
+    /**
+     * Busca categoria y devuelve el resultado encontrado.
+     *
+     * @param mixed $slug Valor de slug que recibe la función.
+     * @return ?CategoriaActividad Resultado producido por esta operación.
+     */
     public function buscarCategoria(string $slug): ?CategoriaActividad
     {
         foreach ($this->listarCategorias() as $categoria) {
@@ -32,19 +46,34 @@ final class CatalogoActividadesPredeterminadas implements FuenteActividades
         return null;
     }
 
+    /**
+     * Carga tendencias que necesita esta parte del sistema.
+     *
+     * @param mixed $limite Valor de limite que recibe la función.
+     * @return array Resultado producido por esta operación.
+     */
     public function listarTendencias(int $limite = 3): array
     {
         $tendencias = array_values(array_filter(
             $this->actividades(),
+            // Esta función anónima procesa cada elemento recibido sin crear un método público adicional.
             static fn (Actividad $actividad): bool => $actividad->tendencia
         ));
         return array_slice($tendencias, 0, max(0, $limite));
     }
 
+    /**
+     * Filtra por categoria y conserva solamente los elementos que cumplen los criterios.
+     *
+     * @param mixed $categoria Valor de categoria que recibe la función.
+     * @param mixed $filtros Valor de filtros que recibe la función.
+     * @return array Resultado producido por esta operación.
+     */
     public function filtrarPorCategoria(string $categoria, array $filtros): array
     {
         $actividades = array_values(array_filter(
             $this->actividades(),
+            // Esta función anónima procesa cada elemento recibido sin crear un método público adicional.
             static function (Actividad $actividad) use ($categoria, $filtros): bool {
                 if ($actividad->categoria !== $categoria) return false;
 
@@ -68,6 +97,7 @@ final class CatalogoActividadesPredeterminadas implements FuenteActividades
         ));
 
         $orden = (string) ($filtros['orden'] ?? 'recomendadas');
+        // Esta función anónima procesa cada elemento recibido sin crear un método público adicional.
         usort($actividades, static function (Actividad $a, Actividad $b) use ($orden): int {
             return match ($orden) {
                 'nombre' => strcasecmp($a->nombre, $b->nombre),
@@ -78,6 +108,12 @@ final class CatalogoActividadesPredeterminadas implements FuenteActividades
         return $actividades;
     }
 
+    /**
+     * Busca por slug y devuelve el resultado encontrado.
+     *
+     * @param mixed $slug Valor de slug que recibe la función.
+     * @return ?Actividad Resultado producido por esta operación.
+     */
     public function buscarPorSlug(string $slug): ?Actividad
     {
         foreach ($this->actividades() as $actividad) {
@@ -86,28 +122,56 @@ final class CatalogoActividadesPredeterminadas implements FuenteActividades
         return null;
     }
 
+    /**
+     * Carga administracion que necesita esta parte del sistema.
+     * @return array Resultado producido por esta operación.
+     */
     public function listarAdministracion(): array
     {
         $actividades = $this->actividades();
+        // Esta función anónima procesa cada elemento recibido sin crear un método público adicional.
         usort($actividades, static fn (Actividad $a, Actividad $b): int => strcasecmp($a->nombre, $b->nombre));
         return $actividades;
     }
 
+    /**
+     * Valida y guarda categoria en el destino correspondiente.
+     *
+     * @param mixed $datos Valor de datos que recibe la función.
+     * @return int Resultado producido por esta operación.
+     */
     public function guardarCategoria(array $datos): int
     {
         throw new RuntimeException('Las categorías predeterminadas están en modo de solo lectura. Instalá la actualización de la base para guardar cambios.');
     }
 
+    /**
+     * Elimina categoria del sistema.
+     *
+     * @param mixed $id Valor de id que recibe la función.
+     */
     public function eliminarCategoria(int $id): void
     {
         throw new RuntimeException('Las categorías predeterminadas están en modo de solo lectura. Instalá la actualización de la base para guardar cambios.');
     }
 
+    /**
+     * Valida y guarda la información en el destino correspondiente.
+     *
+     * @param mixed $datos Valor de datos que recibe la función.
+     * @param mixed $idUsuario Valor de id usuario que recibe la función.
+     * @return int Resultado producido por esta operación.
+     */
     public function guardar(array $datos, ?int $idUsuario): int
     {
         throw new RuntimeException('Las actividades predeterminadas están en modo de solo lectura. Instalá la actualización de la base para guardar cambios.');
     }
 
+    /**
+     * Elimina el elemento indicado del sistema.
+     *
+     * @param mixed $id Valor de id que recibe la función.
+     */
     public function eliminar(int $id): void
     {
         throw new RuntimeException('Las actividades predeterminadas están en modo de solo lectura. Instalá la actualización de la base para guardar cambios.');
@@ -145,6 +209,7 @@ final class CatalogoActividadesPredeterminadas implements FuenteActividades
             [10, 'avistaje-de-aves', 'Avistaje de aves', 'naturaleza', 'Una salida tranquila para observar las especies del entorno.', 'Recorrido breve con guía por sectores de vegetación y descanso, pensado para reconocer aves sin alterar su ambiente.', 'Calzado cómodo, protector solar y, si tenés, binoculares.', 'Se recomienda mantener silencio durante algunos tramos del recorrido.', 'Domingos', '07:30', 'manana', '1 hora', 'Sendero del bosque', 'Guías de naturaleza', 10, 'todas', 'incluida', 0, false, ''],
         ];
 
+        // Esta función anónima procesa cada elemento recibido sin crear un método público adicional.
         return array_map(static function (array $fila) use ($categorias): Actividad {
             [$id, $slug, $nombre, $categoria, $descripcionCorta, $descripcion, $requisitos, $importante,
                 $dias, $horario, $momento, $duracion, $sector, $responsable, $cupo, $edad,

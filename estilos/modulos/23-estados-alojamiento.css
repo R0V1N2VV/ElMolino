@@ -1,0 +1,75 @@
+/* ==========================================================================
+   Estados y avisos de disponibilidad
+   Procedencia: líneas 5075-5144 del CSS original.
+   No cambiar el orden de carga: las reglas posteriores completan o ajustan estas.
+   ========================================================================== */
+
+/* Estados y avisos de la experiencia de estadía */
+.pagina-compra .estado-reservado {
+    color: #8a5a24;
+}
+
+.pagina-compra .estado-limpieza {
+    color: #48656c;
+}
+
+.pagina-compra .estado-fuera-servicio,
+.pagina-compra .estado-no-disponible {
+    color: #626b69;
+}
+
+.pagina-compra .producto-alojamiento-reservado,
+.pagina-compra .producto-alojamiento-limpieza,
+.pagina-compra .producto-alojamiento-fuera-servicio,
+.pagina-compra .producto-alojamiento-no-disponible {
+    background: #fbfcfb;
+}
+
+.detalle-estado-alojamiento {
+    margin: -3px 0 18px;
+    color: #52615e;
+    font-size: .88rem;
+    line-height: 1.45;
+}
+
+.aviso-estadia {
+    max-width: 820px;
+    margin: 18px 0 0;
+    padding-left: 13px;
+    color: #465653;
+    border-left: 2px solid #92aaa6;
+    font-size: .9rem;
+    line-height: 1.5;
+}
+
+.aviso-estadia-formulario {
+    margin: 0;
+}
+
+.estado-pedido-correo {
+    max-width: 760px;
+    margin: 18px 0;
+    color: #465653;
+    font-weight: 650;
+}
+
+.pagina-compra .mensaje-linea-carrito {
+    color: #52615e;
+}
+
+.pagina-compra .linea-con-error {
+    border-color: #b8c9c6;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .foto-portada img,
+    .foto-nosotros img,
+    .tarjeta-valor,
+    .tarjeta-alojamiento,
+    .grilla-espacios article,
+    .animaciones-activas .animacion-entrada {
+        opacity: 1;
+        transform: none;
+        transition: none;
+    }
+}

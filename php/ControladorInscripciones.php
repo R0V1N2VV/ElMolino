@@ -1,10 +1,30 @@
 <?php
+/**
+ * ARCHIVO EXPLICADO: php/ControladorInscripciones.php
+ *
+ * Coordina la inscripción o cancelación de personas en una actividad.
+ * Las funciones de este archivo están documentadas junto a su declaración.
+ */
+
 declare(strict_types=1);
 
 final class ControladorInscripciones
 {
+    /**
+     * Inicializa el objeto y deja preparadas las dependencias que utilizarán sus demás métodos.
+     *
+     * @param mixed $repositorio Valor de repositorio que recibe la función.
+     */
     public function __construct(private RepositorioInscripciones $repositorio) {}
 
+    /**
+     * Coordina los pasos necesarios para realizar esta operación.
+     *
+     * @param mixed $entrada Valor de entrada que recibe la función.
+     * @param mixed $usuario Valor de usuario que recibe la función.
+     * @param mixed $actividad Valor de actividad que recibe la función.
+     * @return string Resultado producido por esta operación.
+     */
     public function procesar(array $entrada, ?array $usuario, Actividad $actividad): string
     {
         if (!Sesion::validarCsrf($entrada['token_csrf'] ?? null)) {

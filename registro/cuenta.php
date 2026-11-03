@@ -1,4 +1,11 @@
 <?php
+/**
+ * ARCHIVO EXPLICADO: registro/cuenta.php
+ *
+ * Forma parte del flujo “cuenta” del sitio El Molino.
+ * Las funciones de este archivo están documentadas junto a su declaración.
+ */
+
 declare(strict_types=1);
 
 require_once __DIR__ . '/inicio.php';
@@ -16,6 +23,7 @@ $acompanantes = [];
 $actividades = [];
 $alojamientos = [];
 $idCliente = (int) ($usuario['id_cliente'] ?? 0);
+// Esta función anónima procesa cada elemento recibido sin crear un método público adicional.
 $fechaPerfil = static function (?string $fecha): string {
     $valor = DateTimeImmutable::createFromFormat('!Y-m-d', (string) $fecha);
     return $valor ? $valor->format('d/m/Y') : (string) $fecha;

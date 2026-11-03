@@ -1,4 +1,11 @@
 <?php
+/**
+ * ARCHIVO EXPLICADO: php/RepositorioActividades.php
+ *
+ * Lee y modifica actividades y categorías usando consultas preparadas.
+ * Las funciones de este archivo están documentadas junto a su declaración.
+ */
+
 declare(strict_types=1);
 
 final class RepositorioActividades implements FuenteActividades
@@ -21,6 +28,11 @@ final class RepositorioActividades implements FuenteActividades
           JOIN CategoriaActividad c ON c.idCategoria = a.idCategoria
     SQL;
 
+    /**
+     * Inicializa el objeto y deja preparadas las dependencias que utilizarán sus demás métodos.
+     *
+     * @param mixed $conexion Valor de conexion que recibe la función.
+     */
     public function __construct(private PDO $conexion) {}
 
     /** @return CategoriaActividad[] */
@@ -36,6 +48,12 @@ final class RepositorioActividades implements FuenteActividades
         return array_map([CategoriaActividad::class, 'desdeFila'], $this->conexion->query($sql)->fetchAll());
     }
 
+    /**
+     * Busca categoria y devuelve el resultado encontrado.
+     *
+     * @param mixed $slug Valor de slug que recibe la función.
+     * @return ?CategoriaActividad Resultado producido por esta operación.
+     */
     public function buscarCategoria(string $slug): ?CategoriaActividad
     {
         $consulta = $this->conexion->prepare(
@@ -99,6 +117,12 @@ final class RepositorioActividades implements FuenteActividades
         return $this->convertirActividades($consulta->fetchAll());
     }
 
+    /**
+     * Busca por slug y devuelve el resultado encontrado.
+     *
+     * @param mixed $slug Valor de slug que recibe la función.
+     * @return ?Actividad Resultado producido por esta operación.
+     */
     public function buscarPorSlug(string $slug): ?Actividad
     {
         $consulta = $this->conexion->prepare(self::CAMPOS_ACTIVIDAD . ' WHERE a.slug = :slug AND a.activa = 1 AND c.activa = 1 LIMIT 1');
@@ -114,6 +138,12 @@ final class RepositorioActividades implements FuenteActividades
         return $this->convertirActividades($consulta->fetchAll());
     }
 
+    /**
+     * Valida y guarda categoria en el destino correspondiente.
+     *
+     * @param mixed $datos Valor de datos que recibe la función.
+     * @return int Resultado producido por esta operación.
+     */
     public function guardarCategoria(array $datos): int
     {
         $existente = $this->conexion->prepare(
@@ -140,6 +170,11 @@ final class RepositorioActividades implements FuenteActividades
         return (int) $this->conexion->lastInsertId();
     }
 
+    /**
+     * Elimina categoria del sistema.
+     *
+     * @param mixed $id Valor de id que recibe la función.
+     */
     public function eliminarCategoria(int $id): void
     {
         $consulta = $this->conexion->prepare(
@@ -163,6 +198,13 @@ final class RepositorioActividades implements FuenteActividades
         }
     }
 
+    /**
+     * Valida y guarda la información en el destino correspondiente.
+     *
+     * @param mixed $datos Valor de datos que recibe la función.
+     * @param mixed $idUsuario Valor de id usuario que recibe la función.
+     * @return int Resultado producido por esta operación.
+     */
     public function guardar(array $datos, ?int $idUsuario): int
     {
         $idCategoria = $this->idCategoria((string) $datos['categoria']);
@@ -202,12 +244,23 @@ final class RepositorioActividades implements FuenteActividades
         return (int) $this->conexion->lastInsertId();
     }
 
+    /**
+     * Elimina el elemento indicado del sistema.
+     *
+     * @param mixed $id Valor de id que recibe la función.
+     */
     public function eliminar(int $id): void
     {
         $consulta = $this->conexion->prepare('UPDATE Actividad SET activa = 0 WHERE idActividad = :id');
         $consulta->execute(['id' => $id]);
     }
 
+    /**
+     * Ejecuta la lógica de “id categoria” en RepositorioActividades.php.
+     *
+     * @param mixed $slug Valor de slug que recibe la función.
+     * @return int Resultado producido por esta operación.
+     */
     private function idCategoria(string $slug): int
     {
         $consulta = $this->conexion->prepare('SELECT idCategoria FROM CategoriaActividad WHERE slug = :slug AND activa = 1 LIMIT 1');

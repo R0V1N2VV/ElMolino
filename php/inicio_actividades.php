@@ -1,4 +1,11 @@
 <?php
+/**
+ * ARCHIVO EXPLICADO: php/inicio_actividades.php
+ *
+ * Forma parte del flujo “inicio actividades” del sitio El Molino.
+ * Las funciones de este archivo están documentadas junto a su declaración.
+ */
+
 declare(strict_types=1);
 
 require_once __DIR__ . '/Conexion.php';

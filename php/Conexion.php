@@ -1,12 +1,26 @@
 <?php
+/**
+ * ARCHIVO EXPLICADO: php/Conexion.php
+ *
+ * Centraliza la conexión PDO compartida con la base de datos MySQL.
+ * Las funciones de este archivo están documentadas junto a su declaración.
+ */
+
 declare(strict_types=1);
 
 final class Conexion
 {
     private static ?PDO $instancia = null;
 
+    /**
+     * Inicializa el objeto y deja preparadas las dependencias que utilizarán sus demás métodos.
+     */
     private function __construct() {}
 
+    /**
+     * Devuelve el dato solicitado; si corresponde, lo recupera primero de su origen persistente.
+     * @return PDO Resultado producido por esta operación.
+     */
     public static function obtener(): PDO
     {
         if (self::$instancia instanceof PDO) return self::$instancia;

@@ -1,4 +1,11 @@
 <?php
+/**
+ * ARCHIVO EXPLICADO: php/GestorCarritoAlojamiento.php
+ *
+ * Gestiona disponibilidad, carrito y creación de pedidos de alojamiento.
+ * Las funciones de este archivo están documentadas junto a su declaración.
+ */
+
 declare(strict_types=1);
 
 final class GestorCarritoAlojamiento
@@ -11,8 +18,20 @@ final class GestorCarritoAlojamiento
         'Tarjeta en el complejo',
     ];
 
+    /**
+     * Inicializa el objeto y deja preparadas las dependencias que utilizarán sus demás métodos.
+     *
+     * @param mixed $conexion Valor de conexion que recibe la función.
+     */
     public function __construct(private PDO $conexion) {}
 
+    /**
+     * Ejecuta la lógica de “catalogo” en GestorCarritoAlojamiento.php.
+     *
+     * @param mixed $entrada Valor de entrada que recibe la función.
+     * @param mixed $salida Valor de salida que recibe la función.
+     * @return array Resultado producido por esta operación.
+     */
     public function catalogo(?string $entrada = null, ?string $salida = null): array
     {
         try {
@@ -43,6 +62,13 @@ final class GestorCarritoAlojamiento
         return $consulta->fetchAll();
     }
 
+    /**
+     * Ejecuta la lógica de “catalogo agrupado” en GestorCarritoAlojamiento.php.
+     *
+     * @param mixed $entrada Valor de entrada que recibe la función.
+     * @param mixed $salida Valor de salida que recibe la función.
+     * @return array Resultado producido por esta operación.
+     */
     public function catalogoAgrupado(?string $entrada = null, ?string $salida = null): array
     {
         $grupos = [];
@@ -71,6 +97,7 @@ final class GestorCarritoAlojamiento
         }
 
         $ordenTipos = ['cabanas' => 1, 'habitaciones' => 2, 'hoteles' => 3];
+        // Esta función anónima procesa cada elemento recibido sin crear un método público adicional.
         uasort($grupos, static function (array $a, array $b) use ($ordenTipos): int {
             return (($ordenTipos[$a['tipoClave']] ?? 99) <=> ($ordenTipos[$b['tipoClave']] ?? 99))
                 ?: ((int) $a['capacidad'] <=> (int) $b['capacidad']);
@@ -78,6 +105,12 @@ final class GestorCarritoAlojamiento
         return array_values($grupos);
     }
 
+    /**
+     * Ejecuta la lógica de “informacion estado” en GestorCarritoAlojamiento.php.
+     *
+     * @param mixed $alojamiento Valor de alojamiento que recibe la función.
+     * @return array Resultado producido por esta operación.
+     */
     public static function informacionEstado(array $alojamiento): array
     {
         $estado = self::normalizarTexto((string) ($alojamiento['estado'] ?? ''));
@@ -138,6 +171,12 @@ final class GestorCarritoAlojamiento
         ];
     }
 
+    /**
+     * Ejecuta la lógica de “clave tipo” en GestorCarritoAlojamiento.php.
+     *
+     * @param mixed $tipo Valor de tipo que recibe la función.
+     * @return string Resultado producido por esta operación.
+     */
     public static function claveTipo(string $tipo): string
     {
         $tipo = self::normalizarTexto($tipo);
@@ -147,6 +186,12 @@ final class GestorCarritoAlojamiento
         return 'otros';
     }
 
+    /**
+     * Ejecuta la lógica de “detalles publicos” en GestorCarritoAlojamiento.php.
+     *
+     * @param mixed $alojamiento Valor de alojamiento que recibe la función.
+     * @return array Resultado producido por esta operación.
+     */
     public static function detallesPublicos(array $alojamiento): array
     {
         $capacidad = max(1, (int) ($alojamiento['capacidad'] ?? 1));
@@ -182,6 +227,14 @@ final class GestorCarritoAlojamiento
         ];
     }
 
+    /**
+     * Agrega el elemento recibido a la colección o proceso actual.
+     *
+     * @param mixed $idAlojamiento Valor de id alojamiento que recibe la función.
+     * @param mixed $entrada Valor de entrada que recibe la función.
+     * @param mixed $salida Valor de salida que recibe la función.
+     * @param mixed $personas Valor de personas que recibe la función.
+     */
     public function agregar(int $idAlojamiento, string $entrada, string $salida, int $personas): void
     {
         [$fechaEntrada, $fechaSalida, $noches] = $this->validarFechas($entrada, $salida);
@@ -208,6 +261,15 @@ final class GestorCarritoAlojamiento
         Sesion::guardar(self::CLAVE_CARRITO, $carrito);
     }
 
+    /**
+     * Agrega por tipo capacidad a la colección o proceso actual.
+     *
+     * @param mixed $tipoClave Valor de tipo clave que recibe la función.
+     * @param mixed $capacidad Valor de capacidad que recibe la función.
+     * @param mixed $entrada Valor de entrada que recibe la función.
+     * @param mixed $salida Valor de salida que recibe la función.
+     * @param mixed $personas Valor de personas que recibe la función.
+     */
     public function agregarPorTipoCapacidad(string $tipoClave, int $capacidad, string $entrada, string $salida, int $personas): void
     {
         [$fechaEntrada, $fechaSalida] = $this->validarFechas($entrada, $salida);
@@ -242,6 +304,10 @@ final class GestorCarritoAlojamiento
         Sesion::guardar(self::CLAVE_CARRITO, $carrito);
     }
 
+    /**
+     * Ejecuta la lógica de “elementos” en GestorCarritoAlojamiento.php.
+     * @return array Resultado producido por esta operación.
+     */
     public function elementos(): array
     {
         $elementos = [];
@@ -315,6 +381,11 @@ final class GestorCarritoAlojamiento
         return $elementos;
     }
 
+    /**
+     * Quita el elemento indicado de la selección actual.
+     *
+     * @param mixed $clave Valor de clave que recibe la función.
+     */
     public function quitar(string $clave): void
     {
         $carrito = $this->carrito();
@@ -322,11 +393,21 @@ final class GestorCarritoAlojamiento
         Sesion::guardar(self::CLAVE_CARRITO, $carrito);
     }
 
+    /**
+     * Calcula cantidad y devuelve el resultado.
+     * @return int Resultado producido por esta operación.
+     */
     public function cantidad(): int
     {
         return count($this->carrito());
     }
 
+    /**
+     * Calcula total estimado y devuelve el resultado.
+     *
+     * @param mixed $elementos Valor de elementos que recibe la función.
+     * @return int Resultado producido por esta operación.
+     */
     public static function totalEstimado(array $elementos): int
     {
         $total = 0;
@@ -336,6 +417,13 @@ final class GestorCarritoAlojamiento
         return $total;
     }
 
+    /**
+     * Crea pedido a partir de los datos recibidos.
+     *
+     * @param mixed $usuario Valor de usuario que recibe la función.
+     * @param mixed $metodoPago Valor de metodo pago que recibe la función.
+     * @return int Resultado producido por esta operación.
+     */
     public function crearPedido(array $usuario, string $metodoPago): int
     {
         if (!in_array($metodoPago, self::METODOS_PAGO, true)) {
@@ -352,6 +440,7 @@ final class GestorCarritoAlojamiento
         }
         if ($idCliente <= 0) throw new RuntimeException('La cuenta no está vinculada a un perfil de cliente. Contactá al complejo para continuar.');
 
+        // Esta función anónima procesa cada elemento recibido sin crear un método público adicional.
         uasort($carrito, static function (array $a, array $b): int {
             return strcmp((string) ($a['tipoGrupo'] ?? ''), (string) ($b['tipoGrupo'] ?? ''))
                 ?: ((int) ($a['capacidadGrupo'] ?? 0) <=> (int) ($b['capacidadGrupo'] ?? 0))
@@ -450,6 +539,13 @@ final class GestorCarritoAlojamiento
         }
     }
 
+    /**
+     * Devuelve pedido para que otra parte del programa pueda utilizarlo.
+     *
+     * @param mixed $idPedido Valor de id pedido que recibe la función.
+     * @param mixed $idCliente Valor de id cliente que recibe la función.
+     * @return ?array Resultado producido por esta operación.
+     */
     public function obtenerPedido(int $idPedido, int $idCliente): ?array
     {
         $consulta = $this->conexion->prepare(
@@ -467,17 +563,30 @@ final class GestorCarritoAlojamiento
         return $pedido;
     }
 
+    /**
+     * Ejecuta la lógica de “vaciar” en GestorCarritoAlojamiento.php.
+     */
     public function vaciar(): void
     {
         Sesion::eliminar(self::CLAVE_CARRITO);
     }
 
+    /**
+     * Ejecuta la lógica de “carrito” en GestorCarritoAlojamiento.php.
+     * @return array Resultado producido por esta operación.
+     */
     private function carrito(): array
     {
         $carrito = Sesion::obtener(self::CLAVE_CARRITO, []);
         return is_array($carrito) ? $carrito : [];
     }
 
+    /**
+     * Busca alojamiento y devuelve el resultado encontrado.
+     *
+     * @param mixed $id Valor de id que recibe la función.
+     * @return ?array Resultado producido por esta operación.
+     */
     private function buscarAlojamiento(int $id): ?array
     {
         $consulta = $this->conexion->prepare(
@@ -488,6 +597,12 @@ final class GestorCarritoAlojamiento
         return $alojamiento ?: null;
     }
 
+    /**
+     * Comprueba alojamiento y evita continuar cuando hay información inválida.
+     *
+     * @param mixed $alojamiento Valor de alojamiento que recibe la función.
+     * @param mixed $personas Valor de personas que recibe la función.
+     */
     private function validarAlojamiento(?array $alojamiento, int $personas): void
     {
         if (!$alojamiento) throw new RuntimeException('El alojamiento elegido ya no está disponible.');
@@ -503,6 +618,18 @@ final class GestorCarritoAlojamiento
         }
     }
 
+    /**
+     * Busca disponible por grupo y devuelve el resultado encontrado.
+     *
+     * @param mixed $tipoClave Valor de tipo clave que recibe la función.
+     * @param mixed $capacidad Valor de capacidad que recibe la función.
+     * @param mixed $entrada Valor de entrada que recibe la función.
+     * @param mixed $salida Valor de salida que recibe la función.
+     * @param mixed $personas Valor de personas que recibe la función.
+     * @param mixed $ocupadosTemporales Valor de ocupados temporales que recibe la función.
+     * @param mixed $bloquear Valor de bloquear que recibe la función.
+     * @return ?array Resultado producido por esta operación.
+     */
     private function buscarDisponiblePorGrupo(
         string $tipoClave,
         int $capacidad,
@@ -533,6 +660,12 @@ final class GestorCarritoAlojamiento
         return null;
     }
 
+    /**
+     * Ejecuta la lógica de “ocupaciones temporales” en GestorCarritoAlojamiento.php.
+     *
+     * @param mixed $carrito Valor de carrito que recibe la función.
+     * @return array Resultado producido por esta operación.
+     */
     private function ocupacionesTemporales(array $carrito): array
     {
         $ocupaciones = [];
@@ -547,6 +680,15 @@ final class GestorCarritoAlojamiento
         return $ocupaciones;
     }
 
+    /**
+     * Comprueba esta ocupado temporalmente y devuelve verdadero o falso según se cumpla la condición.
+     *
+     * @param mixed $idAlojamiento Valor de id alojamiento que recibe la función.
+     * @param mixed $entrada Valor de entrada que recibe la función.
+     * @param mixed $salida Valor de salida que recibe la función.
+     * @param mixed $ocupaciones Valor de ocupaciones que recibe la función.
+     * @return bool Resultado producido por esta operación.
+     */
     private function estaOcupadoTemporalmente(int $idAlojamiento, string $entrada, string $salida, array $ocupaciones): bool
     {
         foreach ($ocupaciones as $ocupacion) {
@@ -557,6 +699,13 @@ final class GestorCarritoAlojamiento
         return false;
     }
 
+    /**
+     * Ejecuta la lógica de “mensaje sin disponibilidad” en GestorCarritoAlojamiento.php.
+     *
+     * @param mixed $tipoClave Valor de tipo clave que recibe la función.
+     * @param mixed $capacidad Valor de capacidad que recibe la función.
+     * @return string Resultado producido por esta operación.
+     */
     private function mensajeSinDisponibilidad(string $tipoClave, int $capacidad): string
     {
         $nombres = [
@@ -568,6 +717,13 @@ final class GestorCarritoAlojamiento
         return 'No hay ' . $nombre . ' para ' . $capacidad . ' personas disponibles en esas fechas. Elegí otras fechas u otro tipo de alojamiento.';
     }
 
+    /**
+     * Comprueba disponibilidad y evita continuar cuando hay información inválida.
+     *
+     * @param mixed $idAlojamiento Valor de id alojamiento que recibe la función.
+     * @param mixed $entrada Valor de entrada que recibe la función.
+     * @param mixed $salida Valor de salida que recibe la función.
+     */
     private function validarDisponibilidad(int $idAlojamiento, string $entrada, string $salida): void
     {
         $consulta = $this->conexion->prepare(
@@ -579,6 +735,13 @@ final class GestorCarritoAlojamiento
         }
     }
 
+    /**
+     * Comprueba fechas y evita continuar cuando hay información inválida.
+     *
+     * @param mixed $entrada Valor de entrada que recibe la función.
+     * @param mixed $salida Valor de salida que recibe la función.
+     * @return array Resultado producido por esta operación.
+     */
     private function validarFechas(string $entrada, string $salida): array
     {
         $zona = new DateTimeZone(self::ZONA_HORARIA);
@@ -601,6 +764,12 @@ final class GestorCarritoAlojamiento
         return [$fechaEntrada->format('Y-m-d'), $fechaSalida->format('Y-m-d'), $noches];
     }
 
+    /**
+     * Ajusta texto a un formato uniforme y seguro para compararlo o mostrarlo.
+     *
+     * @param mixed $texto Valor de texto que recibe la función.
+     * @return string Resultado producido por esta operación.
+     */
     private static function normalizarTexto(string $texto): string
     {
         $texto = strtolower(trim($texto));

@@ -1,9 +1,28 @@
 <?php
+/**
+ * ARCHIVO EXPLICADO: php/Autenticacion.php
+ *
+ * Comprueba las credenciales y recupera los datos del usuario que inicia sesión.
+ * Las funciones de este archivo están documentadas junto a su declaración.
+ */
+
 declare(strict_types=1);
 
 final class Autenticacion
 {
+    /**
+     * Inicializa el objeto y deja preparadas las dependencias que utilizarán sus demás métodos.
+     *
+     * @param mixed $conexion Valor de conexion que recibe la función.
+     */
     public function __construct(private PDO $conexion) {}
+    /**
+     * Inicia sesion con los datos recibidos.
+     *
+     * @param mixed $correo Valor de correo que recibe la función.
+     * @param mixed $contrasena Valor de contrasena que recibe la función.
+     * @return ?array Resultado producido por esta operación.
+     */
     public function iniciarSesion(string $correo, string $contrasena): ?array
     {
         if (!filter_var($correo, FILTER_VALIDATE_EMAIL) || $contrasena === '') return null;

@@ -1,0 +1,190 @@
+/* ==========================================================================
+   Experiencia completa de reserva
+   Procedencia: líneas 4642-4826 del CSS original.
+   No cambiar el orden de carga: las reglas posteriores completan o ajustan estas.
+   ========================================================================== */
+
+/* Ajustes definitivos de la experiencia de estadía */
+.pagina-compra .contenido-compra > h1 {
+    font-size: clamp(2.45rem, 5vw, 3.5rem);
+}
+
+.pagina-compra .estado-vacio-estadia {
+    max-width: 820px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 32px;
+    margin-top: 34px;
+    padding: 28px 0;
+    background: transparent;
+    border: 0;
+    border-top: 1px solid #c8dfdc;
+    border-bottom: 1px solid #c8dfdc;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.pagina-compra .estado-vacio-estadia h2 {
+    margin: 0 0 5px;
+    font-size: clamp(1.35rem, 2.4vw, 1.8rem);
+}
+
+.pagina-compra .estado-vacio-estadia p {
+    max-width: 590px;
+    color: var(--verde-medio);
+}
+
+.pagina-compra .estado-vacio-estadia .boton {
+    min-width: 168px;
+}
+
+.pagina-compra .portada-alojamientos {
+    margin-bottom: 42px;
+    padding: 8px 0 34px;
+    overflow: visible;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--beige);
+    border-radius: 0;
+}
+
+.pagina-compra .portada-alojamientos h1 {
+    max-width: 760px;
+    font-size: clamp(2.35rem, 5vw, 3.7rem);
+}
+
+.pagina-compra .portada-alojamientos .introduccion-compra {
+    max-width: 660px;
+    margin-top: 12px;
+    font-size: 1rem;
+}
+
+.pagina-compra .encabezado-packs {
+    align-items: baseline;
+    margin-bottom: 18px;
+}
+
+.pagina-compra .encabezado-packs > p {
+    padding: 0;
+    font-size: .88rem;
+    font-weight: 600;
+}
+
+.pagina-compra .grilla-productos-alojamiento {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 295px), 1fr));
+    gap: 18px;
+    margin-top: 0;
+}
+
+.pagina-compra .producto-alojamiento {
+    overflow: visible;
+    background: var(--blanco);
+    border: 1px solid #c8dfdc;
+    border-radius: 12px;
+    box-shadow: none;
+}
+
+.pagina-compra .contenido-pack-alojamiento {
+    padding: 24px;
+}
+
+.pagina-compra .etiquetas-pack {
+    justify-content: flex-start;
+    margin-bottom: 9px;
+}
+
+.pagina-compra .etiquetas-pack .estado-alojamiento {
+    position: relative;
+    margin: 0;
+    padding-left: 13px;
+    font-size: .78rem;
+}
+
+.pagina-compra .etiquetas-pack .estado-alojamiento::before {
+    content: "";
+    position: absolute;
+    top: .48em;
+    left: 0;
+    width: 7px;
+    height: 7px;
+    background: currentColor;
+    border-radius: 50%;
+}
+
+.pagina-compra .producto-alojamiento h2 {
+    font-size: 1.45rem;
+}
+
+.pagina-compra .capacidad-pack {
+    margin-top: 6px;
+    color: var(--texto);
+}
+
+.pagina-compra .precio-alojamiento {
+    margin-block: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #dbe9e7;
+    font-size: 1.45rem;
+}
+
+.pagina-compra .formulario-alojamiento {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+}
+
+.pagina-compra .formulario-alojamiento .boton {
+    min-height: 48px;
+    margin-top: 5px;
+    font-size: .92rem;
+}
+
+.pagina-compra .lista-carrito-alojamiento {
+    gap: 0;
+    max-width: 820px;
+    margin-top: 30px;
+    background: var(--blanco);
+    border: 1px solid #c8dfdc;
+    border-radius: 12px;
+}
+
+.pagina-compra .linea-carrito-alojamiento,
+.pagina-compra .linea-carrito-alojamiento:first-child,
+.pagina-compra .linea-carrito-alojamiento:last-child {
+    padding: 22px 24px;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid #dbe9e7;
+    border-radius: 0;
+}
+
+.pagina-compra .linea-carrito-alojamiento:last-child {
+    border-bottom: 0;
+}
+
+.pagina-compra .resumen-carrito-alojamiento {
+    max-width: 820px;
+    align-items: center;
+    padding: 20px 24px;
+    background: transparent;
+    border: 1px solid #c8dfdc;
+    border-radius: 12px;
+}
+
+@media (max-width: 760px) {
+    .pagina-compra .estado-vacio-estadia {
+        grid-template-columns: 1fr;
+        gap: 18px;
+        padding-block: 24px;
+    }
+
+    .pagina-compra .estado-vacio-estadia .boton {
+        width: fit-content;
+    }
+
+    .pagina-compra .portada-alojamientos {
+        margin-bottom: 32px;
+        padding: 0 0 26px;
+    }
+}

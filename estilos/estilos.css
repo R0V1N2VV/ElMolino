@@ -1,0 +1,90 @@
+@charset "UTF-8";
+
+/*
+ * HOJA DE ESTILOS PRINCIPAL DE EL MOLINO
+ * ---------------------------------------
+ * Este archivo funciona como índice. Cada tema vive en un archivo más pequeño
+ * dentro de estilos/modulos. Los imports respetan el orden exacto del CSS
+ * anterior, por eso la apariencia y las prioridades de la cascada se mantienen.
+ *
+ * Consejo: para buscar un estilo, primero mire el nombre del módulo. Si una regla
+ * se redefine más adelante, gana la última que aparezca en esta lista.
+ */
+
+/* 01. Fuente, variables, reinicio y componentes generales. */
+@import url("./modulos/01-base-y-paleta.css");
+
+/* 02. Cabecera y navegación principal. */
+@import url("./modulos/02-navegacion.css");
+
+/* 03. Portada e imagen principal. */
+@import url("./modulos/03-portada.css");
+
+/* 04. Presentación institucional. */
+@import url("./modulos/04-nosotros.css");
+
+/* 05. Resumen de alojamientos en el inicio. */
+@import url("./modulos/05-alojamientos-inicio.css");
+
+/* 06. Resumen de actividades en el inicio. */
+@import url("./modulos/06-actividades-inicio.css");
+
+/* 07. Espacios y servicios. */
+@import url("./modulos/07-espacios.css");
+
+/* 08. Información para la visita. */
+@import url("./modulos/08-visita.css");
+
+/* 09. Cierre de página y pie. */
+@import url("./modulos/09-pie-y-cierre.css");
+
+/* 10. Adaptación inicial para tablet. */
+@import url("./modulos/10-responsive-tablet.css");
+
+/* 11. Adaptación inicial para teléfono. */
+@import url("./modulos/11-responsive-movil.css");
+
+/* 12. Identidad, cuenta y estadía. */
+@import url("./modulos/12-cuenta-y-estadia.css");
+
+/* 13. Inicio de sesión, registro y verificación. */
+@import url("./modulos/13-acceso-y-registro.css");
+
+/* 14. Listado y filtros de actividades. */
+@import url("./modulos/14-pagina-actividades.css");
+
+/* 15. Detalle e inscripción a una actividad. */
+@import url("./modulos/15-detalle-actividad.css");
+
+/* 16. Gestión de actividades y formularios. */
+@import url("./modulos/16-administracion-actividades.css");
+
+/* 17. Categorías, fotografías y composiciones. */
+@import url("./modulos/17-categorias-actividades.css");
+
+/* 18. Ajustes finales de formularios de actividades. */
+@import url("./modulos/18-ajustes-formularios.css");
+
+/* 19. Catálogo de estadías y accesos del encabezado. */
+@import url("./modulos/19-catalogo-alojamientos.css");
+
+/* 20. Experiencia completa de reserva. */
+@import url("./modulos/20-reserva-alojamientos.css");
+
+/* 21. Marca, navegación y botones para bajar de sección. */
+@import url("./modulos/21-marca-y-desplazamiento.css");
+
+/* 22. Idioma, dislexia y animaciones suaves. */
+@import url("./modulos/22-accesibilidad-y-animaciones.css");
+
+/* 23. Estados y avisos de disponibilidad. */
+@import url("./modulos/23-estados-alojamiento.css");
+
+/* 24. Pequeños ajustes visuales visibles. */
+@import url("./modulos/24-ajustes-visuales.css");
+
+/* 25. Mensajes sin carteles invasivos. */
+@import url("./modulos/25-mensajes-discretos.css");
+
+/* 26. Perfil del cliente y adaptación responsive. */
+@import url("./modulos/26-perfil-cliente.css");

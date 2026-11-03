@@ -1,0 +1,50 @@
+/* ==========================================================================
+   Ajustes finales de formularios de actividades
+   Procedencia: líneas 4450-4494 del CSS original.
+   No cambiar el orden de carga: las reglas posteriores completan o ajustan estas.
+   ========================================================================== */
+
+/* Ajustes finales para los formularios PHP de actividades */
+.formulario-filtros-actividades {
+    display: contents;
+}
+
+.campo-busqueda {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    padding: 6px;
+}
+
+.campo-busqueda .boton {
+    align-self: center;
+    min-height: 42px;
+}
+
+.titulo-filtros a {
+    color: var(--azul-medio);
+    font-size: 0.82rem;
+    font-weight: 750;
+}
+
+.acciones-admin form {
+    margin: 0;
+}
+
+.acciones-admin > a {
+    min-height: 38px;
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 13px;
+    color: var(--azul-oscuro);
+    background: var(--crema);
+    border: 1px solid var(--beige);
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 750;
+}
+
+.boton-cerrar-panel {
+    display: grid;
+    place-items: center;
+}

@@ -1,0 +1,89 @@
+/* ==========================================================================
+   Idioma, dislexia y animaciones suaves
+   Procedencia: líneas 4991-5074 del CSS original.
+   No cambiar el orden de carga: las reglas posteriores completan o ajustan estas.
+   ========================================================================== */
+
+/* Selector de idioma dentro de accesibilidad */
+.control-idioma {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding-top: 9px;
+    border-top: 1px solid #dbe9e7;
+    color: var(--verde-oscuro);
+    font-size: .86rem;
+    font-weight: 700;
+}
+
+.opciones-idioma {
+    display: inline-flex;
+    padding: 2px;
+    background: #edf5f3;
+    border: 1px solid #c8dfdc;
+    border-radius: 8px;
+}
+
+.opciones-idioma button {
+    min-width: 37px;
+    min-height: 30px;
+    padding: 4px 8px;
+    color: var(--verde-medio);
+    background: transparent;
+    border: 0;
+    border-radius: 6px;
+    cursor: pointer;
+    font: inherit;
+    font-size: .72rem;
+    font-weight: 800;
+}
+
+.opciones-idioma button[aria-pressed="true"] {
+    color: var(--blanco);
+    background: var(--azul-medio);
+}
+
+/* Movimiento sutil en la portada y en los cuadros informativos */
+.foto-portada img,
+.foto-nosotros img {
+    transition: transform 480ms cubic-bezier(.2, .75, .25, 1);
+    will-change: transform;
+}
+
+.foto-nosotros {
+    overflow: hidden;
+}
+
+@media (hover: hover) {
+    .foto-portada:hover img,
+    .foto-nosotros:hover img {
+        transform: scale(1.055);
+    }
+
+    .tarjeta-valor,
+    .tarjeta-alojamiento,
+    .grilla-espacios article {
+        transition: transform 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
+    }
+
+    .tarjeta-valor:hover,
+    .tarjeta-alojamiento:hover,
+    .grilla-espacios article:hover {
+        transform: translateY(-4px);
+        border-color: rgba(0, 121, 107, .35);
+        box-shadow: 0 12px 26px rgba(0, 77, 64, .09);
+    }
+}
+
+.animaciones-activas .animacion-entrada {
+    opacity: 0;
+    transform: translateY(16px);
+    transition: opacity 520ms ease, transform 520ms cubic-bezier(.2, .75, .25, 1);
+    transition-delay: var(--demora-animacion, 0ms);
+}
+
+.animaciones-activas .animacion-entrada.animacion-visible {
+    opacity: 1;
+    transform: translateY(0);
+}

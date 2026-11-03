@@ -1,0 +1,68 @@
+/* ==========================================================================
+   Mensajes sin carteles invasivos
+   Procedencia: líneas 5177-5239 del CSS original.
+   No cambiar el orden de carga: las reglas posteriores completan o ajustan estas.
+   ========================================================================== */
+
+/* Mensajes discretos: sin carteles verdes ni rojos */
+.mensaje,
+.mensaje-exito,
+.mensaje-error {
+    margin-top: 15px;
+    padding: 0;
+    color: #52615e;
+    background: transparent !important;
+    border: 0 !important;
+    border-radius: 0;
+    box-shadow: none;
+    font-size: .9rem;
+    line-height: 1.5;
+}
+
+.mensaje-error {
+    color: #7b2520;
+}
+
+.tarjeta-inicio-sesion > .mensaje,
+.tarjeta-registro > .mensaje {
+    text-align: center;
+}
+
+.aviso-administracion,
+.aviso-administracion.mensaje-error {
+    width: min(100% - 40px, 1180px);
+    display: block;
+    margin: 20px auto 0;
+    padding: 0;
+    color: #52615e;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    font-size: .9rem;
+}
+
+.aviso-administracion.mensaje-error {
+    color: #7b2520;
+}
+
+.aviso-administracion strong {
+    margin-right: 4px;
+}
+
+.resumen-registro,
+.estado-inscripcion-activa {
+    padding: 0;
+    color: #52615e;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+}
+
+.estado-inscripcion-activa {
+    margin-top: 18px;
+}
+
+.estado-inscripcion-activa strong {
+    color: var(--verde-oscuro);
+}

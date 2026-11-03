@@ -1,0 +1,177 @@
+/* ==========================================================================
+   Detalle e inscripción a una actividad
+   Procedencia: líneas 3333-3504 del CSS original.
+   No cambiar el orden de carga: las reglas posteriores completan o ajustan estas.
+   ========================================================================== */
+
+/* =========================================================
+   14. Ficha de una actividad
+   ========================================================= */
+.pagina-detalle-actividad {
+    min-height: 70vh;
+    padding-block: 48px 96px;
+    background: var(--blanco-calido);
+}
+
+.volver-actividades {
+    display: inline-block;
+    margin-bottom: 30px;
+    color: var(--azul-medio);
+    font-weight: 750;
+}
+
+.barra-detalle-acciones {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 28px;
+}
+
+.barra-detalle-acciones .volver-actividades {
+    margin-bottom: 0;
+}
+
+.grilla-detalle-actividad {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    align-items: start;
+    gap: 46px;
+}
+
+.visual-detalle-actividad {
+    height: min(430px, 45vw);
+    margin-bottom: 34px;
+    border-radius: 22px;
+    box-shadow: var(--sombra);
+    font-size: 7rem;
+}
+
+.contenido-detalle-actividad h1 {
+    max-width: 780px;
+    font-size: clamp(2.5rem, 5vw, 4.15rem);
+}
+
+.bajada-detalle {
+    max-width: 720px;
+    margin-top: 16px;
+    color: var(--verde-medio);
+    font-size: 1.15rem;
+}
+
+.bloque-texto-actividad {
+    margin-top: 38px;
+    padding-top: 30px;
+    border-top: 1px solid var(--beige);
+}
+
+.bloque-texto-actividad h2 {
+    margin-bottom: 12px;
+    font-size: clamp(1.65rem, 3vw, 2.25rem);
+}
+
+.bloque-texto-actividad p {
+    max-width: 760px;
+    color: var(--verde-medio);
+}
+
+.panel-informacion-actividad {
+    position: sticky;
+    top: 108px;
+    padding: 28px;
+    background: var(--crema);
+    border: 1px solid var(--beige);
+    border-radius: 18px;
+}
+
+.panel-informacion-actividad dl {
+    margin-block: 8px 24px;
+}
+
+.panel-informacion-actividad dl > div {
+    padding-block: 15px;
+    border-bottom: 1px solid var(--beige);
+}
+
+.panel-informacion-actividad dt {
+    color: var(--verde-oscuro);
+    font-weight: 800;
+}
+
+.panel-informacion-actividad dd {
+    margin-top: 3px;
+    color: var(--verde-medio);
+}
+
+.boton-ancho {
+    width: 100%;
+    cursor: pointer;
+}
+
+.boton-ancho:disabled {
+    cursor: default;
+    opacity: 0.72;
+    transform: none;
+}
+
+.mensaje-inscripcion {
+    margin-top: 14px;
+    color: var(--verde-medio);
+    font-size: 0.82rem;
+}
+
+.formulario-inscripcion {
+    margin-top: 18px;
+}
+
+.estado-inscripcion-activa {
+    display: grid;
+    gap: 3px;
+    margin-top: 20px;
+    padding: 14px 16px;
+    color: var(--verde-oscuro);
+    background: var(--verde-claro);
+    border: 1px solid rgba(46, 125, 50, 0.2);
+    border-radius: 12px;
+}
+
+.estado-inscripcion-activa span {
+    color: var(--verde-medio);
+    font-size: 0.82rem;
+}
+
+.panel-informacion-actividad .boton-ancho {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 18px;
+    text-align: center;
+}
+
+.estado-tarjeta-actividad {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+    color: var(--verde-oscuro);
+    font-size: 0.78rem;
+    font-weight: 750;
+}
+
+.estado-tarjeta-actividad span:last-child {
+    color: var(--azul-medio);
+}
+
+.estado-tarjeta-actividad .sin-cupo {
+    color: #8a2c20;
+}
+
+.pie-pagina-simple {
+    padding-top: 0;
+}
+
+.pie-pagina-simple a:hover {
+    color: var(--blanco);
+}

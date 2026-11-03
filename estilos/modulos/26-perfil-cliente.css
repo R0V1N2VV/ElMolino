@@ -1,0 +1,200 @@
+/* ==========================================================================
+   Perfil del cliente y adaptación responsive
+   Procedencia: líneas 5240-5433 del CSS original.
+   No cambiar el orden de carga: las reglas posteriores completan o ajustan estas.
+   ========================================================================== */
+
+/* Perfil del cliente */
+.pagina-cuenta {
+    min-height: 100vh;
+    color: var(--texto);
+    background: #f6f8f6;
+}
+
+.contenido-cuenta {
+    padding-block: 58px 92px;
+}
+
+.cabecera-cuenta {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 28px;
+    padding-bottom: 28px;
+    border-bottom: 1px solid var(--beige);
+}
+
+.cabecera-cuenta h1 {
+    margin: 0;
+    font-size: clamp(2.3rem, 5vw, 3.8rem);
+}
+
+.cabecera-cuenta > div > p:last-child {
+    margin-top: 7px;
+    color: var(--verde-medio);
+}
+
+.formulario-salir-cuenta {
+    margin: 0;
+}
+
+.formulario-salir-cuenta .boton-enlace {
+    color: var(--azul-oscuro);
+    font-size: .9rem;
+    font-weight: 750;
+}
+
+.grilla-resumen-cuenta {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 22px;
+    margin-top: 32px;
+}
+
+.panel-resumen-cuenta,
+.seccion-cuenta-secundaria {
+    background: var(--blanco);
+    border: 1px solid var(--beige);
+    border-radius: 14px;
+}
+
+.panel-resumen-cuenta {
+    padding: 26px;
+}
+
+.seccion-cuenta-secundaria {
+    margin: 22px 0 26px;
+    padding: 26px;
+}
+
+.encabezado-panel-cuenta {
+    display: flex;
+    align-items: start;
+    justify-content: space-between;
+    gap: 18px;
+    padding-bottom: 18px;
+}
+
+.encabezado-panel-cuenta h2 {
+    margin: 0;
+    font-size: clamp(1.45rem, 3vw, 2rem);
+}
+
+.encabezado-panel-cuenta > span {
+    color: var(--verde-medio);
+    font-size: .88rem;
+    font-weight: 800;
+}
+
+.lista-resumen-cuenta {
+    border-top: 1px solid var(--beige);
+}
+
+.item-resumen-cuenta {
+    display: grid;
+    gap: 9px;
+    padding: 18px 0;
+    border-bottom: 1px solid var(--beige);
+}
+
+.item-resumen-cuenta:last-child {
+    padding-bottom: 0;
+    border-bottom: 0;
+}
+
+.item-resumen-cuenta h3 {
+    margin: 0;
+    color: var(--azul-oscuro);
+    font-size: 1.08rem;
+}
+
+.item-resumen-cuenta p {
+    margin: 3px 0 0;
+    color: #52615e;
+    font-size: .9rem;
+    line-height: 1.45;
+}
+
+.item-resumen-cuenta > a,
+.estado-vacio-cuenta a {
+    width: max-content;
+    color: var(--azul-medio);
+    font-size: .88rem;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.item-resumen-cuenta > a:hover,
+.estado-vacio-cuenta a:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.participantes-cuenta strong {
+    color: var(--verde-oscuro);
+}
+
+.estado-vacio-cuenta {
+    display: grid;
+    gap: 11px;
+    padding-top: 18px;
+    border-top: 1px solid var(--beige);
+}
+
+.estado-vacio-cuenta p,
+.ayuda-cuenta {
+    margin: 0;
+    color: #52615e;
+}
+
+.lista-acompanantes-cuenta {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 26px;
+    margin: 0 0 16px;
+    padding: 0;
+    list-style: none;
+    border-top: 1px solid var(--beige);
+}
+
+.lista-acompanantes-cuenta li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--beige);
+}
+
+.lista-acompanantes-cuenta li > span {
+    display: grid;
+    gap: 2px;
+}
+
+.lista-acompanantes-cuenta small,
+.lista-acompanantes-cuenta em {
+    color: var(--verde-medio);
+    font-size: .82rem;
+    font-style: normal;
+}
+
+@media (max-width: 780px) {
+    .contenido-cuenta {
+        padding-block: 38px 68px;
+    }
+
+    .cabecera-cuenta {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .grilla-resumen-cuenta,
+    .lista-acompanantes-cuenta {
+        grid-template-columns: 1fr;
+    }
+
+    .panel-resumen-cuenta,
+    .seccion-cuenta-secundaria {
+        padding: 21px;
+    }
+}

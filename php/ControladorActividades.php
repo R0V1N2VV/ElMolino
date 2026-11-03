@@ -1,13 +1,30 @@
 <?php
+/**
+ * ARCHIVO EXPLICADO: php/ControladorActividades.php
+ *
+ * Coordina las solicitudes de actividades entre las páginas y el repositorio.
+ * Las funciones de este archivo están documentadas junto a su declaración.
+ */
+
 declare(strict_types=1);
 
 final class ControladorActividades
 {
+    /**
+     * Inicializa el objeto y deja preparadas las dependencias que utilizarán sus demás métodos.
+     *
+     * @param mixed $repositorio Valor de repositorio que recibe la función.
+     * @param mixed $imagenes Valor de imagenes que recibe la función.
+     */
     public function __construct(
         private FuenteActividades $repositorio,
         private GestorImagenActividad $imagenes
     ) {}
 
+    /**
+     * Ejecuta la lógica de “portada” en ControladorActividades.php.
+     * @return array Resultado producido por esta operación.
+     */
     public function portada(): array
     {
         return [
@@ -16,6 +33,12 @@ final class ControladorActividades
         ];
     }
 
+    /**
+     * Ejecuta la lógica de “categoria” en ControladorActividades.php.
+     *
+     * @param mixed $entrada Valor de entrada que recibe la función.
+     * @return array Resultado producido por esta operación.
+     */
     public function categoria(array $entrada): array
     {
         $categorias = $this->repositorio->listarCategorias();
@@ -38,6 +61,12 @@ final class ControladorActividades
         ];
     }
 
+    /**
+     * Ejecuta la lógica de “detalle” en ControladorActividades.php.
+     *
+     * @param mixed $slug Valor de slug que recibe la función.
+     * @return Actividad Resultado producido por esta operación.
+     */
     public function detalle(string $slug): Actividad
     {
         $actividad = $this->repositorio->buscarPorSlug(trim($slug));
@@ -45,6 +74,10 @@ final class ControladorActividades
         return $actividad;
     }
 
+    /**
+     * Ejecuta la lógica de “administracion” en ControladorActividades.php.
+     * @return array Resultado producido por esta operación.
+     */
     public function administracion(): array
     {
         return [
@@ -53,6 +86,14 @@ final class ControladorActividades
         ];
     }
 
+    /**
+     * Coordina los pasos necesarios para gestion.
+     *
+     * @param mixed $entrada Valor de entrada que recibe la función.
+     * @param mixed $archivos Valor de archivos que recibe la función.
+     * @param mixed $usuario Valor de usuario que recibe la función.
+     * @return array Resultado producido por esta operación.
+     */
     public function procesarGestion(array $entrada, array $archivos, array $usuario): array
     {
         if (!Sesion::validarCsrf($entrada['token_csrf'] ?? null)) {
@@ -117,6 +158,12 @@ final class ControladorActividades
         ];
     }
 
+    /**
+     * Comprueba categoria y evita continuar cuando hay información inválida.
+     *
+     * @param mixed $entrada Valor de entrada que recibe la función.
+     * @return array Resultado producido por esta operación.
+     */
     private function validarCategoria(array $entrada): array
     {
         $nombre = trim((string) ($entrada['nombre_categoria'] ?? ''));
@@ -133,6 +180,12 @@ final class ControladorActividades
         return ['slug' => $slug, 'nombre' => $nombre, 'descripcion' => $descripcion];
     }
 
+    /**
+     * Comprueba actividad y evita continuar cuando hay información inválida.
+     *
+     * @param mixed $entrada Valor de entrada que recibe la función.
+     * @return array Resultado producido por esta operación.
+     */
     private function validarActividad(array $entrada): array
     {
         $nombre = trim((string) ($entrada['nombre'] ?? ''));
@@ -181,11 +234,23 @@ final class ControladorActividades
         return $datos;
     }
 
+    /**
+     * Comprueba es hora valida y devuelve verdadero o falso según se cumpla la condición.
+     *
+     * @param mixed $hora Valor de hora que recibe la función.
+     * @return bool Resultado producido por esta operación.
+     */
     private function esHoraValida(string $hora): bool
     {
         return preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/', $hora) === 1;
     }
 
+    /**
+     * Ejecuta la lógica de “momento desde hora” en ControladorActividades.php.
+     *
+     * @param mixed $hora Valor de hora que recibe la función.
+     * @return string Resultado producido por esta operación.
+     */
     private function momentoDesdeHora(string $hora): string
     {
         $horaNumerica = (int) substr($hora, 0, 2);
@@ -194,6 +259,12 @@ final class ControladorActividades
         return 'noche';
     }
 
+    /**
+     * Crea slug disponible a partir de los datos recibidos.
+     *
+     * @param mixed $base Valor de base que recibe la función.
+     * @return string Resultado producido por esta operación.
+     */
     private function crearSlugDisponible(string $base): string
     {
         $slug = $base;
@@ -205,6 +276,12 @@ final class ControladorActividades
         return $slug;
     }
 
+    /**
+     * Crea slug a partir de los datos recibidos.
+     *
+     * @param mixed $texto Valor de texto que recibe la función.
+     * @return string Resultado producido por esta operación.
+     */
     private function crearSlug(string $texto): string
     {
         $texto = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', trim($texto)) ?: trim($texto);
@@ -212,6 +289,14 @@ final class ControladorActividades
         return trim($texto, '-');
     }
 
+    /**
+     * Ejecuta la lógica de “valor permitido” en ControladorActividades.php.
+     *
+     * @param mixed $valor Valor de valor que recibe la función.
+     * @param mixed $permitidos Valor de permitidos que recibe la función.
+     * @param mixed $predeterminado Valor de predeterminado que recibe la función.
+     * @return string Resultado producido por esta operación.
+     */
     private function valorPermitido(string $valor, array $permitidos, string $predeterminado): string
     {
         return in_array($valor, $permitidos, true) ? $valor : $predeterminado;
