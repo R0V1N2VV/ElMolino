@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 require_once __DIR__ . '/registro/inicio.php';
@@ -54,10 +55,12 @@ try {
 }
 $alojamientosVisibles = $tipoSeleccionado === '' ? [] : array_values(array_filter(
     $alojamientos,
+    // Esta función anónima procesa cada elemento recibido sin crear un método público adicional.
     static fn(array $alojamiento): bool => (string) $alojamiento['tipoClave'] === $tipoSeleccionado
 ));
 if ($grupoConError !== '' && !array_filter(
     $alojamientosVisibles,
+    // Esta función anónima procesa cada elemento recibido sin crear un método público adicional.
     static fn(array $alojamiento): bool => (string) $alojamiento['tipoClave'] . '-' . (int) $alojamiento['capacidad'] === $grupoConError
 )) {
     $grupoConError = '';

@@ -1,4 +1,6 @@
 <?php
+
+
 declare(strict_types=1);
 
 require_once __DIR__ . '/registro/inicio.php';
@@ -59,6 +61,7 @@ $opcionesHorario = [];
 for ($minutos = 0; $minutos < 24 * 60; $minutos += 15) {
     $opcionesHorario[] = sprintf('%02d:%02d', intdiv($minutos, 60), $minutos % 60);
 }
+// Esta función anónima procesa cada elemento recibido sin crear un método público adicional.
 $valorFormulario = static fn (string $campo, string|int|float $actual = ''): string => (string) ($_POST[$campo] ?? $actual);
 $categoriaFormulario = $categoriaPreseleccionada !== '' ? $categoriaPreseleccionada : (string) ($editando?->categoria ?? '');
 $edadFormulario = (string) ($_POST['edad'] ?? ($editando?->edad ?? 'todas'));

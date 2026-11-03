@@ -1,4 +1,6 @@
 <?php
+
+
 declare(strict_types=1);
 
 require_once __DIR__ . '/registro/inicio.php';
@@ -61,6 +63,7 @@ $usuario = Sesion::usuario();
                 <?php endforeach; ?>
             </div>
             <div class="resumen-carrito-alojamiento"><div><span>Total estimado</span><p>Se confirmará junto con la disponibilidad.</p></div><strong>$<?= number_format($totalCentavos / 100, 2, ',', '.') ?></strong></div>
+            <?php /* Esta función anónima procesa cada elemento recibido sin crear un método público adicional. */ ?>
             <div class="acciones-carrito"><a class="boton boton-secundario" href="alojamientos.php">Seguir eligiendo</a><?php if ($totalCentavos > 0 && !array_filter($elementos, static fn(array $item): bool => !empty($item['error']))): ?><a class="boton boton-principal" href="compra.php">Continuar con la compra</a><?php endif; ?></div>
         <?php endif; ?>
     </main>

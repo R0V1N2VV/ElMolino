@@ -1,4 +1,6 @@
 <?php
+
+
 declare(strict_types=1);
 
 require_once __DIR__ . '/registro/inicio.php';
@@ -19,6 +21,7 @@ try {
 }
 if ($gestor && !$elementos) Utilidades::redirigir('carrito.php');
 
+// Esta función anónima procesa cada elemento recibido sin crear un método público adicional.
 $elementosConError = array_filter($elementos, static fn(array $item): bool => !empty($item['error']));
 $totalCentavos = GestorCarritoAlojamiento::totalEstimado($elementos);
 

@@ -7,6 +7,10 @@ const panelUsuario = menuUsuario?.querySelector(".panel-usuario");
 const interruptorDislexia = document.querySelector(".interruptor-dislexia");
 const preferenciaDislexia = "modo-dislexia-el-molino";
 
+/**
+ * Ejecuta la lógica de “cambiar modo dislexia” en el comportamiento de la página.
+ * @param {*} estaActivo Dato que utiliza esta función.
+ */
 function cambiarModoDislexia(estaActivo) {
     document.body.classList.toggle("modo-dislexia", estaActivo);
     interruptorDislexia?.setAttribute("aria-checked", String(estaActivo));
@@ -19,6 +23,7 @@ function cambiarModoDislexia(estaActivo) {
 if (interruptorDislexia) {
     cambiarModoDislexia(localStorage.getItem(preferenciaDislexia) === "activo");
 
+    // Cuando ocurre el evento “click”, ejecuta la acción definida en esta función anónima.
     interruptorDislexia.addEventListener("click", () => {
         const estaActivo = !document.body.classList.contains("modo-dislexia");
         cambiarModoDislexia(estaActivo);
@@ -187,6 +192,11 @@ const traduccionesAtributos = {
     "Bajar a la sección siguiente": "Go to the next section"
 };
 
+/**
+ * Ejecuta la lógica de “traducir texto” en el comportamiento de la página.
+ * @param {*} nodo Dato que utiliza esta función.
+ * @param {*} idioma Dato que utiliza esta función.
+ */
 function traducirTexto(nodo, idioma) {
     if (!textosOriginales.has(nodo)) textosOriginales.set(nodo, nodo.nodeValue);
     const original = textosOriginales.get(nodo);
@@ -199,6 +209,10 @@ function traducirTexto(nodo, idioma) {
     nodo.nodeValue = original.replace(limpio, traduccionesIngles[limpio]);
 }
 
+/**
+ * Ejecuta la lógica de “aplicar idioma” en el comportamiento de la página.
+ * @param {*} idioma Dato que utiliza esta función.
+ */
 function aplicarIdioma(idioma) {
     const idiomaSeguro = idioma === "en" ? "en" : "es";
     const recorrido = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
@@ -209,6 +223,7 @@ function aplicarIdioma(idioma) {
         nodo = recorrido.nextNode();
     }
 
+    // Recorre cada elemento de la colección y aplica esta función anónima.
     document.querySelectorAll("[aria-label], [placeholder]").forEach((elemento) => {
         if (!atributosOriginales.has(elemento)) {
             atributosOriginales.set(elemento, {
@@ -226,12 +241,14 @@ function aplicarIdioma(idioma) {
     });
 
     document.documentElement.lang = idiomaSeguro === "en" ? "en" : "es-AR";
+    // Recorre cada elemento de la colección y aplica esta función anónima.
     botonesIdioma.forEach((boton) => boton.setAttribute("aria-pressed", String(boton.dataset.idioma === idiomaSeguro)));
 }
 
 if (botonesIdioma.length) {
     const idiomaGuardado = localStorage.getItem(preferenciaIdioma) === "en" ? "en" : "es";
     aplicarIdioma(idiomaGuardado);
+    // Cuando ocurre el evento “click”, ejecuta la acción definida en esta función anónima.
     botonesIdioma.forEach((boton) => boton.addEventListener("click", () => {
         const idioma = boton.dataset.idioma === "en" ? "en" : "es";
         localStorage.setItem(preferenciaIdioma, idioma);
@@ -245,36 +262,50 @@ const elementosAnimados = [...document.querySelectorAll(
 
 if (elementosAnimados.length) {
     document.documentElement.classList.add("animaciones-activas");
+    // Recorre cada elemento de la colección y aplica esta función anónima.
     elementosAnimados.forEach((elemento, indice) => {
         elemento.classList.add("animacion-entrada");
         elemento.style.setProperty("--demora-animacion", `${(indice % 3) * 70}ms`);
     });
 
     if ("IntersectionObserver" in window) {
+        // Procesa los cambios de visibilidad para iniciar las animaciones al entrar en pantalla.
         const observadorEntrada = new IntersectionObserver((entradas, observador) => {
+            // Recorre cada elemento de la colección y aplica esta función anónima.
             entradas.forEach((entrada) => {
                 if (!entrada.isIntersecting) return;
                 entrada.target.classList.add("animacion-visible");
                 observador.unobserve(entrada.target);
             });
         }, { threshold: 0.14, rootMargin: "0px 0px -28px" });
+        // Recorre cada elemento de la colección y aplica esta función anónima.
         elementosAnimados.forEach((elemento) => observadorEntrada.observe(elemento));
     } else {
+        // Recorre cada elemento de la colección y aplica esta función anónima.
         elementosAnimados.forEach((elemento) => elemento.classList.add("animacion-visible"));
     }
 }
 
+// Recorre cada elemento de la colección y aplica esta función anónima.
 document.querySelectorAll(".formulario-alojamiento").forEach((formulario) => {
     const ingreso = formulario.querySelector('[name="fechaIngreso"]');
     const egreso = formulario.querySelector('[name="fechaEgreso"]');
 
+    /**
+     * Ejecuta la lógica de “dia siguiente” en el comportamiento de la página.
+     * @param {*} fecha Dato que utiliza esta función.
+     */
     function diaSiguiente(fecha) {
         const partes = fecha.split("-").map(Number);
+        // Evalúa cada elemento y conserva o localiza solamente el que cumple esta condición.
         if (partes.length !== 3 || partes.some((parte) => !Number.isFinite(parte))) return "";
         const valor = new Date(Date.UTC(partes[0], partes[1] - 1, partes[2] + 1));
         return valor.toISOString().slice(0, 10);
     }
 
+    /**
+     * Ejecuta la lógica de “ajustar egreso” en el comportamiento de la página.
+     */
     function ajustarEgreso() {
         if (!ingreso?.value || !egreso) return;
         const minimo = diaSiguiente(ingreso.value);
@@ -287,6 +318,9 @@ document.querySelectorAll(".formulario-alojamiento").forEach((formulario) => {
     ajustarEgreso();
 });
 
+/**
+ * Cierra menu y deja el estado consistente.
+ */
 function cerrarMenu() {
     botonMenu?.setAttribute("aria-expanded", "false");
     if (textoBotonMenu) textoBotonMenu.textContent = "Abrir menú";
@@ -294,12 +328,16 @@ function cerrarMenu() {
     document.body.classList.remove("menu-abierto");
 }
 
+/**
+ * Cierra menu usuario y deja el estado consistente.
+ */
 function cerrarMenuUsuario() {
     botonUsuario?.setAttribute("aria-expanded", "false");
     if (panelUsuario) panelUsuario.hidden = true;
     menuUsuario?.classList.remove("abierto");
 }
 
+// Cuando ocurre el evento “click”, ejecuta la acción definida en esta función anónima.
 botonMenu?.addEventListener("click", () => {
     const estaAbierto = botonMenu.getAttribute("aria-expanded") === "true";
 
@@ -310,12 +348,14 @@ botonMenu?.addEventListener("click", () => {
     if (!estaAbierto) cerrarMenuUsuario();
 });
 
+// Cuando ocurre el evento “click”, ejecuta la acción definida en esta función anónima.
 navegacionPrincipal?.addEventListener("click", (event) => {
     if (event.target.matches("a")) {
         cerrarMenu();
     }
 });
 
+// Cuando ocurre el evento “click”, ejecuta la acción definida en esta función anónima.
 botonUsuario?.addEventListener("click", () => {
     const estaAbierto = botonUsuario.getAttribute("aria-expanded") === "true";
     botonUsuario.setAttribute("aria-expanded", String(!estaAbierto));
@@ -324,10 +364,12 @@ botonUsuario?.addEventListener("click", () => {
     if (!estaAbierto) cerrarMenu();
 });
 
+// Cuando ocurre el evento “click”, ejecuta la acción definida en esta función anónima.
 document.addEventListener("click", (event) => {
     if (menuUsuario && !menuUsuario.contains(event.target)) cerrarMenuUsuario();
 });
 
+// Cuando ocurre el evento “keydown”, ejecuta la acción definida en esta función anónima.
 document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
         cerrarMenu();
@@ -335,6 +377,7 @@ document.addEventListener("keydown", (event) => {
     }
 });
 
+// Cuando ocurre el evento “resize”, ejecuta la acción definida en esta función anónima.
 window.addEventListener("resize", () => {
     if (window.innerWidth > 760) {
         cerrarMenu();
@@ -346,17 +389,26 @@ const botonBajarSeccion = document.querySelector("[data-bajar-seccion]");
 if (botonBajarSeccion) {
     const contenidoPrincipal = document.querySelector("main");
     const secciones = contenidoPrincipal
+        // Evalúa cada elemento y conserva o localiza solamente el que cumple esta condición.
         ? [...contenidoPrincipal.children].filter((elemento) => elemento.tagName === "SECTION")
         : [];
 
+    /**
+     * Ejecuta la lógica de “siguiente seccion” en el comportamiento de la página.
+     */
     function siguienteSeccion() {
+        // Evalúa cada elemento y conserva o localiza solamente el que cumple esta condición.
         return secciones.find((seccion) => seccion.getBoundingClientRect().top > 120);
     }
 
+    /**
+     * Actualiza boton bajar para reflejar el estado más reciente.
+     */
     function actualizarBotonBajar() {
         botonBajarSeccion.classList.toggle("oculto", !siguienteSeccion());
     }
 
+    // Cuando ocurre el evento “click”, ejecuta la acción definida en esta función anónima.
     botonBajarSeccion.addEventListener("click", () => {
         siguienteSeccion()?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
@@ -370,12 +422,14 @@ const formularioConCobro = document.querySelector("[data-confirmar-cobro]");
 const dialogoCobro = document.querySelector("#aviso-cobro-actividad");
 let cobroConfirmado = false;
 
+// Cuando ocurre el evento “submit”, ejecuta la acción definida en esta función anónima.
 formularioConCobro?.addEventListener("submit", (event) => {
     if (cobroConfirmado || !dialogoCobro) return;
     event.preventDefault();
     dialogoCobro.showModal();
 });
 
+// Cuando ocurre el evento “close”, ejecuta la acción definida en esta función anónima.
 dialogoCobro?.addEventListener("close", () => {
     if (dialogoCobro.returnValue !== "confirmar" || !formularioConCobro) return;
     cobroConfirmado = true;
@@ -391,11 +445,18 @@ if (formularioActividad) {
     const campoPrecio = formularioActividad.querySelector("[data-campo-precio]");
     const precio = formularioActividad.querySelector('[name="precio"]');
 
+    /**
+     * Ejecuta la lógica de “minutos desde medianoche” en el comportamiento de la página.
+     * @param {*} hora Dato que utiliza esta función.
+     */
     function minutosDesdeMedianoche(hora) {
         const [horas, minutos] = hora.split(":").map(Number);
         return horas * 60 + minutos;
     }
 
+    /**
+     * Actualiza rango horario para reflejar el estado más reciente.
+     */
     function actualizarRangoHorario() {
         if (!horaInicio?.value || !horaFin) return;
 
@@ -415,6 +476,9 @@ if (formularioActividad) {
         }
     }
 
+    /**
+     * Actualiza precio para reflejar el estado más reciente.
+     */
     function actualizarPrecio() {
         if (!modalidad || !campoPrecio || !precio) return;
         const esPaga = modalidad.value === "inscripcion";
@@ -426,6 +490,7 @@ if (formularioActividad) {
 
     horaInicio?.addEventListener("change", actualizarRangoHorario);
     modalidad?.addEventListener("change", actualizarPrecio);
+    // Cuando ocurre el evento “submit”, ejecuta la acción definida en esta función anónima.
     formularioActividad.addEventListener("submit", () => {
         const botonGuardar = formularioActividad.querySelector('button[type="submit"]');
         if (!botonGuardar) return;
@@ -443,14 +508,22 @@ const botonAgregarAcompanante = document.querySelector("[data-agregar-acompanant
 const plantillaAcompanante = document.querySelector("#plantilla-acompanante-registro");
 
 if (selectorAcompanantesRegistro && panelAcompanantesRegistro && listaAcompanantesRegistro && plantillaAcompanante) {
+    /**
+     * Ejecuta la lógica de “filas acompanantes” en el comportamiento de la página.
+     */
     function filasAcompanantes() {
         return [...listaAcompanantesRegistro.querySelectorAll("[data-fila-acompanante]")];
     }
 
+    /**
+     * Ejecuta la lógica de “reindexar acompanantes” en el comportamiento de la página.
+     */
     function reindexarAcompanantes() {
+        // Recorre cada elemento de la colección y aplica esta función anónima.
         filasAcompanantes().forEach((fila, indice) => {
             const numero = fila.querySelector(".cabecera-fila-acompanante h3 span");
             if (numero) numero.textContent = String(indice + 1);
+            // Recorre cada elemento de la colección y aplica esta función anónima.
             fila.querySelectorAll("[data-campo]").forEach((campo) => {
                 campo.name = `acompanantes[${indice}][${campo.dataset.campo}]`;
             });
@@ -458,7 +531,12 @@ if (selectorAcompanantesRegistro && panelAcompanantesRegistro && listaAcompanant
         if (botonAgregarAcompanante) botonAgregarAcompanante.disabled = filasAcompanantes().length >= 8;
     }
 
+    /**
+     * Ejecuta la lógica de “preparar boton quitar” en el comportamiento de la página.
+     * @param {*} fila Dato que utiliza esta función.
+     */
     function prepararBotonQuitar(fila) {
+        // Cuando ocurre el evento “click”, ejecuta la acción definida en esta función anónima.
         fila.querySelector("[data-quitar-acompanante]")?.addEventListener("click", () => {
             fila.remove();
             reindexarAcompanantes();
@@ -467,6 +545,9 @@ if (selectorAcompanantesRegistro && panelAcompanantesRegistro && listaAcompanant
         });
     }
 
+    /**
+     * Agrega fila acompanante a la colección o proceso actual.
+     */
     function agregarFilaAcompanante() {
         if (filasAcompanantes().length >= 8) return;
         const fragmento = plantillaAcompanante.content.cloneNode(true);
@@ -477,9 +558,13 @@ if (selectorAcompanantesRegistro && panelAcompanantesRegistro && listaAcompanant
         fila.querySelector("input")?.focus();
     }
 
+    /**
+     * Actualiza panel acompanantes para reflejar el estado más reciente.
+     */
     function actualizarPanelAcompanantes() {
         const activo = selectorAcompanantesRegistro.checked;
         panelAcompanantesRegistro.hidden = !activo;
+        // Recorre cada elemento de la colección y aplica esta función anónima.
         panelAcompanantesRegistro.querySelectorAll("input").forEach((campo) => campo.disabled = !activo);
         if (activo && !filasAcompanantes().length) agregarFilaAcompanante();
     }
