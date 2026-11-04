@@ -1,0 +1,30 @@
+ACTUALIZACIÓN DE LA BASE DE DATOS — EL MOLINO
+==============================================
+
+1. Hacé una copia de seguridad de la base que ya estás usando.
+
+2. Abrí phpMyAdmin, seleccioná la base "s27_El Molino" e importá:
+
+   BD/00_ACTUALIZAR_BASE_EXISTENTE.sql
+
+   No importes la base completa encima de tu base actual, porque podrías
+   reemplazar información. El archivo 00_ACTUALIZAR_BASE_EXISTENTE.sql está
+   preparado para agregar solamente las tablas y columnas que faltan.
+
+3. Si todavía no cargaste el catálogo de alojamientos, importá después:
+
+   BD/actualizacion_catalogo_alojamientos.sql
+
+4. Publicá los archivos PHP actualizados y reiniciá la aplicación Java.
+
+La actualización corrige el error de acompanantes_json y agrega:
+
+- acompañantes asociados a cada reserva;
+- modificación y eliminación de acompañantes antes del ingreso;
+- seña del 30% y estados de pago;
+- cancelación de alojamientos antes de la estadía;
+- elección de fecha para cada actividad;
+- control de cupo por día, incluyendo acompañantes.
+
+Si phpMyAdmin informa un error, guardá el mensaje completo y la línea indicada.
+No sigas importando archivos distintos hasta revisar ese error.

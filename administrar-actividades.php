@@ -1,5 +1,10 @@
 <?php
-
+/**
+ * ARCHIVO EXPLICADO: administrar-actividades.php
+ *
+ * Pantalla reservada al personal coordinador para crear, editar o eliminar actividades.
+ * Las funciones de este archivo están documentadas junto a su declaración.
+ */
 
 declare(strict_types=1);
 
@@ -135,7 +140,7 @@ $tendenciaFormulario = $_SERVER['REQUEST_METHOD'] === 'POST' ? isset($_POST['ten
                 <div class="bloque-formulario-admin">
                     <div class="titulo-bloque-formulario"><span>3</span><div><h3>Participación</h3><p>Completá únicamente la información necesaria para organizar la actividad.</p></div></div>
                     <div class="grilla-campos-admin">
-                        <label>Cupo máximo<input name="cupo" type="number" min="<?= max(1, $editando?->cantidadInscriptos ?? 0) ?>" max="500" required value="<?= Vista::escapar($valorFormulario('cupo', $editando?->cupo ?? 1)) ?>"><?php if ($editando && $editando->cantidadInscriptos > 0): ?><small>Hay <?= $editando->cantidadInscriptos ?> <?= $editando->cantidadInscriptos === 1 ? 'persona inscripta' : 'personas inscriptas' ?>. El cupo no puede quedar por debajo de esa cantidad.</small><?php endif; ?></label>
+                        <label>Cupo máximo por fecha<input name="cupo" type="number" min="<?= max(1, $editando?->cantidadInscriptos ?? 0) ?>" max="500" required value="<?= Vista::escapar($valorFormulario('cupo', $editando?->cupo ?? 1)) ?>"><?php if ($editando && $editando->cantidadInscriptos > 0): ?><small>La fecha con más reservas tiene <?= $editando->cantidadInscriptos ?> <?= $editando->cantidadInscriptos === 1 ? 'persona inscripta' : 'personas inscriptas' ?>.</small><?php endif; ?></label>
                         <label>Edad recomendada<select name="edad"><option value="todas"<?= Vista::seleccionado($edadFormulario, 'todas') ?>>Todas las edades</option><option value="ninos"<?= Vista::seleccionado($edadFormulario, 'ninos') ?>>Niños</option><option value="adolescentes"<?= Vista::seleccionado($edadFormulario, 'adolescentes') ?>>Adolescentes</option><option value="adultos"<?= Vista::seleccionado($edadFormulario, 'adultos') ?>>Adultos</option></select></label>
                         <label>¿La actividad es paga?<select name="modalidad"><option value="incluida"<?= Vista::seleccionado($modalidadFormulario, 'incluida') ?>>No, está incluida</option><option value="inscripcion"<?= Vista::seleccionado($modalidadFormulario, 'inscripcion') ?>>Sí, es paga</option></select></label>
                         <label data-campo-precio<?= $modalidadFormulario !== 'inscripcion' ? ' hidden' : '' ?>>Precio por persona<input name="precio" type="number" min="1" step="100" value="<?= Vista::escapar($valorFormulario('precio', $editando?->precio ?? 0)) ?>"<?= $modalidadFormulario === 'inscripcion' ? ' required' : '' ?>><small>Ingresá el importe sin puntos ni símbolos.</small></label>
@@ -162,7 +167,7 @@ $tendenciaFormulario = $_SERVER['REQUEST_METHOD'] === 'POST' ? isset($_POST['ten
         </div></div></section>
 
         <section class="seccion listado-administracion"><div class="contenedor"><div class="encabezado-listado-admin"><div><p class="texto-destacado">Contenido publicado</p><h2>Actividades cargadas</h2></div></div><div class="lista-administracion">
-            <?php foreach ($actividades as $actividad): ?><article class="fila-actividad-admin"><span class="miniatura-admin"><img src="<?= Vista::escapar($actividad->imagen) ?>" alt=""></span><span><strong><?= Vista::escapar($actividad->nombre) ?></strong><small><?= Vista::escapar($actividad->categoriaNombre) ?> · <?= $actividad->cantidadInscriptos ?>/<?= $actividad->cupo ?> inscriptos · <?= Vista::escapar(Vista::precio($actividad)) ?></small></span><span class="acciones-admin"><a class="boton-accion-admin boton-modificar" href="administrar-actividades.php?editar=<?= $actividad->id ?>#formulario"><span class="icono-lapiz" aria-hidden="true"></span>Modificar</a><form method="post" onsubmit="return confirm('¿Eliminar esta actividad?')"><input type="hidden" name="token_csrf" value="<?= Vista::escapar(Sesion::tokenCsrf()) ?>"><input type="hidden" name="accion" value="eliminar"><input type="hidden" name="id" value="<?= $actividad->id ?>"><button type="submit" class="boton-accion-admin boton-eliminar"><span class="icono-papelera" aria-hidden="true"></span>Eliminar</button></form></span></article><?php endforeach; ?>
+            <?php foreach ($actividades as $actividad): ?><article class="fila-actividad-admin"><span class="miniatura-admin"><img src="<?= Vista::escapar($actividad->imagen) ?>" alt=""></span><span><strong><?= Vista::escapar($actividad->nombre) ?></strong><small><?= Vista::escapar($actividad->categoriaNombre) ?> · máximo <?= $actividad->cantidadInscriptos ?>/<?= $actividad->cupo ?> en una fecha · <?= Vista::escapar(Vista::precio($actividad)) ?></small></span><span class="acciones-admin"><a class="boton-accion-admin boton-modificar" href="administrar-actividades.php?editar=<?= $actividad->id ?>#formulario"><span class="icono-lapiz" aria-hidden="true"></span>Modificar</a><form method="post" onsubmit="return confirm('¿Eliminar esta actividad?')"><input type="hidden" name="token_csrf" value="<?= Vista::escapar(Sesion::tokenCsrf()) ?>"><input type="hidden" name="accion" value="eliminar"><input type="hidden" name="id" value="<?= $actividad->id ?>"><button type="submit" class="boton-accion-admin boton-eliminar"><span class="icono-papelera" aria-hidden="true"></span>Eliminar</button></form></span></article><?php endforeach; ?>
         </div></div></section>
         <?php endif; ?>
     </main>

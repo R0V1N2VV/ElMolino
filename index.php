@@ -1,5 +1,10 @@
 <?php
-
+/**
+ * ARCHIVO EXPLICADO: index.php
+ *
+ * Página principal pública. Reúne los datos iniciales y construye la portada del sitio.
+ * Las funciones de este archivo están documentadas junto a su declaración.
+ */
 
 declare(strict_types=1);
 require_once __DIR__ . '/php/Sesion.php';
@@ -202,7 +207,7 @@ $cantidadCarrito = is_array($carritoSesion) ? count($carritoSesion) : 0;
                     </details>
                     <details>
                         <summary>¿Ya se puede reservar desde la web?</summary>
-                        <p>Podés elegir fechas, sumar alojamientos a tu estadía y confirmar el pedido con una cuenta. El pago se coordina por correo; todavía no se cobra en línea.</p>
+                        <p>Podés elegir fechas, asignar acompañantes y solicitar la reserva con tu cuenta. Para confirmarla se coordina una seña previa del 30%.</p>
                     </details>
                     <details>
                         <summary>¿Las actividades están incluidas?</summary>

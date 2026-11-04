@@ -1,5 +1,10 @@
 <?php
-
+/**
+ * ARCHIVO EXPLICADO: compra_confirmada.php
+ *
+ * Muestra el resumen final de una reserva confirmada.
+ * Las funciones de este archivo están documentadas junto a su declaración.
+ */
 
 declare(strict_types=1);
 
@@ -60,14 +65,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <header class="encabezado encabezado-compra"><div class="contenedor barra-navegacion"><?= Vista::marca() ?><nav class="navegacion-compra" aria-label="Navegación de compra"><a href="index.php">Inicio</a><a href="alojamientos.php">Alojamientos</a></nav></div></header>
     <main class="contenedor contenido-compra">
         <p class="texto-destacado">PEDIDO #<?= (int) $pedido['idPedido'] ?></p>
-        <h1>Recibimos tu pedido</h1>
+        <h1>Recibimos tu solicitud de reserva</h1>
         <?php if ($errores): ?><p class="aviso-estadia" role="alert"><?= Utilidades::escapar(implode(' ', $errores)) ?></p><?php endif; ?>
         <p class="estado-pedido-correo" role="status"><?= Utilidades::escapar($mensaje) ?></p>
         <p>Estado del pedido: <strong><?= Utilidades::escapar($pedido['estadoPedido']) ?></strong> · Estado del pago: <strong><?= Utilidades::escapar($pedido['estadoPago']) ?></strong></p>
-        <p>Forma de pago elegida: <strong><?= Utilidades::escapar($pedido['metodoPago']) ?></strong>. No se realizó ningún cobro en línea.</p>
+        <p>Forma elegida para la seña: <strong><?= Utilidades::escapar($pedido['metodoPago']) ?></strong>. La reserva se confirma cuando se acredita el pago.</p>
+        <section class="resumen-sena resumen-sena-confirmada">
+            <div><span>Seña requerida (<?= (int) $pedido['porcentajeSena'] ?>%)</span><small>Abonala antes del <?= Utilidades::escapar((new DateTimeImmutable((string) $pedido['fechaLimiteSena']))->format('d/m/Y H:i')) ?>.</small></div>
+            <strong>$<?= number_format((float) $pedido['montoSena'], 2, ',', '.') ?></strong>
+        </section>
         <section class="resumen-compra">
             <?php foreach ($pedido['lineas'] as $linea): ?>
-                <article class="linea-resumen-compra"><div><h2><?= Utilidades::escapar($linea['alojamientoTipo']) ?></h2><p><?= Utilidades::escapar($linea['fechaIngreso']) ?> al <?= Utilidades::escapar($linea['fechaEgreso']) ?> · <?= (int) $linea['noches'] ?> noches · <?= (int) $linea['cantidadPersonas'] ?> personas</p><p>$<?= number_format((float) $linea['precioPorNoche'], 2, ',', '.') ?> por noche</p><strong>Subtotal: $<?= number_format((float) $linea['subtotal'], 2, ',', '.') ?></strong></div></article>
+                <article class="linea-resumen-compra"><div><h2><?= Utilidades::escapar($linea['alojamientoTipo']) ?></h2><p><?= Utilidades::escapar($linea['fechaIngreso']) ?> al <?= Utilidades::escapar($linea['fechaEgreso']) ?> · <?= (int) $linea['noches'] ?> noches · <?= (int) $linea['cantidadPersonas'] ?> personas</p><?php if ($linea['acompanantes']): ?><p><strong>Acompañantes:</strong> <?= Utilidades::escapar(implode(', ', $linea['acompanantes'])) ?></p><?php endif; ?><p>$<?= number_format((float) $linea['precioPorNoche'], 2, ',', '.') ?> por noche</p><strong>Subtotal: $<?= number_format((float) $linea['subtotal'], 2, ',', '.') ?></strong></div></article>
             <?php endforeach; ?>
             <div class="resumen-carrito-alojamiento"><span>Total</span><strong>$<?= number_format((float) $pedido['total'], 2, ',', '.') ?></strong></div>
         </section>

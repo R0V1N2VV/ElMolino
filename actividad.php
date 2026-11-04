@@ -1,4 +1,10 @@
 <?php
+/**
+ * ARCHIVO EXPLICADO: actividad.php
+ *
+ * Muestra el detalle de una actividad y procesa la inscripción del cliente.
+ * Las funciones de este archivo están documentadas junto a su declaración.
+ */
 
 declare(strict_types=1);
 
@@ -9,6 +15,8 @@ $estaInscripto = false;
 $titularParticipa = false;
 $acompanantes = [];
 $acompanantesInscriptos = [];
+$fechaActividadSeleccionada = null;
+$fechasDisponibles = [];
 try {
     require_once __DIR__ . '/php/inicio_actividades.php';
     $actividad = $controladorActividades->detalle((string) ($_GET['id'] ?? ''));
@@ -31,6 +39,7 @@ try {
             : false;
         $acompanantes = $repositorioInscripciones->listarAcompanantes($idCliente);
         $acompanantesInscriptos = $repositorioInscripciones->acompanantesInscriptos($actividad->id, $idCliente);
+        $fechaActividadSeleccionada = $repositorioInscripciones->fechaSeleccionada($actividad->id, $idCliente);
     }
 } catch (Throwable $excepcion) {
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && $actividad) {
@@ -52,9 +61,12 @@ if ($actividad && isset($repositorioInscripciones) && $repositorioInscripciones 
             : false;
         $acompanantes = $repositorioInscripciones->listarAcompanantes($idCliente);
         $acompanantesInscriptos = $repositorioInscripciones->acompanantesInscriptos($actividad->id, $idCliente);
+        $fechaActividadSeleccionada = $repositorioInscripciones->fechaSeleccionada($actividad->id, $idCliente);
     } catch (Throwable) {
     }
 }
+$fechasDisponibles = $actividad ? $actividad->fechasDisponibles() : [];
+if (!$fechaActividadSeleccionada && $fechasDisponibles) $fechaActividadSeleccionada = $fechasDisponibles[0]['valor'];
 $titularMarcado = $estaInscripto ? $titularParticipa : true;
 $cantidadSeleccionada = ($titularParticipa ? 1 : 0) + count($acompanantesInscriptos);
 if ($errorInscripcion && $_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -62,6 +74,7 @@ if ($errorInscripcion && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $acompanantesInscriptos = is_array($_POST['acompanantes'] ?? null)
         ? array_map('intval', $_POST['acompanantes'])
         : [];
+    $fechaActividadSeleccionada = trim((string) ($_POST['fecha_actividad'] ?? ''));
 }
 $mensaje = class_exists('Sesion') ? Sesion::tomarMensaje() : null;
 $esCoordinador = class_exists('Autorizacion') && Autorizacion::esCoordinador($usuario);
@@ -97,19 +110,26 @@ $esCoordinador = class_exists('Autorizacion') && Autorizacion::esCoordinador($us
                         <div><dt>Días y horarios</dt><dd><?= Vista::escapar($actividad->dias) ?> · <?= Vista::escapar($actividad->horario) ?></dd></div>
                         <div><dt>Sector</dt><dd><?= Vista::escapar($actividad->sector) ?></dd></div>
                         <div><dt>Responsable</dt><dd><?= Vista::escapar($actividad->responsable) ?></dd></div>
-                        <div><dt>Cupos</dt><dd><strong><?= $actividad->cuposDisponibles() ?></strong> de <?= $actividad->cupo ?> lugares disponibles</dd></div>
+                        <div><dt>Cupos</dt><dd><strong><?= $actividad->cupo ?></strong> lugares por fecha</dd></div>
                         <div><dt>Valor</dt><dd><?= Vista::escapar(Vista::precio($actividad)) ?></dd></div>
                     </dl>
-                    <?php if ($actividad->estaCompleta() && !$estaInscripto): ?>
-                        <button class="boton boton-neutral boton-ancho" type="button" disabled>Actividad completa</button>
-                        <p class="mensaje-inscripcion">No quedan lugares disponibles.</p>
-                    <?php elseif ($usuario && (int) ($usuario['id_cliente'] ?? 0) > 0): ?>
+                    <?php if ($usuario && (int) ($usuario['id_cliente'] ?? 0) > 0): ?>
                         <?php if ($estaInscripto): ?>
                             <div class="estado-inscripcion-activa"><strong>Inscripción activa</strong><span><?= $cantidadSeleccionada ?> <?= $cantidadSeleccionada === 1 ? 'lugar reservado' : 'lugares reservados' ?>.</span></div>
                         <?php endif; ?>
                         <form method="post" class="formulario-inscripcion selector-participantes"<?= (!$estaInscripto && $actividad->modalidad === 'inscripcion' && $actividad->precio > 0) ? ' data-confirmar-cobro' : '' ?>>
                             <input type="hidden" name="token_csrf" value="<?= Vista::escapar(Sesion::tokenCsrf()) ?>">
                             <input type="hidden" name="accion" value="guardar_inscripcion">
+                            <label class="campo-fecha-actividad" for="fecha-actividad">
+                                <span>¿Qué día querés participar?</span>
+                                <select id="fecha-actividad" name="fecha_actividad" required>
+                                    <option value="">Elegí una fecha</option>
+                                    <?php foreach ($fechasDisponibles as $fechaDisponible): ?>
+                                        <option value="<?= Vista::escapar($fechaDisponible['valor']) ?>"<?= $fechaActividadSeleccionada === $fechaDisponible['valor'] ? ' selected' : '' ?>><?= Vista::escapar($fechaDisponible['etiqueta']) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <small>Solo aparecen los días en los que se realiza la actividad.</small>
+                            </label>
                             <fieldset>
                                 <legend>¿Quiénes van a participar?</legend>
                                 <p>Elegí una o más personas. Cada selección ocupa un lugar del cupo.</p>
@@ -126,7 +146,7 @@ $esCoordinador = class_exists('Autorizacion') && Autorizacion::esCoordinador($us
                                     <?php endforeach; ?>
                                 </div>
                             </fieldset>
-                            <button class="boton boton-principal boton-ancho" type="submit"><?= $estaInscripto ? 'Guardar participantes' : 'Confirmar inscripción' ?></button>
+                            <button class="boton boton-principal boton-ancho" type="submit"<?= $fechasDisponibles ? '' : ' disabled' ?>><?= $estaInscripto ? 'Guardar fecha y participantes' : 'Confirmar inscripción' ?></button>
                         </form>
                         <?php if ($estaInscripto): ?>
                             <form method="post" class="formulario-inscripcion cancelar-inscripcion" onsubmit="return confirm('¿Querés cancelar toda la inscripción?')">

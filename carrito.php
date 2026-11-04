@@ -1,5 +1,10 @@
 <?php
-
+/**
+ * ARCHIVO EXPLICADO: carrito.php
+ *
+ * Presenta las estadías seleccionadas y permite confirmar o quitar reservas.
+ * Las funciones de este archivo están documentadas junto a su declaración.
+ */
 
 declare(strict_types=1);
 

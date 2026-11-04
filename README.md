@@ -16,17 +16,17 @@ La sección está desarrollada en PHP orientado a objetos. Las entidades, las fu
 
 El sitio incluye 6 categorías y 10 actividades predeterminadas. Si la conexión o la estructura de actividades todavía no están disponibles, el catálogo público usa automáticamente esos datos en modo de solo lectura, por lo que la página no queda vacía. El contenido es el mismo que se carga en MySQL mediante el archivo de actualización.
 
-El archivo `BD/actualizacion_actividades.sql` amplía la base, carga las categorías y actividades existentes y permite conectarlas con PHP y MySQL. El panel valida la sesión y exige el rol `coordinador_actividades`.
+El archivo `BD/00_ACTUALIZAR_BASE_EXISTENTE.sql` amplía y corrige una base ya instalada, carga las categorías necesarias y permite conectarlas con PHP y MySQL. El panel valida la sesión y exige el rol `coordinador_actividades`.
 
 ## Cupos e inscripciones
 
-Cada actividad tiene un cupo máximo y muestra cuántos lugares siguen disponibles. Un usuario con sesión iniciada puede elegir si participa él, uno o más acompañantes asociados a su cuenta, o todos juntos. Cada persona seleccionada ocupa un lugar y la reserva también se puede modificar o cancelar. La operación se realiza dentro de una transacción y bloquea momentáneamente la actividad para impedir que se supere el cupo si llegan varias solicitudes al mismo tiempo.
+Cada actividad tiene un cupo máximo por fecha. Un usuario con sesión iniciada elige uno de los próximos días compatibles con la programación de la actividad y decide si participa él, uno o más acompañantes, o todos juntos. Cada persona seleccionada ocupa un lugar en esa fecha. La operación se realiza dentro de una transacción para impedir que se supere el cupo si llegan varias solicitudes al mismo tiempo.
 
-Las actividades pueden estar incluidas o ser pagas. En ambos casos se permite la inscripción; cuando es paga se muestra el precio definido por el coordinador. Esta versión no incorpora una pasarela de pago porque ese sistema no forma parte de los archivos actuales.
+Las actividades pueden estar incluidas o ser pagas. En ambos casos se permite la inscripción; cuando es paga se muestra el precio definido por el coordinador y, antes de confirmar, se avisa que el importe se cobrará al finalizar la estadía. La página no simula una pasarela de pago.
 
 El inicio de sesión conserva la actividad elegida y devuelve al usuario a su ficha para que pueda completar la inscripción. `inscripcionActividad` guarda la reserva y si participa el titular; `inscripcionActividadAcompanante` guarda las demás personas seleccionadas.
 
-Si ya tenés la base funcionando, ejecutá una vez `BD/actualizacion_acompanantes_actividades.sql`. En una instalación nueva alcanza con importar `BD/s27_El_Molino_completa.sql`. Los scripts `BD/actualizacion_actividades.sql` y `BD/actualizacion_cupos_inscripciones.sql` también incluyen la tabla nueva para sus respectivos escenarios de actualización.
+Si ya tenés la base funcionando, ejecutá `BD/00_ACTUALIZAR_BASE_EXISTENTE.sql`. Ese archivo reúne las correcciones de estructura, puede volver a ejecutarse y también agrega `fechaActividad`. En una instalación nueva alcanza con importar `BD/s27_El_Molino_completa.sql`.
 
 Cuando el coordinador inicia sesión, encuentra el botón `Agregar categoría` en la sección pública de categorías y en su panel. Cada categoría también ofrece `Agregar actividad`, que abre el formulario con esa categoría ya seleccionada. Las categorías nuevas solicitan nombre, descripción e imagen.
 
@@ -38,7 +38,7 @@ El formulario de actividades utiliza dos desplegables `Desde` / `Hasta` con inte
 
 Después de guardar, el sistema comprueba que la actividad esté publicada y abre directamente su ficha para que el coordinador pueda verla inmediatamente. Si la base rechaza el alta, el formulario conserva los datos y muestra el problema dentro de la página.
 
-Para que el coordinador pueda agregar, editar o eliminar actividades, es obligatorio ejecutar `BD/actualizacion_actividades.sql` una sola vez. Mientras esa actualización no esté instalada, el panel informa que el catálogo predeterminado es de solo lectura.
+Para que el coordinador pueda agregar, editar o eliminar actividades, es obligatorio ejecutar `BD/00_ACTUALIZAR_BASE_EXISTENTE.sql`. El archivo comprueba qué columnas ya existen, por lo que puede volver a ejecutarse. Mientras esa actualización no esté instalada, el panel informa que el catálogo predeterminado es de solo lectura.
 
 Para habilitar el panel en una cuenta ya verificada, asignale el rol desde MySQL:
 
@@ -68,11 +68,15 @@ El valor de `alojamientos.estado` se conserva en la base para que la aplicación
 
 Agregar una opción a **Mi estadía** no bloquea el alojamiento para las demás personas. El sistema busca automáticamente una unidad física disponible del tipo y capacidad elegidos. Al confirmar el pedido vuelve a buscar y asignar una unidad dentro de una transacción; si la primera dejó de estar libre, usa otra equivalente. Si no queda ninguna para esas fechas, informa que no hay disponibilidad y permite elegir otras fechas u otro tipo. De esta forma, dos personas pueden comparar la misma opción en sus carritos, pero no confirmar la misma unidad en fechas superpuestas.
 
-En una base existente, ejecutá una vez `BD/actualizacion_catalogo_alojamientos.sql` para agregar 5 unidades de cada tipo y capacidad —45 unidades en total—, y `BD/actualizacion_compras_alojamiento.sql` para las tablas de compra. El script puede volver a ejecutarse sin duplicar esas unidades. Los precios iniciales se pueden modificar desde la base o desde la aplicación. En una instalación nueva, el catálogo y las tablas necesarias ya están incluidos en `BD/s27_El_Molino_completa.sql`.
+En una base existente, ejecutá `BD/00_ACTUALIZAR_BASE_EXISTENTE.sql` y luego `BD/actualizacion_catalogo_alojamientos.sql` si todavía no cargaste las 45 unidades. Los precios iniciales se pueden modificar desde la base o desde la aplicación. En una instalación nueva, el catálogo y las tablas necesarias ya están incluidos en `BD/s27_El_Molino_completa.sql`.
+
+Al confirmar una estadía, el titular asigna los acompañantes registrados a cada alojamiento. Esa asociación puede modificarse desde **Mi cuenta** antes del ingreso. La solicitud queda en estado `PENDIENTE_SENA`: se calcula una seña del 30% y se informa un plazo para abonarla. El pago real se registra desde la gestión administrativa; la web no simula una acreditación.
+
+La reserva puede cancelarse desde **Mi cuenta** hasta el día anterior al ingreso. Si ya existe un pago, el pedido queda marcado como `REEMBOLSO_PENDIENTE`; si no hubo pagos, se cancela directamente. Así la aplicación Java puede ver y gestionar el caso pendiente.
 
 ## Registro e inicio de sesión
 
-1. La base completa (`BD/s27_El_Molino_completa.sql`) ya incluye `registro_pendiente` y el soporte para acompañantes. Si la base ya estaba instalada, ejecutá una vez `BD/actualizacion_registro_acompanantes.sql`. Si importás otra base, ejecutá `BD/registro_pendiente.sql` en `s27_El Molino`; también actualiza instalaciones anteriores de esa tabla.
+1. La base completa (`BD/s27_El_Molino_completa.sql`) ya incluye `registro_pendiente` y el soporte para acompañantes. Si la base ya estaba instalada, ejecutá `BD/00_ACTUALIZAR_BASE_EXISTENTE.sql`. Además, el código tiene compatibilidad temporal para que el alta no falle con `Unknown column 'acompanantes_json'` antes de aplicar la actualización.
 2. Completá `registro/mail_config.php` con los datos del correo emisor.
 3. Si tu MySQL no usa `root` sin contraseña, definí las variables de entorno `EL_MOLINO_DB_HOST`, `EL_MOLINO_DB_PUERTO`, `EL_MOLINO_DB_NOMBRE`, `EL_MOLINO_DB_USUARIO` y `EL_MOLINO_DB_CONTRASENA`.
 

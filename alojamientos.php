@@ -1,4 +1,10 @@
 <?php
+/**
+ * ARCHIVO EXPLICADO: alojamientos.php
+ *
+ * Muestra tipos de alojamiento, disponibilidad por fechas y acciones de reserva.
+ * Las funciones de este archivo están documentadas junto a su declaración.
+ */
 
 declare(strict_types=1);
 

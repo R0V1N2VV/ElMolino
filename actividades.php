@@ -1,5 +1,10 @@
 <?php
-
+/**
+ * ARCHIVO EXPLICADO: actividades.php
+ *
+ * Presenta el catálogo general y los filtros disponibles para buscar actividades.
+ * Las funciones de este archivo están documentadas junto a su declaración.
+ */
 
 declare(strict_types=1);
 

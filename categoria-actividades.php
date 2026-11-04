@@ -1,4 +1,10 @@
 <?php
+/**
+ * ARCHIVO EXPLICADO: categoria-actividades.php
+ *
+ * Muestra las actividades que pertenecen a una categoría concreta.
+ * Las funciones de este archivo están documentadas junto a su declaración.
+ */
 
 declare(strict_types=1);
 
