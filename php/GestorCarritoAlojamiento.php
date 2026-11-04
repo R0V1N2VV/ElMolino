@@ -12,10 +12,10 @@ final class GestorCarritoAlojamiento
 {
     private const CLAVE_CARRITO = 'carrito_alojamiento';
     private const ZONA_HORARIA = 'America/Argentina/Buenos_Aires';
+    public const PORCENTAJE_SENA = 30;
     public const METODOS_PAGO = [
-        'Efectivo al llegar',
-        'Transferencia bancaria',
-        'Tarjeta en el complejo',
+        'Transferencia bancaria para la seña',
+        'Tarjeta al coordinar la seña',
     ];
 
     /**
@@ -424,7 +424,7 @@ final class GestorCarritoAlojamiento
      * @param mixed $metodoPago Valor de metodo pago que recibe la función.
      * @return int Resultado producido por esta operación.
      */
-    public function crearPedido(array $usuario, string $metodoPago): int
+    public function crearPedido(array $usuario, string $metodoPago, array $acompanantesPorItem = []): int
     {
         if (!in_array($metodoPago, self::METODOS_PAGO, true)) {
             throw new RuntimeException('Elegí un método de pago de la lista.');
@@ -451,12 +451,17 @@ final class GestorCarritoAlojamiento
             $lineas = [];
             $totalCentavos = 0;
             $ocupadosTemporales = [];
-            foreach ($carrito as $item) {
+            $fechaIngresoMasCercana = null;
+            foreach ($carrito as $claveItem => $item) {
                 [$entrada, $salida, $noches] = $this->validarFechas(
                     (string) ($item['fechaIngreso'] ?? ''),
                     (string) ($item['fechaEgreso'] ?? '')
                 );
                 $personas = (int) ($item['cantidadPersonas'] ?? 0);
+                $idsAcompanantes = is_array($acompanantesPorItem[$claveItem] ?? null)
+                    ? $acompanantesPorItem[$claveItem]
+                    : [];
+                $idsAcompanantes = $this->validarAcompanantesReserva($idCliente, $idsAcompanantes, max(0, $personas - 1));
                 $alojamientoAnterior = $this->buscarAlojamiento((int) ($item['idAlojamiento'] ?? 0));
                 $tipoClave = (string) ($item['tipoGrupo'] ?? ($alojamientoAnterior ? self::claveTipo((string) $alojamientoAnterior['tipo']) : ''));
                 $capacidad = (int) ($item['capacidadGrupo'] ?? ($alojamientoAnterior['capacidad'] ?? 0));
@@ -479,6 +484,7 @@ final class GestorCarritoAlojamiento
                 $precioCentavos = (int) round((float) $alojamiento['precioPorNoche'] * 100);
                 $subtotalCentavos = $precioCentavos * $noches;
                 $totalCentavos += $subtotalCentavos;
+                if ($fechaIngresoMasCercana === null || $entrada < $fechaIngresoMasCercana) $fechaIngresoMasCercana = $entrada;
                 $lineas[] = [
                     'alojamiento' => $alojamiento,
                     'entrada' => $entrada,
@@ -487,24 +493,37 @@ final class GestorCarritoAlojamiento
                     'personas' => $personas,
                     'precioCentavos' => $precioCentavos,
                     'subtotalCentavos' => $subtotalCentavos,
+                    'acompanantes' => $idsAcompanantes,
                 ];
             }
 
+            $senaCentavos = (int) round($totalCentavos * self::PORCENTAJE_SENA / 100);
+            $ahora = new DateTimeImmutable('now', new DateTimeZone(self::ZONA_HORARIA));
+            $limiteNormal = $ahora->modify('+48 hours');
+            $limitePorIngreso = (new DateTimeImmutable((string) $fechaIngresoMasCercana, new DateTimeZone(self::ZONA_HORARIA)))->modify('-1 day')->setTime(18, 0);
+            $fechaLimiteSena = $limitePorIngreso < $limiteNormal ? $limitePorIngreso : $limiteNormal;
+            if ($fechaLimiteSena <= $ahora) $fechaLimiteSena = $ahora->modify('+1 hour');
             $crearPedido = $this->conexion->prepare(
-                'INSERT INTO pedido_alojamiento (idCliente, total, metodoPago, estadoPedido, estadoPago) VALUES (:cliente, :total, :metodo, \'PENDIENTE\', \'PENDIENTE\')'
+                'INSERT INTO pedido_alojamiento (idCliente, total, metodoPago, estadoPedido, estadoPago, porcentajeSena, montoSena, fechaLimiteSena) VALUES (:cliente, :total, :metodo, \'ESPERANDO_SENA\', \'SENA_PENDIENTE\', :porcentajeSena, :montoSena, :fechaLimiteSena)'
             );
             $crearPedido->execute([
                 'cliente' => $idCliente,
                 'total' => number_format($totalCentavos / 100, 2, '.', ''),
                 'metodo' => $metodoPago,
+                'porcentajeSena' => self::PORCENTAJE_SENA,
+                'montoSena' => number_format($senaCentavos / 100, 2, '.', ''),
+                'fechaLimiteSena' => $fechaLimiteSena->format('Y-m-d H:i:s'),
             ]);
             $idPedido = (int) $this->conexion->lastInsertId();
 
             $crearReserva = $this->conexion->prepare(
-                'INSERT INTO reservas (idCliente, idAlojamiento, fechaIngreso, fechaEgreso, cantidadPersonas, temporada, estadoReserva, precioTotal) VALUES (:cliente, :alojamiento, :entrada, :salida, :personas, NULL, \'PENDIENTE\', :total)'
+                'INSERT INTO reservas (idCliente, idAlojamiento, fechaIngreso, fechaEgreso, cantidadPersonas, temporada, estadoReserva, precioTotal) VALUES (:cliente, :alojamiento, :entrada, :salida, :personas, NULL, \'PENDIENTE_SENA\', :total)'
             );
             $crearDetalle = $this->conexion->prepare(
                 'INSERT INTO detalle_pedido_alojamiento (idPedido, idReserva, alojamientoNumero, alojamientoTipo, fechaIngreso, fechaEgreso, cantidadPersonas, noches, precioPorNoche, subtotal) VALUES (:pedido, :reserva, :numero, :tipo, :entrada, :salida, :personas, :noches, :precio, :subtotal)'
+            );
+            $asociarAcompanante = $this->conexion->prepare(
+                'INSERT INTO `reservaAcompañante` (idReserva, idAcompañante) VALUES (:reserva, :acompanante)'
             );
 
             foreach ($lineas as $linea) {
@@ -517,6 +536,9 @@ final class GestorCarritoAlojamiento
                     'total' => number_format($linea['subtotalCentavos'] / 100, 2, '.', ''),
                 ]);
                 $idReserva = (int) $this->conexion->lastInsertId();
+                foreach ($linea['acompanantes'] as $idAcompanante) {
+                    $asociarAcompanante->execute(['reserva' => $idReserva, 'acompanante' => $idAcompanante]);
+                }
                 $crearDetalle->execute([
                     'pedido' => $idPedido,
                     'reserva' => $idReserva,
@@ -549,18 +571,53 @@ final class GestorCarritoAlojamiento
     public function obtenerPedido(int $idPedido, int $idCliente): ?array
     {
         $consulta = $this->conexion->prepare(
-            'SELECT p.idPedido, p.total, p.metodoPago, p.estadoPedido, p.estadoPago, p.creadoEn, c.nombre, c.apellido, c.email FROM pedido_alojamiento p JOIN cliente c ON c.idCliente = p.idCliente WHERE p.idPedido = :pedido AND p.idCliente = :cliente LIMIT 1'
+            'SELECT p.idPedido, p.total, p.metodoPago, p.estadoPedido, p.estadoPago,
+                    p.porcentajeSena, p.montoSena, p.fechaLimiteSena, p.creadoEn,
+                    c.nombre, c.apellido, c.email
+               FROM pedido_alojamiento p
+               JOIN cliente c ON c.idCliente = p.idCliente
+              WHERE p.idPedido = :pedido AND p.idCliente = :cliente LIMIT 1'
         );
         $consulta->execute(['pedido' => $idPedido, 'cliente' => $idCliente]);
         $pedido = $consulta->fetch();
         if (!$pedido) return null;
 
         $consultaLineas = $this->conexion->prepare(
-            'SELECT alojamientoNumero, alojamientoTipo, fechaIngreso, fechaEgreso, cantidadPersonas, noches, precioPorNoche, subtotal FROM detalle_pedido_alojamiento WHERE idPedido = :pedido ORDER BY idDetalle'
+            'SELECT idReserva, alojamientoNumero, alojamientoTipo, fechaIngreso, fechaEgreso, cantidadPersonas, noches, precioPorNoche, subtotal FROM detalle_pedido_alojamiento WHERE idPedido = :pedido ORDER BY idDetalle'
         );
         $consultaLineas->execute(['pedido' => $idPedido]);
         $pedido['lineas'] = $consultaLineas->fetchAll();
+        $consultaAcompanantes = $this->conexion->prepare(
+            'SELECT ra.idReserva, a.nombre, a.apellido
+               FROM `reservaAcompañante` ra
+               JOIN `acompañante` a ON a.idAcompañante = ra.idAcompañante
+               JOIN detalle_pedido_alojamiento d ON d.idReserva = ra.idReserva
+              WHERE d.idPedido = :pedido
+              ORDER BY a.apellido, a.nombre'
+        );
+        $consultaAcompanantes->execute(['pedido' => $idPedido]);
+        $porReserva = [];
+        foreach ($consultaAcompanantes->fetchAll() as $acompanante) {
+            $porReserva[(int) $acompanante['idReserva']][] = $acompanante['nombre'] . ' ' . $acompanante['apellido'];
+        }
+        foreach ($pedido['lineas'] as &$linea) $linea['acompanantes'] = $porReserva[(int) $linea['idReserva']] ?? [];
+        unset($linea);
         return $pedido;
+    }
+
+    /**
+     * Devuelve los acompañantes que pertenecen al cliente autenticado.
+     *
+     * @return array<int, array{id: int, nombre: string, apellido: string, parentesco: string}>
+     */
+    public function listarAcompanantesCliente(int $idCliente): array
+    {
+        $consulta = $this->conexion->prepare(
+            'SELECT idAcompañante AS id, nombre, apellido, parentesco
+               FROM `acompañante` WHERE idCliente = :cliente ORDER BY apellido, nombre'
+        );
+        $consulta->execute(['cliente' => $idCliente]);
+        return $consulta->fetchAll();
     }
 
     /**
@@ -616,6 +673,31 @@ final class GestorCarritoAlojamiento
         if ((float) $alojamiento['precioPorNoche'] <= 0) {
             throw new RuntimeException('El precio de este alojamiento todavía no está configurado.');
         }
+    }
+
+    /**
+     * Comprueba que cada acompañante seleccionado pertenezca al titular y que no
+     * se supere la cantidad de huéspedes declarada para el alojamiento.
+     *
+     * @return int[]
+     */
+    private function validarAcompanantesReserva(int $idCliente, array $ids, int $maximo): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static fn(int $id): bool => $id > 0)));
+        if (count($ids) > $maximo) {
+            throw new RuntimeException('Seleccionaste más acompañantes que la cantidad de huéspedes indicada.');
+        }
+        if (!$ids) return [];
+        $marcadores = implode(',', array_fill(0, count($ids), '?'));
+        $consulta = $this->conexion->prepare(
+            "SELECT idAcompañante FROM `acompañante` WHERE idCliente = ? AND idAcompañante IN ($marcadores)"
+        );
+        $consulta->execute([$idCliente, ...$ids]);
+        $validos = array_map('intval', $consulta->fetchAll(PDO::FETCH_COLUMN));
+        sort($ids);
+        sort($validos);
+        if ($ids !== $validos) throw new RuntimeException('Uno de los acompañantes seleccionados no pertenece a tu cuenta.');
+        return $validos;
     }
 
     /**

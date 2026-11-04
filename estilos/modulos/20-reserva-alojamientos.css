@@ -188,3 +188,66 @@
         padding: 0 0 26px;
     }
 }
+/* Asignación de huéspedes y seña en el último paso de la reserva. */
+.formulario-confirmacion-estadia {
+    display: grid;
+    gap: 22px;
+}
+
+.asignacion-acompanantes-reserva {
+    display: grid;
+    gap: 14px;
+    padding: 22px 0;
+    border-top: 1px solid rgba(0, 77, 64, 0.18);
+    border-bottom: 1px solid rgba(0, 77, 64, 0.18);
+}
+
+.asignacion-acompanantes-reserva fieldset {
+    display: grid;
+    gap: 10px;
+    padding: 16px;
+    border: 1px solid rgba(0, 77, 64, 0.18);
+    border-radius: 14px;
+}
+
+.opciones-acompanantes-reserva {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 10px;
+}
+
+.opciones-acompanantes-reserva label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    border-radius: 10px;
+    background: #f4f8f6;
+}
+
+.opciones-acompanantes-reserva span,
+.resumen-sena div {
+    display: grid;
+    gap: 2px;
+}
+
+.opciones-acompanantes-reserva small,
+.resumen-sena small {
+    color: #526b66;
+}
+
+.resumen-sena {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 18px 0;
+    border-top: 1px solid rgba(0, 77, 64, 0.2);
+    border-bottom: 1px solid rgba(0, 77, 64, 0.2);
+}
+
+.resumen-sena strong {
+    font-size: 1.25rem;
+    color: var(--azul-oscuro);
+}
+

@@ -78,6 +78,10 @@ final class Correo
         $destinatario = (string) ($pedido['email'] ?? '');
         $metodo = (string) ($pedido['metodoPago'] ?? '');
         $total = number_format((float) ($pedido['total'] ?? 0), 2, ',', '.');
+        $sena = number_format((float) ($pedido['montoSena'] ?? 0), 2, ',', '.');
+        $limiteSena = !empty($pedido['fechaLimiteSena'])
+            ? (new DateTimeImmutable((string) $pedido['fechaLimiteSena']))->format('d/m/Y H:i')
+            : 'a coordinar';
         $filas = '';
         $textoLineas = [];
         foreach (($pedido['lineas'] ?? []) as $linea) {
@@ -105,14 +109,14 @@ final class Correo
             $mail->addAddress($destinatario, $nombre);
             $mail->isHTML(true);
             $mail->Subject = "Resumen del pedido #{$id} - El Molino";
-            $mail->Body = '<h1>Recibimos tu pedido</h1><p>Hola ' . Utilidades::escapar($nombre) . ',</p>'
-                . '<p>Registramos tu pedido <strong>#' . $id . '</strong>. El pago todavía está pendiente; no se realizó ningún cobro en línea.</p>'
+            $mail->Body = '<h1>Recibimos tu solicitud de reserva</h1><p>Hola ' . Utilidades::escapar($nombre) . ',</p>'
+                . '<p>Registramos el pedido <strong>#' . $id . '</strong>. Para confirmar la estadía necesitás abonar una seña de <strong>$ ' . $sena . '</strong> antes del ' . Utilidades::escapar($limiteSena) . '.</p>'
                 . '<table border="1" cellpadding="8" cellspacing="0"><thead><tr><th>Alojamiento</th><th>Estadía</th><th>Personas</th><th>Noches</th><th>Subtotal</th></tr></thead><tbody>' . $filas . '</tbody></table>'
                 . '<p>Método de pago elegido: <strong>' . Utilidades::escapar($metodo) . '</strong></p>'
                 . '<p>Total del pedido: <strong>$ ' . $total . '</strong></p>'
-                . '<p>El complejo coordinará la confirmación del pago y la estadía.</p>';
-            $mail->AltBody = "Hola {$nombre},\n\nRecibimos tu pedido #{$id}. El pago está pendiente y no se realizó ningún cobro en línea.\n\n"
-                . implode("\n", $textoLineas) . "\n\nMétodo de pago: {$metodo}\nTotal: $ {$total}\n\nEl complejo coordinará la confirmación.";
+                . '<p>La reserva queda pendiente hasta acreditar la seña. El complejo enviará los datos necesarios para completar el pago.</p>';
+            $mail->AltBody = "Hola {$nombre},\n\nRecibimos tu solicitud #{$id}. Para confirmar la estadía necesitás abonar una seña de $ {$sena} antes del {$limiteSena}.\n\n"
+                . implode("\n", $textoLineas) . "\n\nMedio elegido: {$metodo}\nTotal: $ {$total}\n\nLa reserva queda pendiente hasta acreditar la seña.";
             $mail->send();
         } catch (Exception) {
             throw new RuntimeException('No se pudo enviar el resumen por correo: ' . $mail->ErrorInfo);

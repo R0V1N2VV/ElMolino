@@ -175,3 +175,25 @@
 .pie-pagina-simple a:hover {
     color: var(--blanco);
 }
+.campo-fecha-actividad {
+    display: grid;
+    gap: 7px;
+    margin-bottom: 16px;
+    font-weight: 700;
+}
+
+.campo-fecha-actividad select {
+    width: 100%;
+    min-height: 46px;
+    padding: 0 12px;
+    border: 1px solid rgba(0, 77, 64, 0.25);
+    border-radius: 10px;
+    background: #fff;
+    color: var(--texto);
+}
+
+.campo-fecha-actividad small {
+    color: #526b66;
+    font-weight: 400;
+}
+

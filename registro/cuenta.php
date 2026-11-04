@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/inicio.php';
 require_once __DIR__ . '/../php/Vista.php';
+require_once __DIR__ . '/../php/GestorReservasCliente.php';
 
 Sesion::iniciar();
 $usuario = Sesion::usuario();
@@ -22,6 +23,7 @@ $mensaje = Sesion::tomarMensaje();
 $acompanantes = [];
 $actividades = [];
 $alojamientos = [];
+$errores = [];
 $idCliente = (int) ($usuario['id_cliente'] ?? 0);
 // Esta función anónima procesa cada elemento recibido sin crear un método público adicional.
 $fechaPerfil = static function (?string $fecha): string {
@@ -31,9 +33,37 @@ $fechaPerfil = static function (?string $fecha): string {
 
 if ($idCliente > 0) {
     $conexion = Conexion::obtener();
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        if (!Sesion::validarCsrf($_POST['token_csrf'] ?? null)) {
+            $errores[] = 'La sesión del formulario venció. Volvé a intentarlo.';
+        } else {
+            try {
+                $gestorReservas = new GestorReservasCliente($conexion);
+                $idReserva = (int) ($_POST['id_reserva'] ?? 0);
+                $accion = (string) ($_POST['accion'] ?? '');
+                if ($accion === 'actualizar_acompanantes_reserva') {
+                    $seleccionados = is_array($_POST['acompanantes'] ?? null) ? $_POST['acompanantes'] : [];
+                    $gestorReservas->actualizarAcompanantes($idReserva, $idCliente, $seleccionados);
+                    Sesion::guardarMensaje('exito', 'Actualizamos los acompañantes de la reserva.');
+                    Utilidades::redirigir('cuenta.php');
+                }
+                if ($accion === 'cancelar_reserva') {
+                    $gestorReservas->cancelar($idReserva, $idCliente);
+                    Sesion::guardarMensaje('exito', 'La reserva fue cancelada. Si había pagos, administración gestionará el reintegro.');
+                    Utilidades::redirigir('cuenta.php');
+                }
+                throw new RuntimeException('La acción solicitada no es válida.');
+            } catch (RuntimeException $error) {
+                $errores[] = $error->getMessage();
+            } catch (PDOException $error) {
+                error_log('No se pudo modificar la reserva: ' . $error->getMessage());
+                $errores[] = 'No se pudo modificar la reserva. Ejecutá la actualización SQL de reservas y pagos.';
+            }
+        }
+    }
     try {
         $consultaAcompanantes = $conexion->prepare(
-            'SELECT nombre, apellido, edad, parentesco
+            'SELECT idAcompañante AS id, nombre, apellido, dni, edad, parentesco
                FROM `acompañante`
               WHERE idCliente = :cliente
               ORDER BY nombre, apellido'
@@ -46,7 +76,7 @@ if ($idCliente > 0) {
 
     try {
         $consultaActividades = $conexion->prepare(
-            'SELECT ia.idActividad, ia.participaTitular, ia.fechaInscripcion,
+            'SELECT ia.idActividad, ia.participaTitular, ia.fechaInscripcion, ia.fechaActividad,
                     a.nombre, a.slug, a.dias, a.horario
                FROM inscripcionActividad ia
                JOIN Actividad a ON a.idActividad = ia.idActividad
@@ -80,9 +110,12 @@ if ($idCliente > 0) {
     try {
         $consultaAlojamientos = $conexion->prepare(
             "SELECT r.idReserva, r.fechaIngreso, r.fechaEgreso, r.cantidadPersonas,
-                    r.estadoReserva, r.precioTotal, a.tipo, a.capacidad
+                    r.estadoReserva, r.precioTotal, a.tipo, a.capacidad,
+                    p.idPedido, p.estadoPago, p.montoSena, p.fechaLimiteSena
                FROM reservas r
                JOIN alojamientos a ON a.idAlojamiento = r.idAlojamiento
+          LEFT JOIN detalle_pedido_alojamiento d ON d.idReserva = r.idReserva
+          LEFT JOIN pedido_alojamiento p ON p.idPedido = d.idPedido
               WHERE r.idCliente = :cliente
                 AND UPPER(TRIM(r.estadoReserva)) NOT IN ('CANCELADA', 'CANCELADO')
               ORDER BY (r.fechaEgreso >= CURRENT_DATE) DESC, r.fechaIngreso ASC
@@ -90,6 +123,25 @@ if ($idCliente > 0) {
         );
         $consultaAlojamientos->execute(['cliente' => $idCliente]);
         $alojamientos = $consultaAlojamientos->fetchAll();
+        $consultaHuespedes = $conexion->prepare(
+            'SELECT ra.idReserva, ra.idAcompañante, ac.nombre, ac.apellido
+               FROM `reservaAcompañante` ra
+               JOIN `acompañante` ac ON ac.idAcompañante = ra.idAcompañante
+               JOIN reservas r ON r.idReserva = ra.idReserva
+              WHERE r.idCliente = :cliente'
+        );
+        $consultaHuespedes->execute(['cliente' => $idCliente]);
+        $huespedesPorReserva = [];
+        foreach ($consultaHuespedes->fetchAll() as $huesped) {
+            $huespedesPorReserva[(int) $huesped['idReserva']][] = [
+                'id' => (int) $huesped['idAcompañante'],
+                'nombre' => $huesped['nombre'] . ' ' . $huesped['apellido'],
+            ];
+        }
+        foreach ($alojamientos as &$alojamiento) {
+            $alojamiento['acompanantes'] = $huespedesPorReserva[(int) $alojamiento['idReserva']] ?? [];
+        }
+        unset($alojamiento);
     } catch (PDOException $error) {
         error_log('No se pudieron cargar los alojamientos de la cuenta: ' . $error->getMessage());
     }
@@ -130,6 +182,7 @@ if ($idCliente > 0) {
         </section>
 
         <?php if ($mensaje): ?><p class="mensaje mensaje-<?= Utilidades::escapar($mensaje['tipo']) ?>" role="status"><?= Utilidades::escapar($mensaje['texto']) ?></p><?php endif; ?>
+        <?php if ($errores): ?><p class="mensaje mensaje-error" role="alert"><?= Utilidades::escapar(implode(' ', $errores)) ?></p><?php endif; ?>
 
         <div class="grilla-resumen-cuenta">
             <section class="panel-resumen-cuenta" aria-labelledby="titulo-actividades-cuenta">
@@ -143,7 +196,7 @@ if ($idCliente > 0) {
                             foreach ($actividad['acompanantes'] as $nombreAcompanante) $participantes[] = $nombreAcompanante;
                             ?>
                             <article class="item-resumen-cuenta">
-                                <div><h3><?= Utilidades::escapar($actividad['nombre']) ?></h3><p><?= Utilidades::escapar(trim((string) $actividad['dias'] . ' · ' . (string) $actividad['horario'], ' ·')) ?></p></div>
+                                <div><h3><?= Utilidades::escapar($actividad['nombre']) ?></h3><p><?= $fechaPerfil($actividad['fechaActividad']) ?> · <?= Utilidades::escapar((string) $actividad['horario']) ?></p></div>
                                 <p class="participantes-cuenta"><strong>Participan:</strong> <?= Utilidades::escapar(implode(', ', $participantes)) ?></p>
                                 <a href="../actividad.php?id=<?= rawurlencode((string) $actividad['slug']) ?>">Ver actividad →</a>
                             </article>
@@ -161,7 +214,34 @@ if ($idCliente > 0) {
                         <?php foreach ($alojamientos as $alojamiento): ?>
                             <article class="item-resumen-cuenta">
                                 <div><h3><?= Utilidades::escapar($alojamiento['tipo']) ?> para <?= (int) $alojamiento['capacidad'] ?> personas</h3><p><?= $fechaPerfil($alojamiento['fechaIngreso']) ?> al <?= $fechaPerfil($alojamiento['fechaEgreso']) ?></p></div>
-                                <p><strong><?= (int) $alojamiento['cantidadPersonas'] ?></strong> <?= (int) $alojamiento['cantidadPersonas'] === 1 ? 'huésped' : 'huéspedes' ?> · Estado: <?= Utilidades::escapar(ucfirst(strtolower((string) $alojamiento['estadoReserva']))) ?></p>
+                                <p><strong><?= (int) $alojamiento['cantidadPersonas'] ?></strong> <?= (int) $alojamiento['cantidadPersonas'] === 1 ? 'huésped' : 'huéspedes' ?> · Estado: <?= Utilidades::escapar(ucfirst(strtolower(str_replace('_', ' ', (string) $alojamiento['estadoReserva'])))) ?></p>
+                                <?php if (!empty($alojamiento['montoSena'])): ?><p><strong>Seña:</strong> $<?= number_format((float) $alojamiento['montoSena'], 2, ',', '.') ?> · <?= Utilidades::escapar(str_replace('_', ' ', (string) $alojamiento['estadoPago'])) ?></p><?php endif; ?>
+                                <?php if ($alojamiento['acompanantes']): ?><p><strong>Acompañantes:</strong> <?= Utilidades::escapar(implode(', ', array_column($alojamiento['acompanantes'], 'nombre'))) ?></p><?php endif; ?>
+                                <?php if ((string) $alojamiento['fechaIngreso'] > date('Y-m-d')): ?>
+                                    <details class="gestionar-reserva-cuenta">
+                                        <summary>Gestionar reserva</summary>
+                                        <form method="post" class="formulario-acompanantes-reserva-cuenta">
+                                            <input type="hidden" name="token_csrf" value="<?= Utilidades::escapar(Sesion::tokenCsrf()) ?>">
+                                            <input type="hidden" name="accion" value="actualizar_acompanantes_reserva">
+                                            <input type="hidden" name="id_reserva" value="<?= (int) $alojamiento['idReserva'] ?>">
+                                            <fieldset><legend>Acompañantes de esta estadía</legend>
+                                                <?php $idsActuales = array_column($alojamiento['acompanantes'], 'id'); ?>
+                                                <?php if ((int) $alojamiento['cantidadPersonas'] <= 1): ?><p>La reserva es para una sola persona.</p><?php else: ?>
+                                                    <?php foreach ($acompanantes as $acompananteCuenta): ?>
+                                                        <label><input type="checkbox" name="acompanantes[]" value="<?= (int) $acompananteCuenta['id'] ?>"<?= in_array((int) $acompananteCuenta['id'], $idsActuales, true) ? ' checked' : '' ?>><span><?= Utilidades::escapar($acompananteCuenta['nombre'] . ' ' . $acompananteCuenta['apellido']) ?></span></label>
+                                                    <?php endforeach; ?>
+                                                <?php endif; ?>
+                                            </fieldset>
+                                            <button class="boton boton-secundario" type="submit">Guardar acompañantes</button>
+                                        </form>
+                                        <form method="post" onsubmit="return confirm('¿Querés cancelar esta reserva?')">
+                                            <input type="hidden" name="token_csrf" value="<?= Utilidades::escapar(Sesion::tokenCsrf()) ?>">
+                                            <input type="hidden" name="accion" value="cancelar_reserva">
+                                            <input type="hidden" name="id_reserva" value="<?= (int) $alojamiento['idReserva'] ?>">
+                                            <button class="boton-enlace boton-cancelar-reserva" type="submit">Cancelar reserva</button>
+                                        </form>
+                                    </details>
+                                <?php endif; ?>
                             </article>
                         <?php endforeach; ?>
                     </div>

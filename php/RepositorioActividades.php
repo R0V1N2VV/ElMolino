@@ -17,13 +17,7 @@ final class RepositorioActividades implements FuenteActividades
                a.edadRecomendada, a.modalidad, a.precio, a.tendencia, a.imagen,
                c.slug AS categoria, c.nombre AS categoriaNombre,
                COALESCE(NULLIF(a.imagen, ''), c.imagen) AS imagenFinal,
-               ((SELECT COALESCE(SUM(ia.participaTitular), 0)
-                   FROM inscripcionActividad ia
-                  WHERE ia.idActividad = a.idActividad)
-                +
-                (SELECT COUNT(*)
-                   FROM inscripcionActividadAcompanante iaa
-                  WHERE iaa.idActividad = a.idActividad)) AS cantidadInscriptos
+               0 AS cantidadInscriptos
           FROM Actividad a
           JOIN CategoriaActividad c ON c.idCategoria = a.idCategoria
     SQL;
@@ -273,6 +267,38 @@ final class RepositorioActividades implements FuenteActividades
     /** @return Actividad[] */
     private function convertirActividades(array $filas): array
     {
-        return array_map([Actividad::class, 'desdeFila'], $filas);
+        $resultado = [];
+        foreach ($filas as $fila) {
+            $fila['cantidadInscriptos'] = $this->maximoInscriptosPorFecha((int) $fila['idActividad']);
+            $resultado[] = Actividad::desdeFila($fila);
+        }
+        return $resultado;
+    }
+
+    /** Devuelve la mayor cantidad de personas anotadas en una misma fecha. */
+    private function maximoInscriptosPorFecha(int $idActividad): int
+    {
+        $consulta = $this->conexion->prepare(
+            'SELECT COALESCE(MAX(porFecha.total), 0)
+               FROM (
+                    SELECT ia.fechaActividad,
+                           SUM(ia.participaTitular) +
+                           (SELECT COUNT(*)
+                              FROM inscripcionActividadAcompanante iaa
+                              JOIN inscripcionActividad ia2
+                                ON ia2.idCliente = iaa.idClienteTitular
+                               AND ia2.idActividad = iaa.idActividad
+                             WHERE iaa.idActividad = :actividadAcompanantes
+                               AND ia2.fechaActividad = ia.fechaActividad) AS total
+                      FROM inscripcionActividad ia
+                     WHERE ia.idActividad = :actividadTitulares
+                  GROUP BY ia.fechaActividad
+               ) porFecha'
+        );
+        $consulta->execute([
+            'actividadAcompanantes' => $idActividad,
+            'actividadTitulares' => $idActividad,
+        ]);
+        return (int) $consulta->fetchColumn();
     }
 }

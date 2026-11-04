@@ -51,6 +51,20 @@ final class RepositorioInscripciones
         return (bool) $consulta->fetchColumn();
     }
 
+    /**
+     * Devuelve el día elegido por el titular para participar en la actividad.
+     */
+    public function fechaSeleccionada(int $idActividad, int $idCliente): ?string
+    {
+        $consulta = $this->conexion->prepare(
+            'SELECT fechaActividad FROM inscripcionActividad
+              WHERE idActividad = :idActividad AND idCliente = :idCliente LIMIT 1'
+        );
+        $consulta->execute(['idActividad' => $idActividad, 'idCliente' => $idCliente]);
+        $fecha = $consulta->fetchColumn();
+        return $fecha === false ? null : (string) $fecha;
+    }
+
     /** @return array<int, array{id: int, nombre: string, apellido: string, dni: string, edad: int, parentesco: string}> */
     public function listarAcompanantes(int $idCliente): array
     {
@@ -88,12 +102,14 @@ final class RepositorioInscripciones
         int $idActividad,
         int $idCliente,
         bool $participaTitular,
-        array $idsAcompanantes = []
+        array $idsAcompanantes = [],
+        string $fechaActividad = ''
     ): void
     {
         try {
             $this->conexion->beginTransaction();
             $datosActividad = $this->bloquearActividad($idActividad);
+            $this->validarFechaActividad($fechaActividad, (string) ($datosActividad['dias'] ?? ''));
             $idsValidos = $this->validarAcompanantes($idCliente, $idsAcompanantes);
             $lugaresSolicitados = ($participaTitular ? 1 : 0) + count($idsValidos);
             if ($lugaresSolicitados === 0) {
@@ -101,18 +117,21 @@ final class RepositorioInscripciones
             }
 
             $inscripcion = $this->conexion->prepare(
-                'SELECT participaTitular FROM inscripcionActividad
+                'SELECT participaTitular, fechaActividad FROM inscripcionActividad
                   WHERE idActividad = :idActividad AND idCliente = :idCliente FOR UPDATE'
             );
             $inscripcion->execute(['idActividad' => $idActividad, 'idCliente' => $idCliente]);
-            $participacionActual = $inscripcion->fetchColumn();
-            $existeInscripcion = $participacionActual !== false;
+            $inscripcionActual = $inscripcion->fetch();
+            $existeInscripcion = is_array($inscripcionActual);
             $acompanantesActuales = $existeInscripcion
                 ? $this->acompanantesInscriptos($idActividad, $idCliente)
                 : [];
-            $lugaresActuales = ($existeInscripcion && (bool) $participacionActual ? 1 : 0)
+            $lugaresActuales = ($existeInscripcion && (bool) $inscripcionActual['participaTitular'] ? 1 : 0)
                 + count($acompanantesActuales);
-            $cantidadFinal = $this->cantidadInscriptos($idActividad) - $lugaresActuales + $lugaresSolicitados;
+            $misLugaresEnLaFecha = $existeInscripcion && (string) $inscripcionActual['fechaActividad'] === $fechaActividad
+                ? $lugaresActuales
+                : 0;
+            $cantidadFinal = $this->cantidadInscriptos($idActividad, $fechaActividad) - $misLugaresEnLaFecha + $lugaresSolicitados;
             if ($cantidadFinal > (int) $datosActividad['cupoMax']) {
                 $lugaresNuevos = max(1, $lugaresSolicitados - $lugaresActuales);
                 throw new RuntimeException($this->mensajeCupo($lugaresNuevos));
@@ -120,24 +139,26 @@ final class RepositorioInscripciones
 
             if ($existeInscripcion) {
                 $actualizar = $this->conexion->prepare(
-                    'UPDATE inscripcionActividad SET participaTitular = :participaTitular
+                    'UPDATE inscripcionActividad SET participaTitular = :participaTitular, fechaActividad = :fechaActividad
                       WHERE idActividad = :idActividad AND idCliente = :idCliente'
                 );
                 $actualizar->execute([
                     'participaTitular' => $participaTitular ? 1 : 0,
+                    'fechaActividad' => $fechaActividad,
                     'idActividad' => $idActividad,
                     'idCliente' => $idCliente,
                 ]);
             } else {
                 $alta = $this->conexion->prepare(
                     'INSERT INTO inscripcionActividad
-                        (idCliente, idActividad, participaTitular, fechaInscripcion, asistencia)
-                     VALUES (:idCliente, :idActividad, :participaTitular, CURRENT_DATE, 0)'
+                        (idCliente, idActividad, participaTitular, fechaActividad, fechaInscripcion, asistencia)
+                     VALUES (:idCliente, :idActividad, :participaTitular, :fechaActividad, CURRENT_DATE, 0)'
                 );
                 $alta->execute([
                     'idCliente' => $idCliente,
                     'idActividad' => $idActividad,
                     'participaTitular' => $participaTitular ? 1 : 0,
+                    'fechaActividad' => $fechaActividad,
                 ]);
             }
 
@@ -196,7 +217,7 @@ final class RepositorioInscripciones
     private function bloquearActividad(int $idActividad, bool $exigirActiva = true): array
     {
         $actividad = $this->conexion->prepare(
-            'SELECT cupoMax, activa FROM Actividad
+            'SELECT cupoMax, activa, dias FROM Actividad
               WHERE idActividad = :idActividad FOR UPDATE'
         );
         $actividad->execute(['idActividad' => $idActividad]);
@@ -213,18 +234,38 @@ final class RepositorioInscripciones
      * @param mixed $idActividad Valor de id actividad que recibe la función.
      * @return int Resultado producido por esta operación.
      */
-    private function cantidadInscriptos(int $idActividad): int
+    private function cantidadInscriptos(int $idActividad, string $fechaActividad): int
     {
         $cantidad = $this->conexion->prepare(
             'SELECT
-                (SELECT COALESCE(SUM(participaTitular), 0) FROM inscripcionActividad WHERE idActividad = :actividadTitulares) +
-                (SELECT COUNT(*) FROM inscripcionActividadAcompanante WHERE idActividad = :actividadAcompanantes)'
+                (SELECT COALESCE(SUM(participaTitular), 0)
+                   FROM inscripcionActividad
+                  WHERE idActividad = :actividadTitulares AND fechaActividad = :fechaTitulares) +
+                (SELECT COUNT(*)
+                   FROM inscripcionActividadAcompanante iaa
+                   JOIN inscripcionActividad ia
+                     ON ia.idCliente = iaa.idClienteTitular AND ia.idActividad = iaa.idActividad
+                  WHERE iaa.idActividad = :actividadAcompanantes AND ia.fechaActividad = :fechaAcompanantes)'
         );
         $cantidad->execute([
             'actividadTitulares' => $idActividad,
+            'fechaTitulares' => $fechaActividad,
             'actividadAcompanantes' => $idActividad,
+            'fechaAcompanantes' => $fechaActividad,
         ]);
         return (int) $cantidad->fetchColumn();
+    }
+
+    /**
+     * Verifica que la fecha esté dentro del plazo habilitado y coincida con los
+     * días semanales configurados por coordinación.
+     */
+    private function validarFechaActividad(string $fecha, string $dias): void
+    {
+        $modelo = new Actividad(0, '', '', '', '', '', '', '', '', $dias, '', '', '', '', '', 0, '', '', 0, false, '');
+        if (!$modelo->admiteFecha($fecha)) {
+            throw new InvalidArgumentException('Elegí una de las fechas disponibles para esta actividad.');
+        }
     }
 
     /** @param int[] $idsSolicitados @return int[] */

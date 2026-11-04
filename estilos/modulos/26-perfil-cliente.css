@@ -198,3 +198,41 @@
         padding: 21px;
     }
 }
+/* Gestión discreta de acompañantes y cancelación desde Mi cuenta. */
+.gestionar-reserva-cuenta {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(0, 77, 64, 0.16);
+}
+
+.gestionar-reserva-cuenta summary {
+    width: max-content;
+    color: var(--azul-oscuro);
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.formulario-acompanantes-reserva-cuenta {
+    display: grid;
+    gap: 12px;
+    margin: 14px 0;
+}
+
+.formulario-acompanantes-reserva-cuenta fieldset {
+    display: grid;
+    gap: 8px;
+    padding: 12px;
+    border: 1px solid rgba(0, 77, 64, 0.16);
+    border-radius: 10px;
+}
+
+.formulario-acompanantes-reserva-cuenta label {
+    display: flex;
+    gap: 9px;
+    align-items: center;
+}
+
+.boton-cancelar-reserva {
+    color: #8b2f2f;
+}
+

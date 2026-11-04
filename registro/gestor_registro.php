@@ -99,16 +99,23 @@ final class Registro
             'telefono' => $datos['telefono'],
             'email' => $datos['email'],
             'direccion' => $datos['direccion'],
-            'acompanantes_json' => $acompanantesJson,
             'password_hash' => SeguridadPassword::crearHash($contrasena),
             'codigo_hash' => password_hash($codigo, PASSWORD_DEFAULT),
         ];
         try {
             $this->conexion->beginTransaction();
             $this->conexion->prepare('DELETE FROM registro_pendiente WHERE email = :email OR dni = :dni')->execute(['email' => $datos['email'], 'dni' => $datos['dni']]);
-            $this->conexion->prepare('INSERT INTO registro_pendiente (dni, nombre, apellido, telefono, email, direccion, acompanantes_json, password_hash, codigo_hash, vence_en) VALUES (:dni, :nombre, :apellido, :telefono, :email, :direccion, :acompanantes_json, :password_hash, :codigo_hash, DATE_ADD(NOW(), INTERVAL 15 MINUTE))')->execute($pendiente);
+            if ($this->tieneColumnaAcompanantesPendientes()) {
+                $pendiente['acompanantes_json'] = $acompanantesJson;
+                $this->conexion->prepare('INSERT INTO registro_pendiente (dni, nombre, apellido, telefono, email, direccion, acompanantes_json, password_hash, codigo_hash, vence_en) VALUES (:dni, :nombre, :apellido, :telefono, :email, :direccion, :acompanantes_json, :password_hash, :codigo_hash, DATE_ADD(NOW(), INTERVAL 15 MINUTE))')->execute($pendiente);
+            } else {
+                // Compatibilidad inmediata con bases antiguas. La migración SQL sigue siendo
+                // recomendable porque permite recuperar el registro aunque cambie la sesión.
+                $this->conexion->prepare('INSERT INTO registro_pendiente (dni, nombre, apellido, telefono, email, direccion, password_hash, codigo_hash, vence_en) VALUES (:dni, :nombre, :apellido, :telefono, :email, :direccion, :password_hash, :codigo_hash, DATE_ADD(NOW(), INTERVAL 15 MINUTE))')->execute($pendiente);
+            }
             $id = (int) $this->conexion->lastInsertId();
             $this->conexion->commit();
+            Sesion::guardar('registro_acompanantes_' . $id, $datos['acompanantes'] ?? []);
             $this->correo->enviarCodigoRegistro($datos['email'], $datos['nombre'], $codigo);
             return ['id' => $id, 'errores' => []];
         } catch (Throwable $error) {
@@ -154,7 +161,9 @@ final class Registro
             $this->conexion->beginTransaction();
             $this->conexion->prepare('INSERT INTO cliente (dni, nombre, apellido, telefono, email, direccion) VALUES (:dni, :nombre, :apellido, :telefono, :email, :direccion)')->execute(['dni' => $pendiente['dni'], 'nombre' => $pendiente['nombre'], 'apellido' => $pendiente['apellido'], 'telefono' => $pendiente['telefono'], 'email' => $pendiente['email'], 'direccion' => $pendiente['direccion']]);
             $idCliente = (int) $this->conexion->lastInsertId();
-            $acompanantes = json_decode((string) ($pendiente['acompanantes_json'] ?? '[]'), true);
+            $acompanantes = isset($pendiente['acompanantes_json'])
+                ? json_decode((string) $pendiente['acompanantes_json'], true)
+                : Sesion::obtener('registro_acompanantes_' . $id, []);
             if (!is_array($acompanantes)) $acompanantes = [];
             $crearAcompanante = $this->conexion->prepare('INSERT INTO `acompañante` (idCliente, dni, nombre, apellido, edad, parentesco) VALUES (:cliente, :dni, :nombre, :apellido, :edad, :parentesco)');
             foreach ($acompanantes as $acompanante) {
@@ -172,6 +181,7 @@ final class Registro
             $idUsuario = (int) $this->conexion->lastInsertId();
             $this->conexion->prepare('DELETE FROM registro_pendiente WHERE idRegistroPendiente = :id')->execute(['id' => $id]);
             $this->conexion->commit();
+            Sesion::eliminar('registro_acompanantes_' . $id);
             return ['errores' => [], 'usuario' => ['id_usuario' => $idUsuario, 'id_cliente' => $idCliente, 'nombre' => $pendiente['nombre'], 'email' => $pendiente['email'], 'rol' => 'cliente']];
         } catch (PDOException) {
             if ($this->conexion->inTransaction()) $this->conexion->rollBack();
@@ -228,5 +238,21 @@ final class Registro
             if ($consulta->fetchColumn()) return true;
         }
         return false;
+    }
+
+    /**
+     * Comprueba si la instalación actual ya tiene la columna usada para conservar
+     * acompañantes durante la verificación del correo.
+     */
+    private function tieneColumnaAcompanantesPendientes(): bool
+    {
+        $consulta = $this->conexion->prepare(
+            "SELECT COUNT(*) FROM information_schema.COLUMNS
+              WHERE TABLE_SCHEMA = DATABASE()
+                AND TABLE_NAME = 'registro_pendiente'
+                AND COLUMN_NAME = 'acompanantes_json'"
+        );
+        $consulta->execute();
+        return (int) $consulta->fetchColumn() === 1;
     }
 }

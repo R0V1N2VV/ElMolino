@@ -46,6 +46,10 @@ final class ControladorInscripciones
 
         $acompanantes = is_array($entrada['acompanantes'] ?? null) ? $entrada['acompanantes'] : [];
         $participaTitular = isset($entrada['participa_titular']);
+        $fechaActividad = trim((string) ($entrada['fecha_actividad'] ?? ''));
+        if (!$actividad->admiteFecha($fechaActividad)) {
+            throw new InvalidArgumentException('Elegí una de las fechas habilitadas para esta actividad.');
+        }
         // Compatibilidad con formularios anteriores, donde el titular siempre participaba.
         if ($accion === 'inscribirse' || $accion === 'actualizar_acompanantes') $participaTitular = true;
 
@@ -54,7 +58,8 @@ final class ControladorInscripciones
             $actividad->id,
             $idCliente,
             $participaTitular,
-            $acompanantes
+            $acompanantes,
+            $fechaActividad
         );
         if ($actividad->modalidad === 'inscripcion' && $actividad->precio > 0) {
             return ($yaEstabaInscripto ? 'Actualizamos las personas que participan.' : 'La inscripción quedó registrada.')

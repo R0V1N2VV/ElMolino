@@ -80,6 +80,47 @@ final class Actividad
     }
 
     /**
+     * Indica si una fecha concreta coincide con los días semanales configurados
+     * para la actividad y está dentro de los próximos noventa días.
+     */
+    public function admiteFecha(string $fecha): bool
+    {
+        $seleccionada = DateTimeImmutable::createFromFormat('!Y-m-d', $fecha);
+        if (!$seleccionada || $seleccionada->format('Y-m-d') !== $fecha) return false;
+        $hoy = new DateTimeImmutable('today');
+        if ($seleccionada < $hoy || $seleccionada > $hoy->modify('+90 days')) return false;
+
+        $diasNormalizados = strtolower(strtr($this->dias, [
+            'Á' => 'a', 'É' => 'e', 'Í' => 'i', 'Ó' => 'o', 'Ú' => 'u',
+            'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u',
+        ]));
+        if (str_contains($diasNormalizados, 'todos los dias')) return true;
+        $nombres = [1 => 'lunes', 2 => 'martes', 3 => 'miercoles', 4 => 'jueves', 5 => 'viernes', 6 => 'sabado', 7 => 'domingo'];
+        return str_contains($diasNormalizados, $nombres[(int) $seleccionada->format('N')]);
+    }
+
+    /**
+     * Genera las próximas fechas válidas que se muestran en el selector de inscripción.
+     *
+     * @return array<int, array{valor: string, etiqueta: string}>
+     */
+    public function fechasDisponibles(int $limite = 60): array
+    {
+        $fechas = [];
+        $cursor = new DateTimeImmutable('today');
+        for ($i = 0; $i <= 90 && count($fechas) < $limite; $i++, $cursor = $cursor->modify('+1 day')) {
+            $valor = $cursor->format('Y-m-d');
+            if (!$this->admiteFecha($valor)) continue;
+            $nombres = [1 => 'Lunes', 2 => 'Martes', 3 => 'Miércoles', 4 => 'Jueves', 5 => 'Viernes', 6 => 'Sábado', 7 => 'Domingo'];
+            $fechas[] = [
+                'valor' => $valor,
+                'etiqueta' => $nombres[(int) $cursor->format('N')] . ' ' . $cursor->format('d/m/Y'),
+            ];
+        }
+        return $fechas;
+    }
+
+    /**
      * Ejecuta la lógica de “desde fila” en Actividad.php.
      *
      * @param mixed $fila Valor de fila que recibe la función.

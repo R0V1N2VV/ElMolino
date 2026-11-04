@@ -96,13 +96,7 @@ final class Vista
         $horario = self::escapar($actividad->horario);
         $slug = rawurlencode($actividad->slug);
         $precio = self::escapar(self::precio($actividad));
-        $disponibles = $actividad->cuposDisponibles();
-        $estadoCupo = self::escapar(
-            $disponibles === 0
-                ? 'Sin cupos disponibles'
-                : $disponibles . ($disponibles === 1 ? ' lugar disponible' : ' lugares disponibles')
-        );
-        $claseCupo = $disponibles === 0 ? ' sin-cupo' : '';
+        $estadoCupo = self::escapar('Cupo de ' . $actividad->cupo . ' por fecha');
 
         return <<<HTML
             <article class="tarjeta-actividad{$clase}">
@@ -112,7 +106,7 @@ final class Vista
                     <h3>{$nombre}</h3>
                     <p>{$descripcion}</p>
                     <div class="datos-breves-actividad"><span>{$dias}</span><span>{$horario}</span></div>
-                    <div class="estado-tarjeta-actividad"><span>{$precio}</span><span class="{$claseCupo}">{$estadoCupo}</span></div>
+                    <div class="estado-tarjeta-actividad"><span>{$precio}</span><span>{$estadoCupo}</span></div>
                     <a class="enlace-actividad" href="actividad.php?id={$slug}">Ver actividad <span aria-hidden="true">→</span></a>
                 </div>
             </article>
