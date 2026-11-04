@@ -47,6 +47,7 @@ public class ReservaAcompananteDAO {
         try (Connection conexion = Conexion.obtener()) {
             conexion.setAutoCommit(false);
             try {
+                validarVinculo(conexion, idReserva, idAcompanante, null);
                 try (PreparedStatement sentencia = conexion.prepareStatement(consultaSql)) {
                     sentencia.setInt(1, idReserva);
                     sentencia.setInt(2, idAcompanante);
@@ -76,6 +77,7 @@ public class ReservaAcompananteDAO {
         try (Connection conexion = Conexion.obtener()) {
             conexion.setAutoCommit(false);
             try {
+                validarVinculo(conexion, idReserva, idNuevo, idAnterior);
                 int filas;
                 try (PreparedStatement sentencia = conexion.prepareStatement(consultaSql)) {
                     sentencia.setInt(1, idNuevo);
@@ -124,6 +126,36 @@ public class ReservaAcompananteDAO {
                 throw new SQLException("No se pudo eliminar la asociación", excepcion);
             } finally {
                 conexion.setAutoCommit(true);
+            }
+        }
+    }
+
+    /**
+     * Comprueba que la persona pertenezca al titular de la reserva y que no se
+     * supere la cantidad de huéspedes declarada.
+     */
+    private void validarVinculo(Connection conexion, int idReserva, int idAcompanante,
+                                Integer idAcompananteExcluido) throws SQLException {
+        String consultaSql = "SELECT r.cantidadPersonas, "
+                + "EXISTS(SELECT 1 FROM `acompañante` a WHERE a.idAcompañante=? AND a.idCliente=r.idCliente), "
+                + "(SELECT COUNT(*) FROM `reservaAcompañante` ra WHERE ra.idReserva=? "
+                + (idAcompananteExcluido == null ? "" : "AND ra.idAcompañante<>? ")
+                + ") FROM reservas r WHERE r.idReserva=?";
+        try (PreparedStatement sentencia = conexion.prepareStatement(consultaSql)) {
+            int indice = 1;
+            sentencia.setInt(indice++, idAcompanante);
+            sentencia.setInt(indice++, idReserva);
+            if (idAcompananteExcluido != null) sentencia.setInt(indice++, idAcompananteExcluido);
+            sentencia.setInt(indice, idReserva);
+            try (ResultSet resultado = sentencia.executeQuery()) {
+                if (!resultado.next()) throw new SQLException("No se encontró la reserva.");
+                if (!resultado.getBoolean(2)) {
+                    throw new SQLException("El acompañante no pertenece al titular de la reserva.");
+                }
+                int maximo = Math.max(0, resultado.getInt(1) - 1);
+                if (resultado.getInt(3) >= maximo) {
+                    throw new SQLException("La reserva ya alcanzó la cantidad de acompañantes permitida.");
+                }
             }
         }
     }

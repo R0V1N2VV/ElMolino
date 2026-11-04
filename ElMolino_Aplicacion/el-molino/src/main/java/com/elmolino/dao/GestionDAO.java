@@ -5,6 +5,7 @@ import com.elmolino.util.SeguridadPassword;
 import com.elmolino.util.SesionActual;
 
 import java.math.BigDecimal;
+import java.text.Normalizer;
 import java.sql.Connection;
 import java.sql.Date;
 import java.sql.PreparedStatement;
@@ -18,6 +19,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /** Reune las consultas y reglas para los modulos de gestion. */
@@ -120,10 +122,10 @@ public final class GestionDAO {
     // Catalogo de campos por modulo; los nombres de tabla y columna deben coincidir con la base.
     public static final Modulo ALOJAMIENTOS = new Modulo("Alojamientos", "alojamientos", "idAlojamiento", List.of(
             texto("numero", "Número", true),
-            opcion("tipo", "Tipo", List.of("Habitación", "Cabaña", "Departamento")),
+            opcion("tipo", "Tipo", List.of("Habitación", "Cabaña", "Hotel")),
             entero("capacidad", "Capacidad"), decimal("precioPorNoche", "Precio por noche"),
             texto("descripcion", "Descripción", false),
-            opcion("estado", "Estado", List.of("Disponible", "Mantenimiento", "Limpieza", "Reservado"))));
+            opcion("estado", "Estado", List.of("Disponible", "En limpieza", "Fuera de servicio", "Reservado"))));
 
     public static final Modulo ESPACIOS = new Modulo("Espacios recreativos", "EspacioRecreativo", "idEspacio", List.of(
             texto("nombre", "Nombre", true), texto("descripcion", "Descripción", true),
@@ -131,7 +133,9 @@ public final class GestionDAO {
             hora("horarioCierre", "Cierra (HH:mm)"), booleano("requiereReserva", "Requiere reserva")));
 
     public static final Modulo ACTIVIDADES = new Modulo("Actividades", "Actividad", "idActividad", List.of(
-            texto("nombre", "Nombre", true), texto("descripcionCorta", "Descripción breve", false),
+            texto("slug", "Identificador web (sin espacios)", true), texto("nombre", "Nombre", true),
+            relacion("idCategoria", "Categoría", "SELECT idCategoria, nombre FROM `CategoriaActividad` WHERE activa = 1 ORDER BY nombre"),
+            texto("descripcionCorta", "Descripción breve", false),
             texto("descripcion", "Descripción completa", true), texto("requisitos", "Requisitos", false),
             texto("informacionImportante", "Información importante", false),
             texto("horario", "Horario", true), texto("dias", "Días", false),
@@ -149,17 +153,20 @@ public final class GestionDAO {
             relacion("idAlojamiento", "Alojamiento", "SELECT idAlojamiento, CONCAT(numero, ' - ', tipo) FROM `alojamientos` ORDER BY numero"),
             fecha("fechaIngreso", "Ingreso (AAAA-MM-DD)"), fecha("fechaEgreso", "Egreso (AAAA-MM-DD)"),
             entero("cantidadPersonas", "Cantidad de personas"), texto("temporada", "Temporada", false),
-            opcion("estadoReserva", "Estado", List.of("PENDIENTE", "CONFIRMADA", "CANCELADA", "FINALIZADA")),
+            opcion("estadoReserva", "Estado", List.of("PENDIENTE_SENA", "CONFIRMADA", "CANCELADA", "FINALIZADA")),
             decimal("precioTotal", "Precio total (0 calcula base)")));
 
     public static final Modulo ACTIVIDAD_INSCRIPTOS = new Modulo("Inscripciones", "inscripcionActividad", "idInscripcion", List.of(
             relacion("idCliente", "Cliente", "SELECT idCliente, CONCAT(apellido, ', ', nombre, ' - DNI ', dni) FROM `cliente` ORDER BY apellido, nombre"),
             relacion("idActividad", "Actividad", "SELECT idActividad, nombre FROM `Actividad` ORDER BY nombre"),
-            fecha("fechaInscripcion", "Fecha (AAAA-MM-DD)")));
+            fecha("fechaActividad", "Día elegido (AAAA-MM-DD)"),
+            fecha("fechaInscripcion", "Fecha de inscripción (AAAA-MM-DD)")));
 
     public static final Modulo PAGOS = new Modulo("Pagos", "pago", "idPago", List.of(
             relacion("idReserva", "Reserva", "SELECT idReserva, CONCAT('Reserva ', idReserva, ' - cliente ', idCliente) FROM `reservas` ORDER BY idReserva DESC"),
             decimal("montoTotal", "Monto"), opcion("metodoPago", "Medio de pago", List.of("Efectivo", "Transferencia", "Tarjeta", "Otro")),
+            opcion("tipoPago", "Concepto", List.of("SENA", "SALDO", "REEMBOLSO")),
+            opcion("estado", "Estado", List.of("PENDIENTE", "CONFIRMADO", "ANULADO")),
             fecha("fechaPago", "Fecha (AAAA-MM-DD)"), texto("comprobante", "Comprobante", false)));
 
     public static final Modulo ACOMPANANTES = new Modulo("Acompañantes", "acompañante", "idAcompañante", List.of(
@@ -283,20 +290,32 @@ public final class GestionDAO {
      * Carga actividades que necesita esta parte del sistema.
      */
     private static List<Object[]> listarActividades() throws SQLException {
-        // Incluye cupos y estado calculados para mostrar informacion util de actividades.
+        // El cupo se calcula por fecha e incluye al titular y a sus acompañantes.
+        // De todas las fechas se muestra la más ocupada, no una suma histórica.
         String consultaSql = "SELECT a.idActividad, a.nombre, a.descripcionCorta, a.horario, a.dias, a.momentoDia, "
                 + "a.Duracion, a.sector, a.responsable, a.edadRecomendada, a.modalidad, a.activa, e.nombre, a.cupoMax, "
-                + "COUNT(i.idInscripcion), GREATEST(a.cupoMax - COUNT(i.idInscripcion), 0), "
-                + "CASE WHEN COUNT(i.idInscripcion) >= a.cupoMax THEN 'Cupo lleno' "
+                + "COALESCE(o.maximoFecha, 0), GREATEST(a.cupoMax - COALESCE(o.maximoFecha, 0), 0), "
+                + "CASE WHEN COALESCE(o.maximoFecha, 0) >= a.cupoMax THEN 'Alguna fecha llena' "
                 + "WHEN a.activa = 0 THEN 'Inactiva' "
-                + "WHEN a.cupoMax - COUNT(i.idInscripcion) <= 2 THEN 'Últimos lugares' "
+                + "WHEN a.cupoMax - COALESCE(o.maximoFecha, 0) <= 2 THEN 'Últimos lugares en una fecha' "
                 + "ELSE 'Disponible' END, a.precio, a.pago "
                 + "FROM `Actividad` a "
                 + "LEFT JOIN `EspacioRecreativo` e ON e.idEspacio = a.idEspacio "
-                + "LEFT JOIN `inscripcionActividad` i ON i.idActividad = a.idActividad "
+                + "LEFT JOIN ("
+                + "  SELECT ocupacion.idActividad, MAX(ocupacion.totalFecha) AS maximoFecha "
+                + "  FROM ("
+                + "    SELECT ia.idActividad, ia.fechaActividad, "
+                + "           COUNT(DISTINCT CASE WHEN ia.participaTitular = 1 THEN ia.idInscripcion END) "
+                + "           + COUNT(iaa.idInscripcionAcompanante) AS totalFecha "
+                + "    FROM `inscripcionActividad` ia "
+                + "    LEFT JOIN `inscripcionActividadAcompanante` iaa "
+                + "      ON iaa.idClienteTitular = ia.idCliente AND iaa.idActividad = ia.idActividad "
+                + "    GROUP BY ia.idActividad, ia.fechaActividad"
+                + "  ) ocupacion GROUP BY ocupacion.idActividad"
+                + ") o ON o.idActividad = a.idActividad "
                 + "GROUP BY a.idActividad, a.nombre, a.descripcionCorta, a.horario, a.dias, a.momentoDia, "
                 + "a.Duracion, a.sector, a.responsable, a.edadRecomendada, a.modalidad, a.activa, "
-                + "e.nombre, a.cupoMax, a.precio, a.pago "
+                + "e.nombre, a.cupoMax, o.maximoFecha, a.precio, a.pago "
                 + "ORDER BY a.idActividad DESC";
         List<Object[]> filas = new ArrayList<>();
         try (Connection conexion = Conexion.obtener();
@@ -456,6 +475,7 @@ public final class GestionDAO {
                 }
                 Map<String, Object> datosNuevos = idGuardado < 0 ? datos
                         : AuditoriaDAO.capturar(conexion, modulo.tabla(), modulo.id(), idGuardado);
+                if ("pago".equals(modulo.tabla())) sincronizarPagoPedido(conexion, datos);
                 AuditoriaDAO.registrar(conexion, crear ? "CREAR" : "EDITAR", modulo.titulo(),
                         idGuardado < 0 ? null : Integer.toString(idGuardado), datosAnteriores, datosNuevos);
                 conexion.commit();
@@ -539,9 +559,13 @@ public final class GestionDAO {
             try {
                 Map<String, Object> anterior = AuditoriaDAO.capturar(conexion, "reservas", "idReserva", idReserva);
                 try (PreparedStatement sentencia = conexion.prepareStatement(
-                        "UPDATE reservas SET estadoReserva = 'CANCELADA' WHERE idReserva = ?")) {
+                        "UPDATE reservas SET estadoReserva = 'CANCELADA' "
+                                + "WHERE idReserva = ? AND fechaIngreso > CURRENT_DATE "
+                                + "AND UPPER(estadoReserva) NOT IN ('CANCELADA', 'CANCELADO')")) {
                     sentencia.setInt(1, idReserva);
-                    if (sentencia.executeUpdate() == 0) throw new SQLException("No se encontró la reserva.");
+                    if (sentencia.executeUpdate() == 0) {
+                        throw new SQLException("La reserva no existe, ya fue cancelada o la estadía ya comenzó.");
+                    }
                 }
                 Map<String, Object> nuevo = AuditoriaDAO.capturar(conexion, "reservas", "idReserva", idReserva);
                 AuditoriaDAO.registrar(conexion, "CANCELAR", "Reservas", Integer.toString(idReserva), anterior, nuevo);
@@ -584,12 +608,82 @@ public final class GestionDAO {
                                                         boolean rolLimpieza) throws SQLException {
         if (id == null) throw new SQLException("No se encontró el alojamiento seleccionado.");
         List<String> estadosPermitidos = rolLimpieza
-                ? List.of("Limpieza", "Disponible")
-                : List.of("Disponible", "Reservado", "Mantenimiento");
+                ? List.of("En limpieza", "Disponible")
+                : List.of("Disponible", "Reservado", "Fuera de servicio");
         if (!estadosPermitidos.contains(nuevoEstado)) {
             throw new SQLException(rolLimpieza
-                    ? "Limpieza solo puede marcar un alojamiento como Limpieza o Disponible."
-                    : "Recepción solo puede elegir Disponible, Reservado o Mantenimiento.");
+                    ? "Limpieza solo puede marcar un alojamiento como En limpieza o Disponible."
+                    : "Recepción solo puede elegir Disponible, Reservado o Fuera de servicio.");
+        }
+    }
+
+    /**
+     * Sincroniza la seña registrada desde la app con el pedido y la reserva web.
+     * La confirmación solo ocurre cuando la suma de pagos de seña confirmados
+     * alcanza el importe solicitado para el pedido.
+     */
+    private static void sincronizarPagoPedido(Connection conexion, Map<String, Object> datos) throws SQLException {
+        Object reservaValor = datos.get("idReserva");
+        if (!(reservaValor instanceof Number numeroReserva)) return;
+        int idReserva = numeroReserva.intValue();
+        int idPedido;
+        BigDecimal montoSena;
+        BigDecimal senasConfirmadas;
+        String estadoPedidoActual;
+        String estadoPagoActual;
+        try (PreparedStatement sentencia = conexion.prepareStatement(
+                "SELECT pa.idPedido, pa.montoSena, pa.estadoPedido, pa.estadoPago "
+                        + "FROM detalle_pedido_alojamiento origen "
+                        + "JOIN pedido_alojamiento pa ON pa.idPedido=origen.idPedido "
+                        + "WHERE origen.idReserva=? LIMIT 1 FOR UPDATE")) {
+            sentencia.setInt(1, idReserva);
+            try (ResultSet resultados = sentencia.executeQuery()) {
+                if (!resultados.next()) return; // El pago puede pertenecer a una reserva antigua sin pedido web.
+                idPedido = resultados.getInt(1);
+                montoSena = resultados.getBigDecimal(2);
+                estadoPedidoActual = resultados.getString(3);
+                estadoPagoActual = resultados.getString(4);
+            }
+        }
+        try (PreparedStatement sentencia = conexion.prepareStatement(
+                "SELECT COALESCE(SUM(CASE WHEN p.tipoPago='SENA' AND p.estado='CONFIRMADO' "
+                        + "THEN p.montoTotal ELSE 0 END), 0) "
+                        + "FROM detalle_pedido_alojamiento d LEFT JOIN pago p ON p.idReserva=d.idReserva "
+                        + "WHERE d.idPedido=?")) {
+            sentencia.setInt(1, idPedido);
+            try (ResultSet resultados = sentencia.executeQuery()) {
+                resultados.next();
+                senasConfirmadas = resultados.getBigDecimal(1);
+            }
+        }
+
+        boolean senaCompleta = senasConfirmadas.compareTo(montoSena) >= 0;
+        boolean pedidoCancelado = List.of("CANCELADO", "PARCIALMENTE_CANCELADO")
+                .contains(estadoPedidoActual == null ? "" : estadoPedidoActual.toUpperCase(Locale.ROOT));
+        boolean pagoTerminal = List.of("PAGADO", "REEMBOLSO_PENDIENTE", "CANCELADO")
+                .contains(estadoPagoActual == null ? "" : estadoPagoActual.toUpperCase(Locale.ROOT));
+        String nuevoEstadoPedido = pedidoCancelado ? estadoPedidoActual : (senaCompleta ? "CONFIRMADO" : "ESPERANDO_SENA");
+        String nuevoEstadoPago = pagoTerminal ? estadoPagoActual : (senaCompleta ? "SENA_PAGADA" : "SENA_PENDIENTE");
+
+        try (PreparedStatement sentencia = conexion.prepareStatement(
+                "UPDATE pedido_alojamiento SET estadoPedido=?, estadoPago=?, "
+                        + "senaPagadaEn=CASE WHEN ? THEN COALESCE(senaPagadaEn, NOW()) ELSE NULL END "
+                        + "WHERE idPedido=?")) {
+            sentencia.setString(1, nuevoEstadoPedido);
+            sentencia.setString(2, nuevoEstadoPago);
+            sentencia.setBoolean(3, senaCompleta);
+            sentencia.setInt(4, idPedido);
+            sentencia.executeUpdate();
+        }
+        if (pedidoCancelado) return;
+        try (PreparedStatement sentencia = conexion.prepareStatement(
+                "UPDATE reservas r JOIN detalle_pedido_alojamiento d ON d.idReserva=r.idReserva "
+                        + "SET r.estadoReserva=? "
+                        + "WHERE d.idPedido=? AND UPPER(r.estadoReserva) NOT IN ('CANCELADA','CANCELADO','FINALIZADA')")) {
+            sentencia.setString(1, senaCompleta || "PAGADO".equalsIgnoreCase(nuevoEstadoPago)
+                    ? "CONFIRMADA" : "PENDIENTE_SENA");
+            sentencia.setInt(2, idPedido);
+            sentencia.executeUpdate();
         }
     }
 
@@ -705,26 +799,72 @@ public final class GestionDAO {
      * Comprueba cupo y evita continuar cuando hay información inválida.
      */
     private static void validarCupo(Connection conexion, Map<String, Object> datos) throws SQLException {
-        // Bloquea la inscripcion si la actividad esta inactiva o ya no tiene lugares.
+        // Bloquea la inscripcion si la actividad esta inactiva o la fecha elegida ya no tiene lugares.
+        LocalDate fechaActividad = (LocalDate) datos.get("fechaActividad");
+        if (fechaActividad == null) {
+            throw new IllegalArgumentException("Elegí el día de la actividad.");
+        }
         int cupoMax;
+        String diasHabilitados;
         try (PreparedStatement sentencia = conexion.prepareStatement(
-                "SELECT cupoMax, activa FROM Actividad WHERE idActividad = ? FOR UPDATE")) {
+                "SELECT cupoMax, activa, dias FROM Actividad WHERE idActividad = ? FOR UPDATE")) {
             sentencia.setInt(1, (Integer) datos.get("idActividad"));
             try (ResultSet resultados = sentencia.executeQuery()) {
                 if (!resultados.next()) throw new IllegalArgumentException("La actividad seleccionada no existe.");
                 cupoMax = resultados.getInt(1);
                 if (!resultados.getBoolean(2)) throw new IllegalArgumentException("La actividad no está habilitada para inscripciones.");
+                diasHabilitados = resultados.getString(3);
             }
         }
+        validarFechaActividad(fechaActividad, diasHabilitados);
         try (PreparedStatement sentencia = conexion.prepareStatement(
-                "SELECT COUNT(*) FROM inscripcionActividad WHERE idActividad = ?")) {
+                "SELECT COUNT(DISTINCT CASE WHEN ia.participaTitular = 1 THEN ia.idInscripcion END) "
+                        + "+ COUNT(iaa.idInscripcionAcompanante) "
+                        + "FROM inscripcionActividad ia "
+                        + "LEFT JOIN inscripcionActividadAcompanante iaa "
+                        + "ON iaa.idClienteTitular = ia.idCliente AND iaa.idActividad = ia.idActividad "
+                        + "WHERE ia.idActividad = ? AND ia.fechaActividad = ?")) {
             sentencia.setInt(1, (Integer) datos.get("idActividad"));
+            sentencia.setDate(2, Date.valueOf(fechaActividad));
             try (ResultSet resultados = sentencia.executeQuery()) {
                 if (resultados.next() && resultados.getInt(1) >= cupoMax) {
-                    throw new IllegalArgumentException("La actividad alcanzó su cupo máximo.");
+                    throw new IllegalArgumentException("La actividad alcanzó su cupo máximo para ese día.");
                 }
             }
         }
+    }
+
+    /**
+     * Verifica que la fecha elegida sea próxima y coincida con los días
+     * configurados por coordinación para esa actividad.
+     */
+    private static void validarFechaActividad(LocalDate fecha, String diasConfigurados) {
+        LocalDate hoy = LocalDate.now();
+        if (fecha.isBefore(hoy) || fecha.isAfter(hoy.plusDays(90))) {
+            throw new IllegalArgumentException("La fecha debe estar entre hoy y los próximos 90 días.");
+        }
+        String configuracion = normalizarTexto(diasConfigurados == null ? "" : diasConfigurados);
+        if (configuracion.isBlank() || configuracion.contains("todos los dias")) return;
+
+        String dia = switch (fecha.getDayOfWeek()) {
+            case MONDAY -> "lunes";
+            case TUESDAY -> "martes";
+            case WEDNESDAY -> "miercoles";
+            case THURSDAY -> "jueves";
+            case FRIDAY -> "viernes";
+            case SATURDAY -> "sabado";
+            case SUNDAY -> "domingo";
+        };
+        if (!configuracion.contains(dia)) {
+            throw new IllegalArgumentException("La actividad no se realiza el día de la fecha elegida.");
+        }
+    }
+
+    /** Quita acentos y pasa un texto a minúsculas para compararlo con seguridad. */
+    private static String normalizarTexto(String texto) {
+        String sinAcentos = Normalizer.normalize(texto, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "");
+        return sinAcentos.toLowerCase(Locale.ROOT);
     }
 
     /**

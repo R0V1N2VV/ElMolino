@@ -32,8 +32,8 @@ Para habilitar el primer SuperAdmin, crea desde la aplicación una cuenta con ro
 - Alojamientos, espacios y acompañantes: consulta, edición y eliminación de registros existentes.
 - Reservas: consulta, edición y cancelación; valida fechas, capacidad y cruces, y conserva el registro cancelado.
 - Acompañantes por reserva: edición o eliminación de una asociación existente.
-- Actividades: consulta y edición desde la aplicación. La grilla muestra datos operativos, inscriptos frente al cupo, lugares disponibles y estado; los conteos se calculan desde `inscripcionActividad`. Las altas se realizan desde la página web.
-- Inscripciones: consulta y alta desde la aplicación; comprueba el cupo y no gestiona asistencia.
+- Actividades: consulta y edición desde la aplicación. La grilla muestra datos operativos y la ocupación de la fecha con más participantes; el cálculo incluye titulares y acompañantes. Las altas se realizan desde la página web.
+- Inscripciones: consulta y alta desde la aplicación; solicita la fecha y comprueba el cupo correspondiente a ese día.
 - Pagos: solo consulta para los roles habituales; SuperAdmin puede gestionarlos.
 - Usuarios: gestión y asignación de roles por el administrador.
 

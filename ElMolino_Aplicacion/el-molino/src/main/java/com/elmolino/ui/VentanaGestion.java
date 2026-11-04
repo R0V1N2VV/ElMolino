@@ -383,8 +383,8 @@ public class VentanaGestion extends JFrame {
                     }
                     for (String opcion : campo.opciones()) {
                         if ("alojamientos".equals(modulo.tabla()) && "estado".equals(campo.columna())) {
-                            if (esRecepcion() && "Limpieza".equals(opcion)) continue;
-                            if (esLimpieza() && !List.of("Limpieza", "Disponible").contains(opcion)) continue;
+                            if (esRecepcion() && "En limpieza".equals(opcion)) continue;
+                            if (esLimpieza() && !List.of("En limpieza", "Disponible").contains(opcion)) continue;
                         }
                         if ("rol".equals(campo.columna()) && "SUPERADMIN".equals(opcion)) continue;
                         selector.addItem(esEnumActividad(campo.columna())

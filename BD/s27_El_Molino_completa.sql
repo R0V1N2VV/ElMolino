@@ -87,6 +87,7 @@ CREATE TABLE IF NOT EXISTS `alojamientos` (
   `tipo` VARCHAR(20) NOT NULL,
   `capacidad` INT NOT NULL,
   `precioPorNoche` DECIMAL(10,2) NOT NULL,
+  `descripcion` TEXT DEFAULT NULL,
   `estado` VARCHAR(30) NOT NULL,
   PRIMARY KEY (`idAlojamiento`),
   UNIQUE KEY `uk_alojamiento_numero` (`numero`)
@@ -105,20 +106,59 @@ INSERT IGNORE INTO `alojamientos` (`numero`, `tipo`, `capacidad`, `precioPorNoch
 ('HOT4-01', 'Hotel', 4, 78000.00, 'Disponible'), ('HOT4-02', 'Hotel', 4, 78000.00, 'Disponible'), ('HOT4-03', 'Hotel', 4, 78000.00, 'Disponible'), ('HOT4-04', 'Hotel', 4, 78000.00, 'Disponible'), ('HOT4-05', 'Hotel', 4, 78000.00, 'Disponible'),
 ('HOT6-01', 'Hotel', 6, 95000.00, 'Disponible'), ('HOT6-02', 'Hotel', 6, 95000.00, 'Disponible'), ('HOT6-03', 'Hotel', 6, 95000.00, 'Disponible'), ('HOT6-04', 'Hotel', 6, 95000.00, 'Disponible'), ('HOT6-05', 'Hotel', 6, 95000.00, 'Disponible');
 
+CREATE TABLE IF NOT EXISTS `CategoriaActividad` (
+  `idCategoria` INT NOT NULL AUTO_INCREMENT,
+  `slug` VARCHAR(70) NOT NULL,
+  `nombre` VARCHAR(60) NOT NULL,
+  `descripcion` VARCHAR(160) NOT NULL,
+  `imagen` VARCHAR(255) DEFAULT NULL,
+  `activa` TINYINT(1) NOT NULL DEFAULT 1,
+  PRIMARY KEY (`idCategoria`),
+  UNIQUE KEY `uk_categoria_actividad_slug` (`slug`),
+  UNIQUE KEY `uk_categoria_actividad_nombre` (`nombre`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+INSERT IGNORE INTO `CategoriaActividad` (`slug`, `nombre`, `descripcion`, `imagen`) VALUES
+('caminatas', 'Caminatas', 'Senderos y recorridos guiados', 'imgs/caminatas.jpg'),
+('deportes', 'Deportes', 'Fútbol, básquet, natación y más', 'imgs/futb.jpg'),
+('bienestar', 'Bienestar', 'Yoga y propuestas para bajar el ritmo', 'imgs/bienestar.jpg'),
+('talleres', 'Talleres', 'Experiencias creativas para compartir', 'imgs/talleres.jpg'),
+('espectaculos', 'Espectáculos', 'Música y propuestas para toda la familia', 'imgs/espectaculos.jpg'),
+('naturaleza', 'Naturaleza', 'Actividades conectadas con el entorno', 'imgs/naturaleza.jpg');
+
 CREATE TABLE IF NOT EXISTS `Actividad` (
   `idActividad` INT NOT NULL AUTO_INCREMENT,
+  `slug` VARCHAR(100) NOT NULL,
   `nombre` VARCHAR(50) NOT NULL,
-  `descripcion` VARCHAR(150) NOT NULL,
+  `idCategoria` INT NOT NULL,
+  `descripcionCorta` VARCHAR(160) DEFAULT NULL,
+  `descripcion` TEXT NOT NULL,
+  `requisitos` TEXT DEFAULT NULL,
+  `informacionImportante` TEXT DEFAULT NULL,
   `horario` VARCHAR(50) NOT NULL,
+  `dias` VARCHAR(100) DEFAULT NULL,
+  `momentoDia` ENUM('manana','tarde','noche') DEFAULT NULL,
   `Duracion` VARCHAR(50) NOT NULL,
-  `idEspacio` INT NOT NULL,
+  `sector` VARCHAR(120) DEFAULT NULL,
+  `responsable` VARCHAR(100) DEFAULT NULL,
+  `edadRecomendada` ENUM('todas','ninos','adolescentes','adultos') NOT NULL DEFAULT 'todas',
+  `modalidad` ENUM('incluida','inscripcion') NOT NULL DEFAULT 'incluida',
+  `imagen` VARCHAR(255) DEFAULT NULL,
+  `tendencia` TINYINT(1) NOT NULL DEFAULT 0,
+  `activa` TINYINT(1) NOT NULL DEFAULT 1,
+  `idEspacio` INT DEFAULT NULL,
   `cupoMax` INT NOT NULL,
   `precio` DECIMAL(10,2) NOT NULL,
   `pago` VARCHAR(50) NOT NULL,
-  `idUsuario` INT NOT NULL,
+  `idUsuario` INT DEFAULT NULL,
   PRIMARY KEY (`idActividad`),
+  UNIQUE KEY `uk_actividad_slug` (`slug`),
+  KEY `idx_actividad_categoria` (`idCategoria`),
   KEY `idx_actividad_espacio` (`idEspacio`),
   KEY `idx_actividad_usuario` (`idUsuario`),
+  CONSTRAINT `fk_actividad_categoria`
+    FOREIGN KEY (`idCategoria`) REFERENCES `CategoriaActividad` (`idCategoria`)
+    ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `fk_actividad_espacio`
     FOREIGN KEY (`idEspacio`) REFERENCES `EspacioRecreativo` (`idEspacio`)
     ON DELETE RESTRICT ON UPDATE CASCADE,
@@ -153,8 +193,13 @@ CREATE TABLE IF NOT EXISTS `pedido_alojamiento` (
   `idCliente` INT NOT NULL,
   `total` DECIMAL(10,2) NOT NULL,
   `metodoPago` VARCHAR(50) NOT NULL,
-  `estadoPedido` VARCHAR(30) NOT NULL DEFAULT 'PENDIENTE',
-  `estadoPago` VARCHAR(30) NOT NULL DEFAULT 'PENDIENTE',
+  `estadoPedido` VARCHAR(30) NOT NULL DEFAULT 'ESPERANDO_SENA',
+  `estadoPago` VARCHAR(30) NOT NULL DEFAULT 'SENA_PENDIENTE',
+  `porcentajeSena` DECIMAL(5,2) NOT NULL DEFAULT 30.00,
+  `montoSena` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+  `fechaLimiteSena` DATETIME DEFAULT NULL,
+  `senaPagadaEn` DATETIME DEFAULT NULL,
+  `canceladoEn` DATETIME DEFAULT NULL,
   `creadoEn` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`idPedido`),
   KEY `idx_pedido_alojamiento_cliente` (`idCliente`),
@@ -191,6 +236,7 @@ CREATE TABLE IF NOT EXISTS `inscripcionActividad` (
   `idCliente` INT NOT NULL,
   `idActividad` INT NOT NULL,
   `participaTitular` TINYINT(1) NOT NULL DEFAULT 1,
+  `fechaActividad` DATE NOT NULL,
   `fechaInscripcion` DATE NOT NULL,
   `asistencia` TINYINT(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (`idInscripcion`),
@@ -232,6 +278,8 @@ CREATE TABLE IF NOT EXISTS `pago` (
   `idReserva` INT NOT NULL,
   `montoTotal` DECIMAL(10,2) NOT NULL,
   `metodoPago` VARCHAR(50) NOT NULL,
+  `tipoPago` VARCHAR(20) NOT NULL DEFAULT 'SENA',
+  `estado` VARCHAR(20) NOT NULL DEFAULT 'CONFIRMADO',
   `fechaPago` DATE NOT NULL,
   `comprobante` VARCHAR(150) DEFAULT NULL,
   PRIMARY KEY (`idPago`),

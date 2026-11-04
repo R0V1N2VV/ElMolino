@@ -1,13 +1,19 @@
--- Ejecutar una sola vez sobre una base ya existente.
--- Agrega las tablas que usa el flujo de confirmacion de estadias.
+-- Archivo histórico de compras.
+-- Para una base existente usá preferentemente 00_ACTUALIZAR_BASE_EXISTENTE.sql,
+-- que también incorpora seña, cancelaciones, acompañantes y fechas de actividad.
 
 CREATE TABLE IF NOT EXISTS `pedido_alojamiento` (
   `idPedido` INT NOT NULL AUTO_INCREMENT,
   `idCliente` INT NOT NULL,
   `total` DECIMAL(10,2) NOT NULL,
   `metodoPago` VARCHAR(50) NOT NULL,
-  `estadoPedido` VARCHAR(30) NOT NULL DEFAULT 'PENDIENTE',
-  `estadoPago` VARCHAR(30) NOT NULL DEFAULT 'PENDIENTE',
+  `estadoPedido` VARCHAR(30) NOT NULL DEFAULT 'ESPERANDO_SENA',
+  `estadoPago` VARCHAR(30) NOT NULL DEFAULT 'SENA_PENDIENTE',
+  `porcentajeSena` DECIMAL(5,2) NOT NULL DEFAULT 30.00,
+  `montoSena` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+  `fechaLimiteSena` DATETIME DEFAULT NULL,
+  `senaPagadaEn` DATETIME DEFAULT NULL,
+  `canceladoEn` DATETIME DEFAULT NULL,
   `creadoEn` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`idPedido`),
   KEY `idx_pedido_alojamiento_cliente` (`idCliente`),
