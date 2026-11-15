@@ -29,6 +29,7 @@ DELIMITER ;
 
 -- Registro y acompañantes ----------------------------------------------------
 CALL agregar_columna_si_falta('alojamientos', 'descripcion', 'TEXT NULL AFTER `precioPorNoche`');
+CALL agregar_columna_si_falta('acompañante', 'activo', 'TINYINT(1) NOT NULL DEFAULT 1 AFTER `parentesco`');
 
 CREATE TABLE IF NOT EXISTS `registro_pendiente` (
   `idRegistroPendiente` INT NOT NULL AUTO_INCREMENT,
@@ -115,11 +116,19 @@ CREATE TABLE IF NOT EXISTS `inscripcionActividad` (
   `fechaActividad` DATE NULL,
   `fechaInscripcion` DATE NOT NULL,
   `asistencia` TINYINT(1) NOT NULL DEFAULT 0,
+  `estado` VARCHAR(20) NOT NULL DEFAULT 'ACTIVA',
+  `canceladaEn` DATETIME DEFAULT NULL,
+  `motivoCancelacion` VARCHAR(100) DEFAULT NULL,
+  `actualizadaEn` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`idInscripcion`),
   UNIQUE KEY `uk_cliente_actividad` (`idCliente`, `idActividad`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 CALL agregar_columna_si_falta('inscripcionActividad', 'participaTitular', 'TINYINT(1) NOT NULL DEFAULT 1 AFTER `idActividad`');
 CALL agregar_columna_si_falta('inscripcionActividad', 'fechaActividad', 'DATE NULL AFTER `participaTitular`');
+CALL agregar_columna_si_falta('inscripcionActividad', 'estado', 'VARCHAR(20) NOT NULL DEFAULT ''ACTIVA'' AFTER `asistencia`');
+CALL agregar_columna_si_falta('inscripcionActividad', 'canceladaEn', 'DATETIME NULL AFTER `estado`');
+CALL agregar_columna_si_falta('inscripcionActividad', 'motivoCancelacion', 'VARCHAR(100) NULL AFTER `canceladaEn`');
+CALL agregar_columna_si_falta('inscripcionActividad', 'actualizadaEn', 'DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER `motivoCancelacion`');
 UPDATE `inscripcionActividad` SET `fechaActividad` = CURRENT_DATE WHERE `fechaActividad` IS NULL;
 ALTER TABLE `inscripcionActividad` MODIFY COLUMN `fechaActividad` DATE NOT NULL;
 
@@ -130,10 +139,66 @@ CREATE TABLE IF NOT EXISTS `inscripcionActividadAcompanante` (
   `idActividad` INT NOT NULL,
   `fechaInscripcion` DATE NOT NULL,
   `asistencia` TINYINT(1) NOT NULL DEFAULT 0,
+  `activo` TINYINT(1) NOT NULL DEFAULT 1,
+  `canceladaEn` DATETIME DEFAULT NULL,
   PRIMARY KEY (`idInscripcionAcompanante`),
   UNIQUE KEY `uk_acompanante_actividad` (`idAcompañante`, `idActividad`),
   KEY `idx_inscripcion_acomp_titular_actividad` (`idClienteTitular`, `idActividad`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+CALL agregar_columna_si_falta('inscripcionActividadAcompanante', 'activo', 'TINYINT(1) NOT NULL DEFAULT 1 AFTER `asistencia`');
+CALL agregar_columna_si_falta('inscripcionActividadAcompanante', 'canceladaEn', 'DATETIME NULL AFTER `activo`');
+
+CREATE TABLE IF NOT EXISTS `cargo_actividad` (
+  `idCargoActividad` INT NOT NULL AUTO_INCREMENT,
+  `idInscripcion` INT NOT NULL,
+  `idPedido` INT DEFAULT NULL,
+  `idCliente` INT NOT NULL,
+  `idActividad` INT NOT NULL,
+  `fechaActividad` DATE NOT NULL,
+  `cantidadParticipantes` INT NOT NULL,
+  `precioUnitario` DECIMAL(10,2) NOT NULL,
+  `montoTotal` DECIMAL(10,2) NOT NULL,
+  `estado` VARCHAR(20) NOT NULL DEFAULT 'PENDIENTE',
+  `creadoEn` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `actualizadoEn` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `anuladoEn` DATETIME DEFAULT NULL,
+  PRIMARY KEY (`idCargoActividad`),
+  KEY `idx_cargo_actividad_inscripcion` (`idInscripcion`),
+  KEY `idx_cargo_actividad_pedido` (`idPedido`),
+  KEY `idx_cargo_actividad_cliente_estado` (`idCliente`, `estado`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+CALL agregar_columna_si_falta('cargo_actividad', 'idPedido', 'INT NULL AFTER `idInscripcion`');
+
+INSERT INTO `cargo_actividad`
+    (`idInscripcion`, `idPedido`, `idCliente`, `idActividad`, `fechaActividad`,
+     `cantidadParticipantes`, `precioUnitario`, `montoTotal`, `estado`)
+SELECT ia.idInscripcion,
+       (SELECT p.idPedido FROM reservas r
+         JOIN detalle_pedido_alojamiento d ON d.idReserva=r.idReserva
+         JOIN pedido_alojamiento p ON p.idPedido=d.idPedido
+        WHERE r.idCliente=ia.idCliente AND UPPER(r.estadoReserva)='CONFIRMADA'
+          AND UPPER(p.estadoPago) IN ('SENA_PAGADA','PAGADO')
+          AND ia.fechaActividad BETWEEN r.fechaIngreso AND r.fechaEgreso
+        ORDER BY r.fechaIngreso DESC, p.idPedido DESC LIMIT 1),
+       ia.idCliente, ia.idActividad, ia.fechaActividad,
+       ia.participaTitular + COUNT(CASE WHEN iaa.activo = 1 THEN 1 END) AS personas,
+       a.precio,
+       a.precio * (ia.participaTitular + COUNT(CASE WHEN iaa.activo = 1 THEN 1 END)),
+       'PENDIENTE'
+  FROM inscripcionActividad ia
+  JOIN Actividad a ON a.idActividad = ia.idActividad
+  LEFT JOIN inscripcionActividadAcompanante iaa
+    ON iaa.idClienteTitular = ia.idCliente AND iaa.idActividad = ia.idActividad
+ WHERE UPPER(ia.estado) = 'ACTIVA'
+   AND ia.fechaActividad >= CURRENT_DATE
+   AND a.modalidad = 'inscripcion' AND a.precio > 0
+   AND NOT EXISTS (
+       SELECT 1 FROM cargo_actividad ca
+        WHERE ca.idInscripcion = ia.idInscripcion AND UPPER(ca.estado) = 'PENDIENTE'
+   )
+ GROUP BY ia.idInscripcion, ia.idCliente, ia.idActividad, ia.fechaActividad,
+          ia.participaTitular, a.precio
+HAVING personas > 0;
 
 -- Pedidos, seña, cancelación y pagos ----------------------------------------
 CREATE TABLE IF NOT EXISTS `pedido_alojamiento` (
@@ -199,6 +264,22 @@ CREATE TABLE IF NOT EXISTS `pago` (
 CALL agregar_columna_si_falta('pago', 'tipoPago', 'VARCHAR(20) NOT NULL DEFAULT ''SENA'' AFTER `metodoPago`');
 CALL agregar_columna_si_falta('pago', 'estado', 'VARCHAR(20) NOT NULL DEFAULT ''CONFIRMADO'' AFTER `tipoPago`');
 
+CREATE TABLE IF NOT EXISTS `reembolso` (
+  `idReembolso` INT NOT NULL AUTO_INCREMENT,
+  `idPedido` INT NOT NULL,
+  `monto` DECIMAL(10,2) NOT NULL,
+  `estado` VARCHAR(20) NOT NULL DEFAULT 'PENDIENTE',
+  `motivo` VARCHAR(180) NOT NULL,
+  `fechaSolicitud` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `fechaResolucion` DATETIME DEFAULT NULL,
+  `metodo` VARCHAR(50) DEFAULT NULL,
+  `comprobante` VARCHAR(150) DEFAULT NULL,
+  PRIMARY KEY (`idReembolso`),
+  KEY `idx_reembolso_pedido_estado` (`idPedido`, `estado`),
+  CONSTRAINT `fk_reembolso_pedido` FOREIGN KEY (`idPedido`) REFERENCES `pedido_alojamiento` (`idPedido`)
+    ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 DROP PROCEDURE IF EXISTS agregar_columna_si_falta;
 
 -- Resultado esperado:
@@ -206,3 +287,5 @@ DROP PROCEDURE IF EXISTS agregar_columna_si_falta;
 -- 2) las reservas guardan acompañantes y una seña del 30%;
 -- 3) el cliente puede cancelar antes del ingreso;
 -- 4) cada inscripción a actividad conserva la fecha elegida.
+-- 5) los clientes pueden activar o quitar acompañantes sin borrar el historial.
+-- 6) las actividades pagas conservan su cargo, precio acordado y pedido asociado.

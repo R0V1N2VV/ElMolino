@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS `acompañante` (
   `apellido` VARCHAR(50) NOT NULL,
   `edad` INT NOT NULL,
   `parentesco` VARCHAR(100) NOT NULL,
+  `activo` TINYINT(1) NOT NULL DEFAULT 1,
   PRIMARY KEY (`idAcompañante`),
   UNIQUE KEY `uk_acompañante_dni` (`dni`),
   KEY `idx_acompañante_cliente` (`idCliente`),

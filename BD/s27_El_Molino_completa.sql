@@ -62,6 +62,7 @@ CREATE TABLE IF NOT EXISTS `acompañante` (
   `apellido` VARCHAR(50) NOT NULL,
   `edad` INT NOT NULL,
   `parentesco` VARCHAR(100) NOT NULL,
+  `activo` TINYINT(1) NOT NULL DEFAULT 1,
   PRIMARY KEY (`idAcompañante`),
   UNIQUE KEY `uk_acompañante_dni` (`dni`),
   KEY `idx_acompañante_cliente` (`idCliente`),
@@ -239,6 +240,10 @@ CREATE TABLE IF NOT EXISTS `inscripcionActividad` (
   `fechaActividad` DATE NOT NULL,
   `fechaInscripcion` DATE NOT NULL,
   `asistencia` TINYINT(1) NOT NULL DEFAULT 0,
+  `estado` VARCHAR(20) NOT NULL DEFAULT 'ACTIVA',
+  `canceladaEn` DATETIME DEFAULT NULL,
+  `motivoCancelacion` VARCHAR(100) DEFAULT NULL,
+  `actualizadaEn` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`idInscripcion`),
   UNIQUE KEY `uk_cliente_actividad` (`idCliente`, `idActividad`),
   KEY `idx_inscripcion_cliente` (`idCliente`),
@@ -259,6 +264,8 @@ CREATE TABLE IF NOT EXISTS inscripcionActividadAcompanante (
     idActividad INT NOT NULL,
     fechaInscripcion DATE NOT NULL,
     asistencia TINYINT(1) NOT NULL DEFAULT 0,
+    activo TINYINT(1) NOT NULL DEFAULT 1,
+    canceladaEn DATETIME DEFAULT NULL,
     PRIMARY KEY (idInscripcionAcompanante),
     UNIQUE KEY uk_acompanante_actividad (`idAcompañante`, idActividad),
     KEY idx_inscripcion_acomp_titular (idClienteTitular),
@@ -271,6 +278,39 @@ CREATE TABLE IF NOT EXISTS inscripcionActividadAcompanante (
         FOREIGN KEY (idClienteTitular, idActividad)
         REFERENCES inscripcionActividad(idCliente, idActividad)
         ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Conserva el precio aceptado y el total a cobrar al finalizar la estadía.
+CREATE TABLE IF NOT EXISTS `cargo_actividad` (
+  `idCargoActividad` INT NOT NULL AUTO_INCREMENT,
+  `idInscripcion` INT NOT NULL,
+  `idPedido` INT DEFAULT NULL,
+  `idCliente` INT NOT NULL,
+  `idActividad` INT NOT NULL,
+  `fechaActividad` DATE NOT NULL,
+  `cantidadParticipantes` INT NOT NULL,
+  `precioUnitario` DECIMAL(10,2) NOT NULL,
+  `montoTotal` DECIMAL(10,2) NOT NULL,
+  `estado` VARCHAR(20) NOT NULL DEFAULT 'PENDIENTE',
+  `creadoEn` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `actualizadoEn` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `anuladoEn` DATETIME DEFAULT NULL,
+  PRIMARY KEY (`idCargoActividad`),
+  KEY `idx_cargo_actividad_inscripcion` (`idInscripcion`),
+  KEY `idx_cargo_actividad_pedido` (`idPedido`),
+  KEY `idx_cargo_actividad_cliente_estado` (`idCliente`, `estado`),
+  CONSTRAINT `fk_cargo_actividad_inscripcion`
+    FOREIGN KEY (`idInscripcion`) REFERENCES `inscripcionActividad` (`idInscripcion`)
+    ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_cargo_actividad_pedido`
+    FOREIGN KEY (`idPedido`) REFERENCES `pedido_alojamiento` (`idPedido`)
+    ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `fk_cargo_actividad_cliente`
+    FOREIGN KEY (`idCliente`) REFERENCES `cliente` (`idCliente`)
+    ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_cargo_actividad_actividad`
+    FOREIGN KEY (`idActividad`) REFERENCES `Actividad` (`idActividad`)
+    ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS `pago` (
@@ -287,6 +327,22 @@ CREATE TABLE IF NOT EXISTS `pago` (
   CONSTRAINT `fk_pago_reserva`
     FOREIGN KEY (`idReserva`) REFERENCES `reservas` (`idReserva`)
     ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS `reembolso` (
+  `idReembolso` INT NOT NULL AUTO_INCREMENT,
+  `idPedido` INT NOT NULL,
+  `monto` DECIMAL(10,2) NOT NULL,
+  `estado` VARCHAR(20) NOT NULL DEFAULT 'PENDIENTE',
+  `motivo` VARCHAR(180) NOT NULL,
+  `fechaSolicitud` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `fechaResolucion` DATETIME DEFAULT NULL,
+  `metodo` VARCHAR(50) DEFAULT NULL,
+  `comprobante` VARCHAR(150) DEFAULT NULL,
+  PRIMARY KEY (`idReembolso`),
+  KEY `idx_reembolso_pedido_estado` (`idPedido`, `estado`),
+  CONSTRAINT `fk_reembolso_pedido` FOREIGN KEY (`idPedido`) REFERENCES `pedido_alojamiento` (`idPedido`)
+    ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS `reservaAcompañante` (
