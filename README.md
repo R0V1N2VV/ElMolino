@@ -20,7 +20,7 @@ El archivo `BD/00_ACTUALIZAR_BASE_EXISTENTE.sql` amplía y corrige una base ya i
 
 ## Cupos e inscripciones
 
-Cada actividad tiene un cupo máximo por fecha. Un usuario con sesión iniciada elige uno de los próximos días compatibles con la programación de la actividad y decide si participa él, uno o más acompañantes, o todos juntos. Cada persona seleccionada ocupa un lugar en esa fecha. La operación se realiza dentro de una transacción para impedir que se supere el cupo si llegan varias solicitudes al mismo tiempo.
+Cada actividad tiene un cupo máximo por fecha. Para inscribirse, el cliente debe tener una estadía confirmada mediante una seña acreditada. Solo se ofrecen días compatibles con la actividad que además estén comprendidos dentro de esa estadía. El usuario decide si participa él, uno o más acompañantes hospedados, o todos juntos. Cada persona seleccionada ocupa un lugar en esa fecha. La operación se realiza dentro de una transacción para impedir que se supere el cupo si llegan varias solicitudes al mismo tiempo.
 
 Las actividades pueden estar incluidas o ser pagas. En ambos casos se permite la inscripción; cuando es paga se muestra el precio definido por el coordinador y, antes de confirmar, se avisa que el importe se cobrará al finalizar la estadía. La página no simula una pasarela de pago.
 
@@ -70,7 +70,11 @@ Agregar una opción a **Mi estadía** no bloquea el alojamiento para las demás 
 
 En una base existente, ejecutá `BD/00_ACTUALIZAR_BASE_EXISTENTE.sql` y luego `BD/actualizacion_catalogo_alojamientos.sql` si todavía no cargaste las 45 unidades. Los precios iniciales se pueden modificar desde la base o desde la aplicación. En una instalación nueva, el catálogo y las tablas necesarias ya están incluidos en `BD/s27_El_Molino_completa.sql`.
 
-Al confirmar una estadía, el titular asigna los acompañantes registrados a cada alojamiento. Esa asociación puede modificarse desde **Mi cuenta** antes del ingreso. La solicitud queda en estado `PENDIENTE_SENA`: se calcula una seña del 30% y se informa un plazo para abonarla. El pago real se registra desde la gestión administrativa; la web no simula una acreditación.
+Al confirmar una estadía, el titular asigna los acompañantes registrados a cada alojamiento. Esa asociación puede modificarse desde **Mi cuenta** antes del ingreso. La solicitud queda en estado `PENDIENTE_SENA`: se calcula una seña del 30% y se informa un plazo para abonarla.
+
+El cliente ve los datos bancarios, realiza la transferencia e informa el número de operación desde la confirmación o desde **Mi cuenta**. La web crea un pago `PENDIENTE`; administración comprueba el ingreso desde la aplicación Java y cambia el pago a `CONFIRMADO`. Recién entonces el pedido pasa a `SENA_PAGADA`, las reservas quedan `CONFIRMADA` y se habilitan las actividades de esa estadía.
+
+Para una instalación local, completá `php/config_pago.php` con titular, alias, CBU y CUIT. En un servidor también podés usar las variables de entorno `EL_MOLINO_PAGO_TITULAR`, `EL_MOLINO_PAGO_ALIAS`, `EL_MOLINO_PAGO_CBU` y `EL_MOLINO_PAGO_CUIT`; esas variables tienen prioridad y evitan guardar los datos reales en el repositorio.
 
 La reserva puede cancelarse desde **Mi cuenta** hasta el día anterior al ingreso. Si ya existe un pago, el pedido queda marcado como `REEMBOLSO_PENDIENTE`; si no hubo pagos, se cancela directamente. Así la aplicación Java puede ver y gestionar el caso pendiente.
 
@@ -82,6 +86,6 @@ La reserva puede cancelarse desde **Mi cuenta** hasta el día anterior al ingres
 
 El alta ocurre en tres pasos: datos personales y acompañantes, contraseña y verificación por correo. En el primer paso la persona puede registrar hasta ocho acompañantes con nombre, apellido, DNI, edad y vínculo. Al confirmar el código, se crean `cliente`, `usuarios` y todos los acompañantes dentro de una misma transacción; si algo falla no queda un alta incompleta.
 
-Los acompañantes quedan asociados a la cuenta y aparecen automáticamente en la ficha de cada actividad. Allí se puede inscribir solo al titular, solo a uno o más acompañantes, o a todos juntos. Cada persona seleccionada descuenta un lugar del cupo.
+Los acompañantes quedan asociados a la cuenta y aparecen automáticamente en la ficha de cada actividad. Después de registrarse, el cliente puede agregar nuevos acompañantes o quitar los existentes desde **Mi cuenta**. Al quitar uno, deja de aparecer en nuevas selecciones y se lo retira de reservas y actividades futuras, sin borrar el historial pasado. En una actividad solo se pueden elegir acompañantes asignados a la estadía confirmada correspondiente.
 
 La página **Mi cuenta** consulta la misma base y reúne las actividades inscriptas, las personas que participan, las reservas de alojamiento, sus fechas, cantidad de huéspedes y estado. Los números internos de las unidades no se muestran al cliente. Los mensajes de confirmación y error se presentan como texto breve, sin carteles verdes o rojos.

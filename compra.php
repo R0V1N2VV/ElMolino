@@ -142,13 +142,13 @@ Sesion::tomarMensaje();
                         </fieldset>
                     <?php endforeach; ?>
                 </section>
-                <label for="metodoPago">Método de pago</label>
+                <label for="metodoPago">Forma de pagar la seña</label>
                 <select id="metodoPago" name="metodoPago" required>
-                    <option value="">Elegí cómo preferís pagar</option>
+                    <option value="">Elegí una opción</option>
                     <?php foreach (GestorCarritoAlojamiento::METODOS_PAGO as $metodo): ?><option value="<?= Utilidades::escapar($metodo) ?>"<?= (string) ($_POST['metodoPago'] ?? '') === $metodo ? ' selected' : '' ?>><?= Utilidades::escapar($metodo) ?></option><?php endforeach; ?>
                 </select>
                 <div class="resumen-sena"><span>Seña para confirmar (<?= GestorCarritoAlojamiento::PORCENTAJE_SENA ?>%)</span><strong>$<?= number_format(($totalCentavos * GestorCarritoAlojamiento::PORCENTAJE_SENA / 100) / 100, 2, ',', '.') ?></strong></div>
-                <p>La reserva queda pendiente hasta acreditar la seña. El saldo se abona según el medio coordinado con El Molino.</p>
+                <p>Después de reservar vas a ver los datos bancarios. Informá el número de operación y administración confirmará la seña. El saldo se abona según lo coordinado con El Molino.</p>
                 <button class="boton boton-principal" type="submit" <?= (!$gestor || $elementosConError || $totalCentavos <= 0) ? 'disabled' : '' ?>>Solicitar reserva y seña</button>
             </form>
         <?php endif; ?>

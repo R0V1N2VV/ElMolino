@@ -21,7 +21,7 @@ $accionSolicitada = (string) ($_POST['accion'] ?? '');
 try {
     require_once __DIR__ . '/php/inicio_actividades.php';
     if ($modoCatalogoPredeterminado && $_SERVER['REQUEST_METHOD'] === 'POST') {
-        throw new RuntimeException('La base de actividades tiene actualizaciones pendientes. Revisá BD/actualizacion_actividades.sql y BD/actualizacion_acompanantes_actividades.sql.');
+        throw new RuntimeException('La base de actividades tiene actualizaciones pendientes. Ejecutá BD/00_ACTUALIZAR_BASE_EXISTENTE.sql.');
     }
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $resultadoGestion = $controladorActividades->procesarGestion($_POST, $_FILES, $usuario);

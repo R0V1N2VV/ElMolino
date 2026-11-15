@@ -10,6 +10,8 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/registro/inicio.php';
 require_once __DIR__ . '/php/GestorCarritoAlojamiento.php';
+require_once __DIR__ . '/php/GestorPagosSena.php';
+require_once __DIR__ . '/php/ConfiguracionPagos.php';
 require_once __DIR__ . '/php/Vista.php';
 
 Sesion::iniciar();
@@ -33,6 +35,7 @@ if (!$pedido) {
 }
 
 $errores = [];
+$configuracionPago = ConfiguracionPagos::transferencia();
 $correoEnviado = (bool) Sesion::obtener('pedido_correo_' . $idPedido, true);
 $mensaje = (string) Sesion::obtener('pedido_mensaje_' . $idPedido, 'El pedido quedó registrado.');
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -40,15 +43,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errores[] = 'La sesión del formulario venció. Volvé a intentarlo.';
     } else {
         try {
-            (new Correo())->enviarResumenCompra($pedido);
-            $correoEnviado = true;
-            $mensaje = 'Te reenviamos el resumen del pedido.';
-            Sesion::guardar('pedido_correo_' . $idPedido, true);
-            Sesion::guardar('pedido_mensaje_' . $idPedido, $mensaje);
+            $accion = (string) ($_POST['accion'] ?? '');
+            if ($accion === 'informar_pago_sena') {
+                if (!$configuracionPago['configurada']) {
+                    throw new RuntimeException('Los datos bancarios todavía no están configurados. Contactá a recepción.');
+                }
+                (new GestorPagosSena(Conexion::obtener()))->informarTransferencia(
+                    $idPedido,
+                    $idCliente,
+                    (string) ($_POST['referencia_pago'] ?? ''),
+                    (string) ($_POST['monto_transferido'] ?? '')
+                );
+                $pedido = $gestor->obtenerPedido($idPedido, $idCliente);
+                $mensaje = 'Registramos la transferencia. Administración debe verificarla para confirmar la estadía.';
+            } elseif ($accion === 'reenviar_correo') {
+                (new Correo())->enviarResumenCompra($pedido);
+                $correoEnviado = true;
+                $mensaje = 'Te reenviamos el resumen del pedido.';
+                Sesion::guardar('pedido_correo_' . $idPedido, true);
+                Sesion::guardar('pedido_mensaje_' . $idPedido, $mensaje);
+            } else {
+                throw new RuntimeException('La acción solicitada no es válida.');
+            }
         } catch (Throwable $e) {
-            error_log('No se pudo reenviar el resumen del pedido ' . $idPedido . ': ' . $e->getMessage());
-            $correoEnviado = false;
-            $errores[] = 'No se pudo enviar el correo. Verificá la configuración del correo emisor e intentá nuevamente.';
+            error_log('No se pudo procesar el pedido ' . $idPedido . ': ' . $e->getMessage());
+            $errores[] = $e instanceof PDOException
+                ? 'No se pudo registrar el pago. Ejecutá la actualización SQL y volvé a intentarlo.'
+                : (($e instanceof RuntimeException || $e instanceof InvalidArgumentException)
+                    ? $e->getMessage()
+                    : 'No se pudo procesar la solicitud. Volvé a intentarlo.');
         }
     }
 }
@@ -69,18 +92,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php if ($errores): ?><p class="aviso-estadia" role="alert"><?= Utilidades::escapar(implode(' ', $errores)) ?></p><?php endif; ?>
         <p class="estado-pedido-correo" role="status"><?= Utilidades::escapar($mensaje) ?></p>
         <p>Estado del pedido: <strong><?= Utilidades::escapar($pedido['estadoPedido']) ?></strong> · Estado del pago: <strong><?= Utilidades::escapar($pedido['estadoPago']) ?></strong></p>
+        <?php if ((float) ($pedido['montoPagado'] ?? 0) > 0): ?><p>Pagado: <strong>$<?= number_format((float) $pedido['montoPagado'], 2, ',', '.') ?></strong> · Saldo pendiente: <strong>$<?= number_format(max(0, (float) $pedido['total'] - (float) $pedido['montoPagado']), 2, ',', '.') ?></strong></p><?php endif; ?>
         <p>Forma elegida para la seña: <strong><?= Utilidades::escapar($pedido['metodoPago']) ?></strong>. La reserva se confirma cuando se acredita el pago.</p>
         <section class="resumen-sena resumen-sena-confirmada">
             <div><span>Seña requerida (<?= (int) $pedido['porcentajeSena'] ?>%)</span><small>Abonala antes del <?= Utilidades::escapar((new DateTimeImmutable((string) $pedido['fechaLimiteSena']))->format('d/m/Y H:i')) ?>.</small></div>
             <strong>$<?= number_format((float) $pedido['montoSena'], 2, ',', '.') ?></strong>
         </section>
+        <?php $estadoPago = strtoupper((string) $pedido['estadoPago']); ?>
+        <?php if (!in_array($estadoPago, ['SENA_PAGADA', 'PAGADO'], true)): ?>
+            <section class="pasos-pago-sena" aria-labelledby="titulo-pago-sena">
+                <p class="texto-destacado">CONFIRMAR ESTADÍA</p>
+                <h2 id="titulo-pago-sena">Pagá la seña por transferencia</h2>
+                <?php if ($estadoPago === 'SENA_INFORMADA'): ?>
+                    <p>Ya informaste la transferencia. Administración la está verificando. Cuando el pago se marque como confirmado, se habilitarán las inscripciones a actividades.</p>
+                <?php elseif ($configuracionPago['configurada']): ?>
+                    <ol><li>Transferí exactamente <strong>$<?= number_format((float) $pedido['montoSena'], 2, ',', '.') ?></strong>.</li><li>Guardá el número de operación.</li><li>Informalo debajo para que administración pueda comprobarlo.</li></ol>
+                    <dl class="datos-transferencia">
+                        <div><dt>Titular</dt><dd><?= Utilidades::escapar($configuracionPago['titular']) ?></dd></div>
+                        <?php if ($configuracionPago['alias'] !== ''): ?><div><dt>Alias</dt><dd><?= Utilidades::escapar($configuracionPago['alias']) ?></dd></div><?php endif; ?>
+                        <?php if ($configuracionPago['cbu'] !== ''): ?><div><dt>CBU</dt><dd><?= Utilidades::escapar($configuracionPago['cbu']) ?></dd></div><?php endif; ?>
+                        <?php if ($configuracionPago['cuit'] !== ''): ?><div><dt>CUIT</dt><dd><?= Utilidades::escapar($configuracionPago['cuit']) ?></dd></div><?php endif; ?>
+                    </dl>
+                    <form method="post" class="formulario-informar-sena">
+                        <input type="hidden" name="token_csrf" value="<?= Utilidades::escapar(Sesion::tokenCsrf()) ?>">
+                        <input type="hidden" name="accion" value="informar_pago_sena">
+                        <label>Importe transferido<input type="number" name="monto_transferido" min="0.01" step="0.01" value="<?= number_format(max(0.01, (float) $pedido['montoSena'] - (float) ($pedido['montoPagado'] ?? 0)), 2, '.', '') ?>" required></label>
+                        <label>Número de operación o referencia<input type="text" name="referencia_pago" minlength="4" maxlength="150" required></label>
+                        <button class="boton boton-principal" type="submit">Ya transferí la seña</button>
+                    </form>
+                <?php else: ?>
+                    <p>Los datos bancarios todavía no están configurados. Contactá a recepción antes de realizar el pago.</p>
+                <?php endif; ?>
+            </section>
+        <?php else: ?>
+            <p class="estado-pago-acreditado"><strong>Seña acreditada.</strong> Tu estadía está confirmada y ya podés elegir actividades para esas fechas.</p>
+        <?php endif; ?>
         <section class="resumen-compra">
             <?php foreach ($pedido['lineas'] as $linea): ?>
                 <article class="linea-resumen-compra"><div><h2><?= Utilidades::escapar($linea['alojamientoTipo']) ?></h2><p><?= Utilidades::escapar($linea['fechaIngreso']) ?> al <?= Utilidades::escapar($linea['fechaEgreso']) ?> · <?= (int) $linea['noches'] ?> noches · <?= (int) $linea['cantidadPersonas'] ?> personas</p><?php if ($linea['acompanantes']): ?><p><strong>Acompañantes:</strong> <?= Utilidades::escapar(implode(', ', $linea['acompanantes'])) ?></p><?php endif; ?><p>$<?= number_format((float) $linea['precioPorNoche'], 2, ',', '.') ?> por noche</p><strong>Subtotal: $<?= number_format((float) $linea['subtotal'], 2, ',', '.') ?></strong></div></article>
             <?php endforeach; ?>
             <div class="resumen-carrito-alojamiento"><span>Total</span><strong>$<?= number_format((float) $pedido['total'], 2, ',', '.') ?></strong></div>
         </section>
-        <?php if (!$correoEnviado): ?><form method="post" class="formulario-reenvio"><input type="hidden" name="token_csrf" value="<?= Utilidades::escapar(Sesion::tokenCsrf()) ?>"><button class="boton boton-secundario" type="submit">Reenviar resumen por correo</button></form><?php endif; ?>
+        <?php if (!$correoEnviado): ?><form method="post" class="formulario-reenvio"><input type="hidden" name="token_csrf" value="<?= Utilidades::escapar(Sesion::tokenCsrf()) ?>"><input type="hidden" name="accion" value="reenviar_correo"><button class="boton boton-secundario" type="submit">Reenviar resumen por correo</button></form><?php endif; ?>
         <a class="boton boton-principal" href="index.php">Volver al inicio</a>
     </main>
 </body>

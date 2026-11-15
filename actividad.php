@@ -17,41 +17,37 @@ $acompanantes = [];
 $acompanantesInscriptos = [];
 $fechaActividadSeleccionada = null;
 $fechasDisponibles = [];
+$puedeInscribirsePorEstadia = false;
 try {
     require_once __DIR__ . '/php/inicio_actividades.php';
     $actividad = $controladorActividades->detalle((string) ($_GET['id'] ?? ''));
     $usuario = Sesion::usuario();
+} catch (Throwable $excepcion) {
+    error_log('No se pudo cargar el detalle de la actividad: ' . $excepcion->getMessage());
+    http_response_code(404);
+    $error = 'No encontramos la actividad solicitada.';
+}
+$usuario = class_exists('Sesion') ? Sesion::usuario() : null;
 
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+// Los errores del sistema de inscripciones no deben ocultar una actividad que
+// existe. Si falta actualizar la base, se muestra el detalle y se informa el
+// paso pendiente en lugar de responder incorrectamente con un error 404.
+if ($actividad && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    try {
         if (!$controladorInscripciones) {
-            throw new RuntimeException('Las inscripciones todavía no están habilitadas. Ejecutá las actualizaciones SQL pendientes de la base de datos.');
+            throw new RuntimeException('Las inscripciones todavía no están habilitadas. Ejecutá BD/04_ACTUALIZAR_LOGICA_ACTIVIDADES.sql en phpMyAdmin.');
         }
         $mensajeInscripcion = $controladorInscripciones->procesar($_POST, $usuario, $actividad);
         Sesion::guardarMensaje('exito', $mensajeInscripcion);
         Utilidades::redirigir('actividad.php?id=' . rawurlencode($actividad->slug));
-    }
-
-    if ($repositorioInscripciones && (int) ($usuario['id_cliente'] ?? 0) > 0) {
-        $idCliente = (int) $usuario['id_cliente'];
-        $estaInscripto = $repositorioInscripciones->estaInscripto($actividad->id, $idCliente);
-        $titularParticipa = $estaInscripto
-            ? $repositorioInscripciones->titularParticipa($actividad->id, $idCliente)
-            : false;
-        $acompanantes = $repositorioInscripciones->listarAcompanantes($idCliente);
-        $acompanantesInscriptos = $repositorioInscripciones->acompanantesInscriptos($actividad->id, $idCliente);
-        $fechaActividadSeleccionada = $repositorioInscripciones->fechaSeleccionada($actividad->id, $idCliente);
-    }
-} catch (Throwable $excepcion) {
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && $actividad) {
+    } catch (Throwable $excepcion) {
+        error_log('No se pudo procesar la inscripción: ' . $excepcion->getMessage());
         $errorInscripcion = $excepcion instanceof InvalidArgumentException || $excepcion instanceof RuntimeException
             ? $excepcion->getMessage()
-            : 'No se pudo completar la inscripción. Volvé a intentarlo.';
-    } else {
-        http_response_code(404);
-        $error = 'No encontramos la actividad solicitada.';
+            : 'No se pudo completar la inscripción. Revisá que hayas ejecutado BD/04_ACTUALIZAR_LOGICA_ACTIVIDADES.sql.';
     }
 }
-$usuario = class_exists('Sesion') ? Sesion::usuario() : null;
+
 if ($actividad && isset($repositorioInscripciones) && $repositorioInscripciones && (int) ($usuario['id_cliente'] ?? 0) > 0) {
     try {
         $idCliente = (int) $usuario['id_cliente'];
@@ -62,10 +58,24 @@ if ($actividad && isset($repositorioInscripciones) && $repositorioInscripciones 
         $acompanantes = $repositorioInscripciones->listarAcompanantes($idCliente);
         $acompanantesInscriptos = $repositorioInscripciones->acompanantesInscriptos($actividad->id, $idCliente);
         $fechaActividadSeleccionada = $repositorioInscripciones->fechaSeleccionada($actividad->id, $idCliente);
-    } catch (Throwable) {
+        $puedeInscribirsePorEstadia = $repositorioInscripciones->tieneEstadiaConfirmada($idCliente);
+    } catch (Throwable $excepcion) {
+        error_log('No se pudieron cargar los datos de inscripción de la actividad: ' . $excepcion->getMessage());
+        $errorInscripcion = 'La actividad existe, pero falta actualizar la base para usar las inscripciones. Ejecutá BD/04_ACTUALIZAR_LOGICA_ACTIVIDADES.sql en phpMyAdmin.';
+        $repositorioInscripciones = null;
+        $controladorInscripciones = null;
     }
 }
-$fechasDisponibles = $actividad ? $actividad->fechasDisponibles() : [];
+if ($actividad && isset($repositorioInscripciones) && $repositorioInscripciones && (int) ($usuario['id_cliente'] ?? 0) > 0) {
+    try {
+        $fechasDisponibles = $repositorioInscripciones->fechasDisponiblesParaCliente(
+            $actividad,
+            (int) $usuario['id_cliente']
+        );
+    } catch (Throwable) {
+        $fechasDisponibles = [];
+    }
+}
 if (!$fechaActividadSeleccionada && $fechasDisponibles) $fechaActividadSeleccionada = $fechasDisponibles[0]['valor'];
 $titularMarcado = $estaInscripto ? $titularParticipa : true;
 $cantidadSeleccionada = ($titularParticipa ? 1 : 0) + count($acompanantesInscriptos);
@@ -114,9 +124,16 @@ $esCoordinador = class_exists('Autorizacion') && Autorizacion::esCoordinador($us
                         <div><dt>Valor</dt><dd><?= Vista::escapar(Vista::precio($actividad)) ?></dd></div>
                     </dl>
                     <?php if ($usuario && (int) ($usuario['id_cliente'] ?? 0) > 0): ?>
+                        <?php if (!$repositorioInscripciones): ?>
+                            <div class="requisito-estadia-actividad">
+                                <strong>Falta actualizar la base de datos</strong>
+                                <p>La actividad se puede consultar, pero las inscripciones quedarán deshabilitadas hasta ejecutar <code>BD/04_ACTUALIZAR_LOGICA_ACTIVIDADES.sql</code> en phpMyAdmin.</p>
+                            </div>
+                        <?php else: ?>
                         <?php if ($estaInscripto): ?>
                             <div class="estado-inscripcion-activa"><strong>Inscripción activa</strong><span><?= $cantidadSeleccionada ?> <?= $cantidadSeleccionada === 1 ? 'lugar reservado' : 'lugares reservados' ?>.</span></div>
                         <?php endif; ?>
+                        <?php if ($puedeInscribirsePorEstadia): ?>
                         <form method="post" class="formulario-inscripcion selector-participantes"<?= (!$estaInscripto && $actividad->modalidad === 'inscripcion' && $actividad->precio > 0) ? ' data-confirmar-cobro' : '' ?>>
                             <input type="hidden" name="token_csrf" value="<?= Vista::escapar(Sesion::tokenCsrf()) ?>">
                             <input type="hidden" name="accion" value="guardar_inscripcion">
@@ -128,7 +145,7 @@ $esCoordinador = class_exists('Autorizacion') && Autorizacion::esCoordinador($us
                                         <option value="<?= Vista::escapar($fechaDisponible['valor']) ?>"<?= $fechaActividadSeleccionada === $fechaDisponible['valor'] ? ' selected' : '' ?>><?= Vista::escapar($fechaDisponible['etiqueta']) ?></option>
                                     <?php endforeach; ?>
                                 </select>
-                                <small>Solo aparecen los días en los que se realiza la actividad.</small>
+                                <small>Solo aparecen días habilitados que coinciden con tu estadía confirmada.</small>
                             </label>
                             <fieldset>
                                 <legend>¿Quiénes van a participar?</legend>
@@ -148,12 +165,20 @@ $esCoordinador = class_exists('Autorizacion') && Autorizacion::esCoordinador($us
                             </fieldset>
                             <button class="boton boton-principal boton-ancho" type="submit"<?= $fechasDisponibles ? '' : ' disabled' ?>><?= $estaInscripto ? 'Guardar fecha y participantes' : 'Confirmar inscripción' ?></button>
                         </form>
+                        <?php else: ?>
+                            <div class="requisito-estadia-actividad">
+                                <strong>Necesitás una estadía confirmada</strong>
+                                <p>Primero aboná la seña de tu alojamiento. Cuando administración la acredite, vas a poder elegir actividades dentro de las fechas de esa estadía.</p>
+                                <a href="registro/cuenta.php">Ver mi estadía y la seña</a>
+                            </div>
+                        <?php endif; ?>
                         <?php if ($estaInscripto): ?>
                             <form method="post" class="formulario-inscripcion cancelar-inscripcion" onsubmit="return confirm('¿Querés cancelar toda la inscripción?')">
                                 <input type="hidden" name="token_csrf" value="<?= Vista::escapar(Sesion::tokenCsrf()) ?>">
                                 <input type="hidden" name="accion" value="cancelar_inscripcion">
                                 <button class="boton boton-neutral boton-ancho" type="submit">Cancelar inscripción</button>
                             </form>
+                        <?php endif; ?>
                         <?php endif; ?>
                     <?php elseif ($usuario): ?>
                         <button class="boton boton-neutral boton-ancho" type="button" disabled>Inscripción no disponible</button>

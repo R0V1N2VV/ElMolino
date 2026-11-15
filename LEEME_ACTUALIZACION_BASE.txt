@@ -25,6 +25,24 @@ La actualización corrige el error de acompanantes_json y agrega:
 - cancelación de alojamientos antes de la estadía;
 - elección de fecha para cada actividad;
 - control de cupo por día, incluyendo acompañantes.
+- alta y baja de acompañantes desde Mi cuenta;
+- pago de la seña informado por transferencia y confirmado desde Java;
+- inscripción a actividades solamente durante una estadía confirmada.
+
+DATOS PARA COBRAR LA SEÑA
+-------------------------
+
+En una instalación local, abrí php/config_pago.php y completá titular, alias,
+CBU y CUIT. En un servidor también podés configurar estas variables de entorno:
+
+- EL_MOLINO_PAGO_TITULAR
+- EL_MOLINO_PAGO_ALIAS
+- EL_MOLINO_PAGO_CBU
+- EL_MOLINO_PAGO_CUIT (opcional)
+
+La página no acredita dinero automáticamente. El cliente informa el número de
+operación y administración verifica la transferencia en el módulo Pagos de la
+aplicación Java. Al cambiar el pago a CONFIRMADO se confirma la estadía.
 
 Si phpMyAdmin informa un error, guardá el mensaje completo y la línea indicada.
 No sigas importando archivos distintos hasta revisar ese error.
