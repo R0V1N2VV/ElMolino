@@ -236,3 +236,93 @@
     color: #8b2f2f;
 }
 
+.pagar-sena-cuenta,
+.agregar-acompanante-cuenta {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(0, 77, 64, .16);
+}
+
+.pagar-sena-cuenta summary,
+.agregar-acompanante-cuenta summary {
+    width: max-content;
+    color: var(--azul-oscuro);
+    font-weight: 750;
+    cursor: pointer;
+}
+
+.datos-transferencia-cuenta {
+    display: grid;
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.datos-transferencia-cuenta dl {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px 18px;
+    margin: 0;
+}
+
+.datos-transferencia-cuenta dl div {
+    display: grid;
+    gap: 2px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--beige);
+}
+
+.datos-transferencia-cuenta dt {
+    color: #52615e;
+    font-size: .76rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.datos-transferencia-cuenta dd {
+    margin: 0;
+    font-weight: 750;
+}
+
+.pagar-sena-cuenta .formulario-informar-sena {
+    margin-top: 14px;
+}
+
+.agregar-acompanante-cuenta {
+    margin-bottom: 20px;
+}
+
+.formulario-nuevo-acompanante {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 13px;
+    margin-top: 16px;
+}
+
+.formulario-nuevo-acompanante label {
+    display: grid;
+    gap: 6px;
+    color: #52615e;
+    font-size: .86rem;
+    font-weight: 700;
+}
+
+.formulario-nuevo-acompanante .boton {
+    width: max-content;
+    align-self: end;
+}
+
+.lista-acompanantes-cuenta li form {
+    margin-left: auto;
+}
+
+.quitar-acompanante-cuenta {
+    color: #7b3b36;
+}
+
+@media (max-width: 600px) {
+    .datos-transferencia-cuenta dl,
+    .formulario-nuevo-acompanante {
+        grid-template-columns: 1fr;
+    }
+}
+

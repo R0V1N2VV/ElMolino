@@ -8,6 +8,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/GestorCoherenciaActividades.php';
+
 final class RepositorioInscripciones
 {
     /**
@@ -27,8 +29,9 @@ final class RepositorioInscripciones
     public function estaInscripto(int $idActividad, int $idCliente): bool
     {
         $consulta = $this->conexion->prepare(
-            'SELECT 1 FROM inscripcionActividad
-              WHERE idActividad = :idActividad AND idCliente = :idCliente LIMIT 1'
+            "SELECT 1 FROM inscripcionActividad
+              WHERE idActividad = :idActividad AND idCliente = :idCliente
+                AND UPPER(estado) = 'ACTIVA' LIMIT 1"
         );
         $consulta->execute(['idActividad' => $idActividad, 'idCliente' => $idCliente]);
         return (bool) $consulta->fetchColumn();
@@ -44,8 +47,9 @@ final class RepositorioInscripciones
     public function titularParticipa(int $idActividad, int $idCliente): bool
     {
         $consulta = $this->conexion->prepare(
-            'SELECT participaTitular FROM inscripcionActividad
-              WHERE idActividad = :idActividad AND idCliente = :idCliente LIMIT 1'
+            "SELECT participaTitular FROM inscripcionActividad
+              WHERE idActividad = :idActividad AND idCliente = :idCliente
+                AND UPPER(estado) = 'ACTIVA' LIMIT 1"
         );
         $consulta->execute(['idActividad' => $idActividad, 'idCliente' => $idCliente]);
         return (bool) $consulta->fetchColumn();
@@ -57,8 +61,9 @@ final class RepositorioInscripciones
     public function fechaSeleccionada(int $idActividad, int $idCliente): ?string
     {
         $consulta = $this->conexion->prepare(
-            'SELECT fechaActividad FROM inscripcionActividad
-              WHERE idActividad = :idActividad AND idCliente = :idCliente LIMIT 1'
+            "SELECT fechaActividad FROM inscripcionActividad
+              WHERE idActividad = :idActividad AND idCliente = :idCliente
+                AND UPPER(estado) = 'ACTIVA' LIMIT 1"
         );
         $consulta->execute(['idActividad' => $idActividad, 'idCliente' => $idCliente]);
         $fecha = $consulta->fetchColumn();
@@ -70,7 +75,7 @@ final class RepositorioInscripciones
     {
         $consulta = $this->conexion->prepare(
             'SELECT idAcompañante AS id, nombre, apellido, dni, edad, parentesco
-               FROM acompañante WHERE idCliente = :idCliente
+               FROM acompañante WHERE idCliente = :idCliente AND activo = 1
               ORDER BY apellido, nombre, idAcompañante'
         );
         $consulta->execute(['idCliente' => $idCliente]);
@@ -90,7 +95,7 @@ final class RepositorioInscripciones
     {
         $consulta = $this->conexion->prepare(
             'SELECT idAcompañante FROM inscripcionActividadAcompanante
-              WHERE idActividad = :idActividad AND idClienteTitular = :idCliente
+              WHERE idActividad = :idActividad AND idClienteTitular = :idCliente AND activo = 1
               ORDER BY idAcompañante'
         );
         $consulta->execute(['idActividad' => $idActividad, 'idCliente' => $idCliente]);
@@ -110,25 +115,27 @@ final class RepositorioInscripciones
             $this->conexion->beginTransaction();
             $datosActividad = $this->bloquearActividad($idActividad);
             $this->validarFechaActividad($fechaActividad, (string) ($datosActividad['dias'] ?? ''));
-            $idsValidos = $this->validarAcompanantes($idCliente, $idsAcompanantes);
+            $this->validarEstadiaConfirmada($idCliente, $fechaActividad);
+            $idsValidos = $this->validarAcompanantes($idCliente, $idsAcompanantes, $fechaActividad);
             $lugaresSolicitados = ($participaTitular ? 1 : 0) + count($idsValidos);
             if ($lugaresSolicitados === 0) {
                 throw new InvalidArgumentException('Seleccioná al menos una persona para participar.');
             }
 
             $inscripcion = $this->conexion->prepare(
-                'SELECT participaTitular, fechaActividad FROM inscripcionActividad
+                'SELECT idInscripcion, participaTitular, fechaActividad, estado FROM inscripcionActividad
                   WHERE idActividad = :idActividad AND idCliente = :idCliente FOR UPDATE'
             );
             $inscripcion->execute(['idActividad' => $idActividad, 'idCliente' => $idCliente]);
             $inscripcionActual = $inscripcion->fetch();
-            $existeInscripcion = is_array($inscripcionActual);
-            $acompanantesActuales = $existeInscripcion
+            $existeRegistro = is_array($inscripcionActual);
+            $estabaActiva = $existeRegistro && strtoupper((string) $inscripcionActual['estado']) === 'ACTIVA';
+            $acompanantesActuales = $estabaActiva
                 ? $this->acompanantesInscriptos($idActividad, $idCliente)
                 : [];
-            $lugaresActuales = ($existeInscripcion && (bool) $inscripcionActual['participaTitular'] ? 1 : 0)
+            $lugaresActuales = ($estabaActiva && (bool) $inscripcionActual['participaTitular'] ? 1 : 0)
                 + count($acompanantesActuales);
-            $misLugaresEnLaFecha = $existeInscripcion && (string) $inscripcionActual['fechaActividad'] === $fechaActividad
+            $misLugaresEnLaFecha = $estabaActiva && (string) $inscripcionActual['fechaActividad'] === $fechaActividad
                 ? $lugaresActuales
                 : 0;
             $cantidadFinal = $this->cantidadInscriptos($idActividad, $fechaActividad) - $misLugaresEnLaFecha + $lugaresSolicitados;
@@ -137,10 +144,13 @@ final class RepositorioInscripciones
                 throw new RuntimeException($this->mensajeCupo($lugaresNuevos));
             }
 
-            if ($existeInscripcion) {
+            if ($existeRegistro) {
                 $actualizar = $this->conexion->prepare(
-                    'UPDATE inscripcionActividad SET participaTitular = :participaTitular, fechaActividad = :fechaActividad
-                      WHERE idActividad = :idActividad AND idCliente = :idCliente'
+                    "UPDATE inscripcionActividad
+                        SET participaTitular = :participaTitular, fechaActividad = :fechaActividad,
+                            estado = 'ACTIVA', canceladaEn = NULL, motivoCancelacion = NULL,
+                            actualizadaEn = NOW()
+                      WHERE idActividad = :idActividad AND idCliente = :idCliente"
                 );
                 $actualizar->execute([
                     'participaTitular' => $participaTitular ? 1 : 0,
@@ -151,8 +161,8 @@ final class RepositorioInscripciones
             } else {
                 $alta = $this->conexion->prepare(
                     'INSERT INTO inscripcionActividad
-                        (idCliente, idActividad, participaTitular, fechaActividad, fechaInscripcion, asistencia)
-                     VALUES (:idCliente, :idActividad, :participaTitular, :fechaActividad, CURRENT_DATE, 0)'
+                        (idCliente, idActividad, participaTitular, fechaActividad, fechaInscripcion, asistencia, estado)
+                     VALUES (:idCliente, :idActividad, :participaTitular, :fechaActividad, CURRENT_DATE, 0, \'ACTIVA\')'
                 );
                 $alta->execute([
                     'idCliente' => $idCliente,
@@ -163,11 +173,16 @@ final class RepositorioInscripciones
             }
 
             $baja = $this->conexion->prepare(
-                'DELETE FROM inscripcionActividadAcompanante
+                'UPDATE inscripcionActividadAcompanante
+                    SET activo = 0, canceladaEn = NOW()
                   WHERE idActividad = :idActividad AND idClienteTitular = :idCliente'
             );
             $baja->execute(['idActividad' => $idActividad, 'idCliente' => $idCliente]);
             $this->guardarAcompanantes($idActividad, $idCliente, $idsValidos);
+            $idInscripcion = $existeRegistro
+                ? (int) $inscripcionActual['idInscripcion']
+                : (int) $this->conexion->lastInsertId();
+            GestorCoherenciaActividades::sincronizarCargo($this->conexion, $idInscripcion);
             $this->conexion->commit();
         } catch (Throwable $excepcion) {
             if ($this->conexion->inTransaction()) $this->conexion->rollBack();
@@ -185,21 +200,24 @@ final class RepositorioInscripciones
     {
         try {
             $this->conexion->beginTransaction();
-            $this->bloquearActividad($idActividad, false);
-            $acompanantes = $this->conexion->prepare(
-                'DELETE FROM inscripcionActividadAcompanante
-                  WHERE idActividad = :idActividad AND idClienteTitular = :idCliente'
-            );
-            $acompanantes->execute(['idActividad' => $idActividad, 'idCliente' => $idCliente]);
-
             $consulta = $this->conexion->prepare(
-                'DELETE FROM inscripcionActividad
-                  WHERE idActividad = :idActividad AND idCliente = :idCliente'
+                "SELECT idInscripcion, fechaActividad FROM inscripcionActividad
+                  WHERE idActividad = :idActividad AND idCliente = :idCliente
+                    AND UPPER(estado) = 'ACTIVA' FOR UPDATE"
             );
             $consulta->execute(['idActividad' => $idActividad, 'idCliente' => $idCliente]);
-            if ($consulta->rowCount() !== 1) {
+            $inscripcion = $consulta->fetch();
+            if (!$inscripcion) {
                 throw new InvalidArgumentException('No tenés una inscripción activa en esta actividad.');
             }
+            if ((string) $inscripcion['fechaActividad'] < date('Y-m-d')) {
+                throw new RuntimeException('No se puede cancelar una actividad que ya ocurrió. El registro se conserva como historial.');
+            }
+            GestorCoherenciaActividades::cancelarInscripcion(
+                $this->conexion,
+                (int) $inscripcion['idInscripcion'],
+                'CANCELADA_POR_CLIENTE'
+            );
             $this->conexion->commit();
         } catch (Throwable $excepcion) {
             if ($this->conexion->inTransaction()) $this->conexion->rollBack();
@@ -217,7 +235,7 @@ final class RepositorioInscripciones
     private function bloquearActividad(int $idActividad, bool $exigirActiva = true): array
     {
         $actividad = $this->conexion->prepare(
-            'SELECT cupoMax, activa, dias FROM Actividad
+            'SELECT cupoMax, activa, dias, modalidad, precio FROM Actividad
               WHERE idActividad = :idActividad FOR UPDATE'
         );
         $actividad->execute(['idActividad' => $idActividad]);
@@ -240,12 +258,14 @@ final class RepositorioInscripciones
             'SELECT
                 (SELECT COALESCE(SUM(participaTitular), 0)
                    FROM inscripcionActividad
-                  WHERE idActividad = :actividadTitulares AND fechaActividad = :fechaTitulares) +
+                  WHERE idActividad = :actividadTitulares AND fechaActividad = :fechaTitulares
+                    AND UPPER(estado) = \'ACTIVA\') +
                 (SELECT COUNT(*)
                    FROM inscripcionActividadAcompanante iaa
                    JOIN inscripcionActividad ia
                      ON ia.idCliente = iaa.idClienteTitular AND ia.idActividad = iaa.idActividad
-                  WHERE iaa.idActividad = :actividadAcompanantes AND ia.fechaActividad = :fechaAcompanantes)'
+                  WHERE iaa.idActividad = :actividadAcompanantes AND ia.fechaActividad = :fechaAcompanantes
+                    AND UPPER(ia.estado) = \'ACTIVA\' AND iaa.activo = 1)'
         );
         $cantidad->execute([
             'actividadTitulares' => $idActividad,
@@ -268,8 +288,79 @@ final class RepositorioInscripciones
         }
     }
 
+    /**
+     * Devuelve solamente fechas de la actividad que estén dentro de una
+     * estadía cuya seña ya fue acreditada.
+     *
+     * @return array<int, array{valor:string, etiqueta:string}>
+     */
+    public function fechasDisponiblesParaCliente(Actividad $actividad, int $idCliente): array
+    {
+        $rangos = $this->estanciasConfirmadas($idCliente);
+        if ($rangos === []) return [];
+
+        return array_values(array_filter(
+            $actividad->fechasDisponibles(100),
+            static function (array $fecha) use ($rangos): bool {
+                $valor = (string) ($fecha['valor'] ?? '');
+                foreach ($rangos as $rango) {
+                    if ($valor >= $rango['ingreso'] && $valor <= $rango['egreso']) return true;
+                }
+                return false;
+            }
+        ));
+    }
+
+    public function tieneEstadiaConfirmada(int $idCliente): bool
+    {
+        return $this->estanciasConfirmadas($idCliente) !== [];
+    }
+
+    /** @return array<int, array{ingreso:string, egreso:string}> */
+    private function estanciasConfirmadas(int $idCliente): array
+    {
+        $consulta = $this->conexion->prepare(
+            "SELECT DISTINCT r.fechaIngreso AS ingreso, r.fechaEgreso AS egreso
+               FROM reservas r
+               JOIN detalle_pedido_alojamiento d ON d.idReserva = r.idReserva
+               JOIN pedido_alojamiento p ON p.idPedido = d.idPedido
+              WHERE r.idCliente = :cliente
+                AND UPPER(r.estadoReserva) = 'CONFIRMADA'
+                AND UPPER(p.estadoPago) IN ('SENA_PAGADA', 'PAGADO')
+                AND r.fechaEgreso >= CURRENT_DATE
+              ORDER BY r.fechaIngreso"
+        );
+        $consulta->execute(['cliente' => $idCliente]);
+        return array_map(
+            static fn(array $fila): array => [
+                'ingreso' => (string) $fila['ingreso'],
+                'egreso' => (string) $fila['egreso'],
+            ],
+            $consulta->fetchAll()
+        );
+    }
+
+    private function validarEstadiaConfirmada(int $idCliente, string $fechaActividad): void
+    {
+        $consulta = $this->conexion->prepare(
+            "SELECT 1
+               FROM reservas r
+               JOIN detalle_pedido_alojamiento d ON d.idReserva = r.idReserva
+               JOIN pedido_alojamiento p ON p.idPedido = d.idPedido
+              WHERE r.idCliente = :cliente
+                AND UPPER(r.estadoReserva) = 'CONFIRMADA'
+                AND UPPER(p.estadoPago) IN ('SENA_PAGADA', 'PAGADO')
+                AND :fechaActividad BETWEEN r.fechaIngreso AND r.fechaEgreso
+              LIMIT 1 FOR UPDATE"
+        );
+        $consulta->execute(['cliente' => $idCliente, 'fechaActividad' => $fechaActividad]);
+        if (!$consulta->fetchColumn()) {
+            throw new RuntimeException('Para inscribirte necesitás una estadía confirmada y elegir un día comprendido dentro de esa estadía.');
+        }
+    }
+
     /** @param int[] $idsSolicitados @return int[] */
-    private function validarAcompanantes(int $idCliente, array $idsSolicitados): array
+    private function validarAcompanantes(int $idCliente, array $idsSolicitados, string $fechaActividad): array
     {
         $idsSolicitados = array_values(array_unique(array_filter(
             array_map('intval', $idsSolicitados),
@@ -280,14 +371,28 @@ final class RepositorioInscripciones
 
         $marcadores = implode(',', array_fill(0, count($idsSolicitados), '?'));
         $consulta = $this->conexion->prepare(
-            "SELECT idAcompañante FROM acompañante WHERE idCliente = ? AND idAcompañante IN ($marcadores)"
+            "SELECT a.idAcompañante
+               FROM acompañante a
+              WHERE a.idCliente = ? AND a.activo = 1
+                AND a.idAcompañante IN ($marcadores)
+                AND EXISTS (
+                    SELECT 1
+                      FROM `reservaAcompañante` ra
+                      JOIN reservas r ON r.idReserva = ra.idReserva
+                      JOIN detalle_pedido_alojamiento d ON d.idReserva = r.idReserva
+                      JOIN pedido_alojamiento p ON p.idPedido = d.idPedido
+                     WHERE ra.idAcompañante = a.idAcompañante
+                       AND UPPER(r.estadoReserva) = 'CONFIRMADA'
+                       AND UPPER(p.estadoPago) IN ('SENA_PAGADA', 'PAGADO')
+                       AND ? BETWEEN r.fechaIngreso AND r.fechaEgreso
+                )"
         );
-        $consulta->execute([$idCliente, ...$idsSolicitados]);
+        $consulta->execute([$idCliente, ...$idsSolicitados, $fechaActividad]);
         $idsValidos = array_map('intval', $consulta->fetchAll(PDO::FETCH_COLUMN));
         sort($idsValidos);
         sort($idsSolicitados);
         if ($idsValidos !== $idsSolicitados) {
-            throw new InvalidArgumentException('Uno de los acompañantes seleccionados no pertenece a tu cuenta.');
+            throw new InvalidArgumentException('Uno de los acompañantes no está activo o no figura como huésped de la estadía elegida.');
         }
         return $idsValidos;
     }
@@ -298,8 +403,9 @@ final class RepositorioInscripciones
         if ($idsAcompanantes === []) return;
         $alta = $this->conexion->prepare(
             'INSERT INTO inscripcionActividadAcompanante
-                (idClienteTitular, idAcompañante, idActividad, fechaInscripcion, asistencia)
-             VALUES (:idCliente, :idAcompanante, :idActividad, CURRENT_DATE, 0)'
+                (idClienteTitular, idAcompañante, idActividad, fechaInscripcion, asistencia, activo, canceladaEn)
+             VALUES (:idCliente, :idAcompanante, :idActividad, CURRENT_DATE, 0, 1, NULL)
+             ON DUPLICATE KEY UPDATE activo = 1, canceladaEn = NULL, fechaInscripcion = CURRENT_DATE'
         );
         foreach ($idsAcompanantes as $idAcompanante) {
             $alta->execute([

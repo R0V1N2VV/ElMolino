@@ -279,21 +279,24 @@ final class RepositorioActividades implements FuenteActividades
     private function maximoInscriptosPorFecha(int $idActividad): int
     {
         $consulta = $this->conexion->prepare(
-            'SELECT COALESCE(MAX(porFecha.total), 0)
+            "SELECT COALESCE(MAX(porFecha.total), 0)
                FROM (
                     SELECT ia.fechaActividad,
-                           SUM(ia.participaTitular) +
+                           SUM(CASE WHEN UPPER(ia.estado) = 'ACTIVA' THEN ia.participaTitular ELSE 0 END) +
                            (SELECT COUNT(*)
                               FROM inscripcionActividadAcompanante iaa
                               JOIN inscripcionActividad ia2
                                 ON ia2.idCliente = iaa.idClienteTitular
                                AND ia2.idActividad = iaa.idActividad
                              WHERE iaa.idActividad = :actividadAcompanantes
+                               AND iaa.activo = 1
+                               AND UPPER(ia2.estado) = 'ACTIVA'
                                AND ia2.fechaActividad = ia.fechaActividad) AS total
                       FROM inscripcionActividad ia
                      WHERE ia.idActividad = :actividadTitulares
+                       AND UPPER(ia.estado) = 'ACTIVA'
                   GROUP BY ia.fechaActividad
-               ) porFecha'
+               ) porFecha"
         );
         $consulta->execute([
             'actividadAcompanantes' => $idActividad,

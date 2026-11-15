@@ -14,6 +14,7 @@ use PHPMailer\PHPMailer\PHPMailer;
 require_once __DIR__ . '/../vendor/phpmailer/phpmailer/src/Exception.php';
 require_once __DIR__ . '/../vendor/phpmailer/phpmailer/src/SMTP.php';
 require_once __DIR__ . '/../vendor/phpmailer/phpmailer/src/PHPMailer.php';
+require_once __DIR__ . '/../php/ConfiguracionPagos.php';
 
 final class Correo
 {
@@ -82,6 +83,19 @@ final class Correo
         $limiteSena = !empty($pedido['fechaLimiteSena'])
             ? (new DateTimeImmutable((string) $pedido['fechaLimiteSena']))->format('d/m/Y H:i')
             : 'a coordinar';
+        $datosPago = ConfiguracionPagos::transferencia();
+        $instruccionesHtml = $datosPago['configurada']
+            ? '<p>Transferí a nombre de <strong>' . Utilidades::escapar($datosPago['titular']) . '</strong>'
+                . ($datosPago['alias'] !== '' ? '<br>Alias: <strong>' . Utilidades::escapar($datosPago['alias']) . '</strong>' : '')
+                . ($datosPago['cbu'] !== '' ? '<br>CBU: <strong>' . Utilidades::escapar($datosPago['cbu']) . '</strong>' : '')
+                . '</p><p>Después ingresá a Mi cuenta e informá el número de operación.</p>'
+            : '<p>Los datos bancarios todavía no están configurados. Contactá a recepción antes de transferir.</p>';
+        $instruccionesTexto = $datosPago['configurada']
+            ? "Transferí a nombre de {$datosPago['titular']}"
+                . ($datosPago['alias'] !== '' ? ", alias {$datosPago['alias']}" : '')
+                . ($datosPago['cbu'] !== '' ? ", CBU {$datosPago['cbu']}" : '')
+                . ". Después ingresá a Mi cuenta e informá el número de operación."
+            : 'Los datos bancarios todavía no están configurados. Contactá a recepción antes de transferir.';
         $filas = '';
         $textoLineas = [];
         foreach (($pedido['lineas'] ?? []) as $linea) {
@@ -114,9 +128,10 @@ final class Correo
                 . '<table border="1" cellpadding="8" cellspacing="0"><thead><tr><th>Alojamiento</th><th>Estadía</th><th>Personas</th><th>Noches</th><th>Subtotal</th></tr></thead><tbody>' . $filas . '</tbody></table>'
                 . '<p>Método de pago elegido: <strong>' . Utilidades::escapar($metodo) . '</strong></p>'
                 . '<p>Total del pedido: <strong>$ ' . $total . '</strong></p>'
-                . '<p>La reserva queda pendiente hasta acreditar la seña. El complejo enviará los datos necesarios para completar el pago.</p>';
+                . $instruccionesHtml
+                . '<p>La reserva queda pendiente hasta que administración acredite la seña.</p>';
             $mail->AltBody = "Hola {$nombre},\n\nRecibimos tu solicitud #{$id}. Para confirmar la estadía necesitás abonar una seña de $ {$sena} antes del {$limiteSena}.\n\n"
-                . implode("\n", $textoLineas) . "\n\nMedio elegido: {$metodo}\nTotal: $ {$total}\n\nLa reserva queda pendiente hasta acreditar la seña.";
+                . implode("\n", $textoLineas) . "\n\nMedio elegido: {$metodo}\nTotal: $ {$total}\n\n{$instruccionesTexto}\n\nLa reserva queda pendiente hasta que administración acredite la seña.";
             $mail->send();
         } catch (Exception) {
             throw new RuntimeException('No se pudo enviar el resumen por correo: ' . $mail->ErrorInfo);

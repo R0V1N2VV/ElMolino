@@ -1,6 +1,9 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/GestorCoherenciaActividades.php';
+require_once __DIR__ . '/GestorEstadoFinanciero.php';
+
 /**
  * Gestiona cambios que el cliente puede hacer sobre una reserva ya creada.
  * Todas las consultas verifican que la reserva pertenezca al usuario actual.
@@ -40,6 +43,11 @@ final class GestorReservasCliente
             foreach ($idsValidos as $idAcompanante) {
                 $agregar->execute(['reserva' => $idReserva, 'acompanante' => $idAcompanante]);
             }
+            GestorCoherenciaActividades::sincronizarCliente(
+                $this->conexion,
+                $idCliente,
+                'ACOMPAÑANTE_QUITADO_DE_LA_ESTADIA'
+            );
             $this->conexion->commit();
         } catch (Throwable $error) {
             if ($this->conexion->inTransaction()) $this->conexion->rollBack();
@@ -68,35 +76,16 @@ final class GestorReservasCliente
             );
             $actualizar->execute(['reserva' => $idReserva, 'cliente' => $idCliente]);
 
-            $pedido = $this->conexion->prepare(
-                'SELECT d.idPedido,
-                        (SELECT COUNT(*) FROM detalle_pedido_alojamiento dx
-                          JOIN reservas rx ON rx.idReserva = dx.idReserva
-                         WHERE dx.idPedido = d.idPedido
-                           AND UPPER(rx.estadoReserva) NOT IN (\'CANCELADA\', \'CANCELADO\')) AS reservasActivas,
-                        (SELECT COALESCE(SUM(p.montoTotal), 0) FROM pago p
-                          JOIN detalle_pedido_alojamiento dp ON dp.idReserva = p.idReserva
-                         WHERE dp.idPedido = d.idPedido) AS montoPagado
-                   FROM detalle_pedido_alojamiento d
-                  WHERE d.idReserva = :reserva LIMIT 1 FOR UPDATE'
+            GestorCoherenciaActividades::sincronizarCliente(
+                $this->conexion,
+                $idCliente,
+                'ESTADIA_CANCELADA'
             );
+
+            $pedido = $this->conexion->prepare('SELECT idPedido FROM detalle_pedido_alojamiento WHERE idReserva=:reserva LIMIT 1 FOR UPDATE');
             $pedido->execute(['reserva' => $idReserva]);
-            $datosPedido = $pedido->fetch();
-            if ($datosPedido) {
-                $quedanReservas = (int) $datosPedido['reservasActivas'] > 0;
-                $estadoPedido = $quedanReservas ? 'PARCIALMENTE_CANCELADO' : 'CANCELADO';
-                $estadoPago = $quedanReservas
-                    ? null
-                    : ((float) $datosPedido['montoPagado'] > 0 ? 'REEMBOLSO_PENDIENTE' : 'CANCELADO');
-                $sql = 'UPDATE pedido_alojamiento SET estadoPedido = :estadoPedido, canceladoEn = NOW()';
-                $parametros = ['estadoPedido' => $estadoPedido, 'pedido' => (int) $datosPedido['idPedido']];
-                if ($estadoPago !== null) {
-                    $sql .= ', estadoPago = :estadoPago';
-                    $parametros['estadoPago'] = $estadoPago;
-                }
-                $sql .= ' WHERE idPedido = :pedido';
-                $this->conexion->prepare($sql)->execute($parametros);
-            }
+            $idPedido = (int) ($pedido->fetchColumn() ?: 0);
+            if ($idPedido > 0) GestorEstadoFinanciero::solicitarReembolsoCancelacion($this->conexion, $idPedido);
             $this->conexion->commit();
         } catch (Throwable $error) {
             if ($this->conexion->inTransaction()) $this->conexion->rollBack();
@@ -129,7 +118,8 @@ final class GestorReservasCliente
         if (!$ids) return [];
         $marcadores = implode(',', array_fill(0, count($ids), '?'));
         $consulta = $this->conexion->prepare(
-            "SELECT idAcompañante FROM `acompañante` WHERE idCliente = ? AND idAcompañante IN ($marcadores)"
+            "SELECT idAcompañante FROM `acompañante`
+              WHERE idCliente = ? AND activo = 1 AND idAcompañante IN ($marcadores)"
         );
         $consulta->execute([$idCliente, ...$ids]);
         $validos = array_map('intval', $consulta->fetchAll(PDO::FETCH_COLUMN));

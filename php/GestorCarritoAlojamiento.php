@@ -7,6 +7,7 @@
  */
 
 declare(strict_types=1);
+require_once __DIR__ . '/GestorEstadoFinanciero.php';
 
 final class GestorCarritoAlojamiento
 {
@@ -14,8 +15,7 @@ final class GestorCarritoAlojamiento
     private const ZONA_HORARIA = 'America/Argentina/Buenos_Aires';
     public const PORCENTAJE_SENA = 30;
     public const METODOS_PAGO = [
-        'Transferencia bancaria para la seña',
-        'Tarjeta al coordinar la seña',
+        'Transferencia bancaria',
     ];
 
     /**
@@ -34,6 +34,7 @@ final class GestorCarritoAlojamiento
      */
     public function catalogo(?string $entrada = null, ?string $salida = null): array
     {
+        GestorEstadoFinanciero::vencerPedidosPendientes($this->conexion);
         try {
             [$fechaEntrada, $fechaSalida] = $this->validarFechas((string) $entrada, (string) $salida);
         } catch (RuntimeException) {
@@ -426,6 +427,7 @@ final class GestorCarritoAlojamiento
      */
     public function crearPedido(array $usuario, string $metodoPago, array $acompanantesPorItem = []): int
     {
+        GestorEstadoFinanciero::vencerPedidosPendientes($this->conexion);
         if (!in_array($metodoPago, self::METODOS_PAGO, true)) {
             throw new RuntimeException('Elegí un método de pago de la lista.');
         }
@@ -571,12 +573,15 @@ final class GestorCarritoAlojamiento
     public function obtenerPedido(int $idPedido, int $idCliente): ?array
     {
         $consulta = $this->conexion->prepare(
-            'SELECT p.idPedido, p.total, p.metodoPago, p.estadoPedido, p.estadoPago,
+            "SELECT p.idPedido, p.total, p.metodoPago, p.estadoPedido, p.estadoPago,
                     p.porcentajeSena, p.montoSena, p.fechaLimiteSena, p.creadoEn,
+                    (SELECT COALESCE(SUM(CASE WHEN pg.estado='CONFIRMADO' AND pg.tipoPago IN ('SENA','SALDO') THEN pg.montoTotal ELSE 0 END),0)
+                       FROM pago pg JOIN detalle_pedido_alojamiento dp ON dp.idReserva=pg.idReserva WHERE dp.idPedido=p.idPedido) AS montoPagado,
+                    (SELECT COALESCE(SUM(CASE WHEN rf.estado='PENDIENTE' THEN rf.monto ELSE 0 END),0) FROM reembolso rf WHERE rf.idPedido=p.idPedido) AS reintegroPendiente,
                     c.nombre, c.apellido, c.email
                FROM pedido_alojamiento p
                JOIN cliente c ON c.idCliente = p.idCliente
-              WHERE p.idPedido = :pedido AND p.idCliente = :cliente LIMIT 1'
+              WHERE p.idPedido = :pedido AND p.idCliente = :cliente LIMIT 1"
         );
         $consulta->execute(['pedido' => $idPedido, 'cliente' => $idCliente]);
         $pedido = $consulta->fetch();
@@ -614,7 +619,9 @@ final class GestorCarritoAlojamiento
     {
         $consulta = $this->conexion->prepare(
             'SELECT idAcompañante AS id, nombre, apellido, parentesco
-               FROM `acompañante` WHERE idCliente = :cliente ORDER BY apellido, nombre'
+               FROM `acompañante`
+              WHERE idCliente = :cliente AND activo = 1
+              ORDER BY apellido, nombre'
         );
         $consulta->execute(['cliente' => $idCliente]);
         return $consulta->fetchAll();
@@ -690,7 +697,8 @@ final class GestorCarritoAlojamiento
         if (!$ids) return [];
         $marcadores = implode(',', array_fill(0, count($ids), '?'));
         $consulta = $this->conexion->prepare(
-            "SELECT idAcompañante FROM `acompañante` WHERE idCliente = ? AND idAcompañante IN ($marcadores)"
+            "SELECT idAcompañante FROM `acompañante`
+              WHERE idCliente = ? AND activo = 1 AND idAcompañante IN ($marcadores)"
         );
         $consulta->execute([$idCliente, ...$ids]);
         $validos = array_map('intval', $consulta->fetchAll(PDO::FETCH_COLUMN));
