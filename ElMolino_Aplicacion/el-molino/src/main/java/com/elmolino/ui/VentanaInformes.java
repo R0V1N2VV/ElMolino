@@ -20,7 +20,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 
-/** Presenta resumenes de reservas, alojamientos, actividades y pagos. */
+/** Presenta resumenes de reservas, alojamientos, actividades, cargos y pagos. */
 public class VentanaInformes extends JFrame {
 
     private final VentanaPrincipal principal;
@@ -28,6 +28,7 @@ public class VentanaInformes extends JFrame {
     private final JTable reservas = tabla();
     private final JTable alojamientos = tabla();
     private final JTable actividades = tabla();
+    private final JTable cargosActividades = tabla();
     private final JTable pagos = tabla();
 
     /**
@@ -60,6 +61,7 @@ public class VentanaInformes extends JFrame {
         pestañas.addTab("Reservas", panelTabla(reservas));
         pestañas.addTab("Alojamientos", panelTabla(alojamientos));
         pestañas.addTab("Actividades", panelTabla(actividades));
+        pestañas.addTab("Cargos de actividades", panelTabla(cargosActividades));
         pestañas.addTab("Pagos", panelTabla(pagos));
         add(barra, BorderLayout.NORTH);
         add(pestañas, BorderLayout.CENTER);
@@ -111,12 +113,25 @@ public class VentanaInformes extends JFrame {
                 + "LEFT JOIN reservas r ON r.idAlojamiento = a.idAlojamiento AND r.fechaEgreso >= CURRENT_DATE "
                 + "AND r.estadoReserva NOT IN ('CANCELADA','CANCELADO') GROUP BY a.idAlojamiento "
                 + "ORDER BY a.numero");
-        cargar(actividades, "SELECT a.nombre AS Actividad, a.horario AS Horario, a.cupoMax AS Cupo, "
-                + "COUNT(i.idInscripcion) AS Inscriptos, GREATEST(a.cupoMax - COUNT(i.idInscripcion),0) AS Disponibles "
-                + "FROM Actividad a LEFT JOIN inscripcionActividad i ON i.idActividad = a.idActividad "
-                + "GROUP BY a.idActividad ORDER BY a.nombre");
+        cargar(actividades, "SELECT a.nombre AS Actividad, i.fechaActividad AS Día, a.horario AS Horario, a.cupoMax AS Cupo, "
+                + "COUNT(DISTINCT CASE WHEN i.participaTitular=1 THEN i.idInscripcion END) + COUNT(iaa.idInscripcionAcompanante) AS Inscriptos, "
+                + "GREATEST(a.cupoMax - (COUNT(DISTINCT CASE WHEN i.participaTitular=1 THEN i.idInscripcion END) "
+                + "+ COUNT(iaa.idInscripcionAcompanante)), 0) AS Disponibles "
+                + "FROM Actividad a LEFT JOIN inscripcionActividad i ON i.idActividad = a.idActividad AND UPPER(i.estado)='ACTIVA' "
+                + "LEFT JOIN inscripcionActividadAcompanante iaa ON iaa.idClienteTitular=i.idCliente "
+                + "AND iaa.idActividad=i.idActividad AND iaa.activo=1 "
+                + "GROUP BY a.idActividad, i.fechaActividad ORDER BY a.nombre, i.fechaActividad");
+        cargar(cargosActividades, "SELECT ca.idCargoActividad AS ID, ca.idPedido AS Pedido, "
+                + "CONCAT(c.apellido, ', ', c.nombre) AS Cliente, a.nombre AS Actividad, "
+                + "ca.fechaActividad AS Día, ca.cantidadParticipantes AS Personas, "
+                + "ca.precioUnitario AS `Precio acordado`, ca.montoTotal AS `Total a cobrar`, "
+                + "ca.estado AS Estado FROM cargo_actividad ca "
+                + "JOIN cliente c ON c.idCliente=ca.idCliente "
+                + "JOIN Actividad a ON a.idActividad=ca.idActividad "
+                + "ORDER BY ca.fechaActividad DESC, ca.idCargoActividad DESC");
         cargar(pagos, "SELECT DATE_FORMAT(fechaPago, '%Y-%m') AS Mes, metodoPago AS `Medio de pago`, "
-                + "COUNT(*) AS Operaciones, SUM(montoTotal) AS Total FROM pago "
+                + "COUNT(*) AS Operaciones, SUM(CASE WHEN tipoPago='REEMBOLSO' THEN -montoTotal ELSE montoTotal END) AS Total FROM pago "
+                + "WHERE UPPER(estado)='CONFIRMADO' "
                 + "GROUP BY DATE_FORMAT(fechaPago, '%Y-%m'), metodoPago ORDER BY Mes DESC");
     }
 

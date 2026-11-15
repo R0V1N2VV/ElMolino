@@ -92,6 +92,7 @@ public class VentanaGestion extends JFrame {
             botonEliminar.setVisible(false);
         }
         if ("reservas".equals(modulo.tabla())) botonEliminar.setText("Cancelar reserva");
+        if ("inscripcionActividad".equals(modulo.tabla())) botonEliminar.setText("Cancelar inscripción");
         this.visibles = GestionDAO.camposVisibles(modulo);
         // Define las columnas de la tabla; actividades usa datos calculados adicionales.
         String[] columnas;
@@ -286,8 +287,9 @@ public class VentanaGestion extends JFrame {
             for (Campo campo : camposFormulario) {
                 JLabel etiqueta = new JLabel(campo.etiqueta() + (campo.obligatorio() ? " *" : ""));
                 Object valor = original == null ? null : original.valores().get(campo.columna());
-                boolean estadoBloqueado = "alojamientos".equals(modulo.tabla()) && "estado".equals(campo.columna())
-                        && !esSuperAdmin() && !esRecepcion() && !esLimpieza();
+                boolean estadoBloqueado = ("alojamientos".equals(modulo.tabla()) && "estado".equals(campo.columna())
+                        && !esSuperAdmin() && !esRecepcion() && !esLimpieza())
+                        || ("inscripcionActividad".equals(modulo.tabla()) && "estado".equals(campo.columna()));
                 etiqueta.setEnabled(!estadoBloqueado);
                 formulario.add(etiqueta);
                 java.awt.Component componente = crearEditor(campo);

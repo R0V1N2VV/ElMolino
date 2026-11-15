@@ -53,6 +53,7 @@ public class ReservaAcompananteDAO {
                     sentencia.setInt(2, idAcompanante);
                     sentencia.executeUpdate();
                 }
+                GestionDAO.sincronizarActividadesDeReserva(conexion, idReserva);
                 AuditoriaDAO.registrar(conexion, "CREAR", "Acompañantes por reserva",
                         idReserva + ":" + idAcompanante, java.util.Map.of(),
                         java.util.Map.of("idReserva", idReserva, "idAcompañante", idAcompanante));
@@ -89,6 +90,7 @@ public class ReservaAcompananteDAO {
                         idReserva + ":" + idAnterior,
                         java.util.Map.of("idReserva", idReserva, "idAcompañante", idAnterior),
                         java.util.Map.of("idReserva", idReserva, "idAcompañante", idNuevo));
+                GestionDAO.sincronizarActividadesDeReserva(conexion, idReserva);
                 conexion.commit();
             } catch (Exception excepcion) {
                 conexion.rollback();
@@ -119,6 +121,7 @@ public class ReservaAcompananteDAO {
                 if (filas > 0) AuditoriaDAO.registrar(conexion, "ELIMINAR", "Acompañantes por reserva",
                         idReserva + ":" + idAcompanante,
                         java.util.Map.of("idReserva", idReserva, "idAcompañante", idAcompanante), java.util.Map.of());
+                GestionDAO.sincronizarActividadesDeReserva(conexion, idReserva);
                 conexion.commit();
             } catch (Exception excepcion) {
                 conexion.rollback();
@@ -137,7 +140,7 @@ public class ReservaAcompananteDAO {
     private void validarVinculo(Connection conexion, int idReserva, int idAcompanante,
                                 Integer idAcompananteExcluido) throws SQLException {
         String consultaSql = "SELECT r.cantidadPersonas, "
-                + "EXISTS(SELECT 1 FROM `acompañante` a WHERE a.idAcompañante=? AND a.idCliente=r.idCliente), "
+                + "EXISTS(SELECT 1 FROM `acompañante` a WHERE a.idAcompañante=? AND a.idCliente=r.idCliente AND a.activo=1), "
                 + "(SELECT COUNT(*) FROM `reservaAcompañante` ra WHERE ra.idReserva=? "
                 + (idAcompananteExcluido == null ? "" : "AND ra.idAcompañante<>? ")
                 + ") FROM reservas r WHERE r.idReserva=?";

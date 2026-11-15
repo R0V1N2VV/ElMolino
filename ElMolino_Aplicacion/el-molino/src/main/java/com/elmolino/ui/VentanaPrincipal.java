@@ -26,6 +26,7 @@ import java.awt.Insets;
 import java.awt.RenderingHints;
 import java.util.ArrayList;
 import java.util.List;
+import java.sql.SQLException;
 
 /** Menu principal que muestra solo las secciones permitidas al rol activo. */
 public class VentanaPrincipal extends JFrame {
@@ -46,6 +47,9 @@ public class VentanaPrincipal extends JFrame {
      */
     public VentanaPrincipal() {
         super("El Molino | Gestión");
+        try { GestionDAO.vencerPedidosPendientes(); } catch (SQLException error) {
+            System.err.println("No se pudieron revisar las señas vencidas: " + error.getMessage());
+        }
         escala = calcularEscala();
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setSize(940, 720);
@@ -225,6 +229,7 @@ public class VentanaPrincipal extends JFrame {
                 accesos.add(modulo("Alojamientos", "Gestionar alojamientos y estados", GestionDAO.ALOJAMIENTOS));
                 accesos.add(modulo("Reservas", "Gestionar reservas", GestionDAO.RESERVAS));
                 accesos.add(modulo("Pagos", "Consultar pagos registrados", GestionDAO.PAGOS));
+                accesos.add(modulo("Reintegros", "Confirmar devoluciones por cancelaciones", GestionDAO.REEMBOLSOS));
                 accesos.add(modulo("Usuarios", "Crear usuarios y asignar cualquier rol", GestionDAO.USUARIOS));
                 accesos.add(modulo("Acompañantes", "Gestionar acompañantes", GestionDAO.ACOMPANANTES));
                 accesos.add(new Acceso("Acompañantes por reserva", "Gestionar acompañantes asociados", () -> abrirAcompanantes()));
@@ -238,6 +243,7 @@ public class VentanaPrincipal extends JFrame {
                 accesos.add(modulo("Clientes", "Consultar y editar datos de clientes", null));
                 accesos.add(modulo("Alojamientos", "Consultar y actualizar alojamientos", GestionDAO.ALOJAMIENTOS));
                 accesos.add(modulo("Pagos", "Consultar pagos registrados", GestionDAO.PAGOS));
+                accesos.add(modulo("Reintegros", "Consultar devoluciones pendientes", GestionDAO.REEMBOLSOS));
                 accesos.add(modulo("Espacios recreativos", "Consultar y actualizar espacios", GestionDAO.ESPACIOS));
             }
             case "ADMINISTRACION" -> {
@@ -247,6 +253,7 @@ public class VentanaPrincipal extends JFrame {
                 accesos.add(modulo("Alojamientos", "Consultar y actualizar alojamientos", GestionDAO.ALOJAMIENTOS));
                 accesos.add(modulo("Reservas", "Consultar y actualizar reservas", GestionDAO.RESERVAS));
                 accesos.add(modulo("Pagos", "Consultar pagos registrados", GestionDAO.PAGOS));
+                accesos.add(modulo("Reintegros", "Confirmar devoluciones por cancelaciones", GestionDAO.REEMBOLSOS));
                 accesos.add(new Acceso("Registro de auditoría", "Consultar quién realizó cambios en el sistema", () -> abrirAuditoria()));
             }
             case "COORDINADOR" -> {
@@ -258,6 +265,7 @@ public class VentanaPrincipal extends JFrame {
                 accesos.add(modulo("Clientes", "Consultar y editar datos de clientes", null));
                 accesos.add(modulo("Reservas", "Consultar y actualizar reservas", GestionDAO.RESERVAS));
                 accesos.add(modulo("Pagos", "Consultar pagos registrados", GestionDAO.PAGOS));
+                accesos.add(modulo("Reintegros", "Consultar devoluciones", GestionDAO.REEMBOLSOS));
                 accesos.add(modulo("Alojamientos", "Consultar y actualizar alojamientos", GestionDAO.ALOJAMIENTOS));
                 accesos.add(new Acceso("Registro de auditoría", "Consultar quién realizó cambios en el sistema", () -> abrirAuditoria()));
             }
@@ -267,6 +275,7 @@ public class VentanaPrincipal extends JFrame {
                 accesos.add(modulo("Clientes", "Consultar y editar datos de clientes", null));
                 accesos.add(modulo("Reservas", "Consultar y actualizar reservas", GestionDAO.RESERVAS));
                 accesos.add(modulo("Pagos", "Consultar pagos registrados", GestionDAO.PAGOS));
+                accesos.add(modulo("Reintegros", "Confirmar devoluciones por cancelaciones", GestionDAO.REEMBOLSOS));
                 accesos.add(modulo("Usuarios", "Crear cuentas, asignar roles y gestionar usuarios", GestionDAO.USUARIOS));
                 accesos.add(new Acceso("Registro de auditoría", "Consultar quién realizó cambios en el sistema", () -> abrirAuditoria()));
             }

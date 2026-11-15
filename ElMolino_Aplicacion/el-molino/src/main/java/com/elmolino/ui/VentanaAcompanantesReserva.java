@@ -92,7 +92,7 @@ public class VentanaAcompanantesReserva extends JFrame {
         // Carga las opciones de acompanante para el selector de la pantalla.
         try {
             for (GestionDAO.Opcion opcion : GestionDAO.opciones(
-                    "SELECT idAcompañante, CONCAT(apellido, ', ', nombre, ' - DNI ', dni) FROM `acompañante` ORDER BY apellido, nombre")) {
+                    "SELECT idAcompañante, CONCAT(apellido, ', ', nombre, ' - DNI ', dni) FROM `acompañante` WHERE activo=1 ORDER BY apellido, nombre")) {
                 acompanantes.addItem(opcion);
             }
         } catch (Exception excepcion) {
@@ -139,7 +139,7 @@ public class VentanaAcompanantesReserva extends JFrame {
         try {
             acompanantes.removeAllItems();
             for (GestionDAO.Opcion opcion : GestionDAO.opciones(
-                    "SELECT idAcompañante, CONCAT(apellido, ', ', nombre, ' - DNI ', dni) FROM `acompañante` ORDER BY apellido, nombre"))
+                    "SELECT idAcompañante, CONCAT(apellido, ', ', nombre, ' - DNI ', dni) FROM `acompañante` WHERE activo=1 ORDER BY apellido, nombre"))
                 acompanantes.addItem(opcion);
             for (int indice = 0; indice < acompanantes.getItemCount(); indice++)
                 if (acompanantes.getItemAt(indice).id() == idAnterior) acompanantes.setSelectedIndex(indice);
