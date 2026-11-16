@@ -18,7 +18,7 @@ No importes la carpeta contenedora `ElMolino` ni la carpeta `mvan`: el proyecto 
 
 La aplicación lee `config.properties` desde la carpeta raíz del proyecto al ejecutarse. Crea ese archivo copiando `config.properties.example` y completa los valores de conexión proporcionados por el responsable de la base de datos. En Eclipse, si la aplicación informa que no encuentra el archivo, abre **Run > Run Configurations... > Java Application > Main > Arguments > Working Directory**, selecciona **Other** y apunta a la carpeta raíz de este proyecto.
 
-No subas `config.properties` al repositorio: contiene credenciales y ya está excluido en `.gitignore`.
+No compartas `config.properties`: contiene credenciales. Está excluido en `.gitignore`; para publicar o enviar el proyecto, incluí solo `config.properties.example`. Si ya compartiste una copia con credenciales, cambiá la contraseña de la base de datos.
 
 ### Habilitar el primer SuperAdmin
 

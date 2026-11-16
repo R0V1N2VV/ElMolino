@@ -3,6 +3,7 @@ package com.elmolino.ui;
 import com.elmolino.dao.UsuarioDAO;
 import com.elmolino.model.Usuario;
 import com.elmolino.util.SeguridadPassword;
+import com.elmolino.util.LimiteIntentosLogin;
 import com.elmolino.util.SesionActual;
 
 import javax.swing.BorderFactory;
@@ -186,6 +187,13 @@ public class VentanaLogin extends JFrame {
             return;
         }
 
+        java.time.Duration espera = LimiteIntentosLogin.tiempoRestante(correo);
+        if (!espera.isZero()) {
+            estado.setText("Demasiados intentos. Probá de nuevo en "
+                    + Math.max(1, espera.toMinutes()) + " min.");
+            return;
+        }
+
         botonIngresar.setEnabled(false);
         estado.setText("Verificando...");
 
@@ -196,6 +204,7 @@ public class VentanaLogin extends JFrame {
              */
             @Override
             protected Usuario doInBackground() throws Exception {
+                if (!LimiteIntentosLogin.tiempoRestante(correo).isZero()) return null;
                 Usuario usuario = accesoDatosUsuario.buscarPorEmail(correo);
                 if (usuario != null && SeguridadPassword.verificar(
                         contrasena.toCharArray(), usuario.getPasswordHash())) {
@@ -203,8 +212,10 @@ public class VentanaLogin extends JFrame {
                         accesoDatosUsuario.actualizarPasswordHash(usuario.getIdUsuario(),
                                 SeguridadPassword.crearHash(contrasena.toCharArray()));
                     }
+                    LimiteIntentosLogin.registrarExito(correo);
                     return usuario;
                 }
+                LimiteIntentosLogin.registrarFallo(correo);
                 return null;
             }
 
@@ -217,7 +228,11 @@ public class VentanaLogin extends JFrame {
                 try {
                     Usuario usuario = get();
                     if (usuario == null) {
-                        estado.setText("Email o contraseña incorrectos");
+                        java.time.Duration restante = LimiteIntentosLogin.tiempoRestante(correo);
+                        estado.setText(!restante.isZero()
+                                ? "Demasiados intentos. Probá de nuevo en "
+                                        + Math.max(1, restante.toMinutes()) + " min."
+                                : "Email o contraseña incorrectos");
                         campoContrasena.setText("");
                         return;
                     }

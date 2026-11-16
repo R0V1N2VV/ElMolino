@@ -24,11 +24,19 @@ El código está dentro de `src/main/java/com/elmolino`.
 | `ui/` | Contiene las ventanas y los formularios. |
 | `dao/` | Contiene el código que consulta o cambia la base de datos. |
 | `model/` | Define objetos como clientes y usuarios. |
+| `model/Persona.java` | Reúne los datos comunes y define una representación que cada tipo concreta. |
 | `util/Conexion.java` | Abre la conexión con MySQL. |
 | `util/Config.java` | Lee los datos de conexión. |
 | `util/SesionActual.java` | Guarda quién inició sesión. |
 | `util/SeguridadPassword.java` | Protege y comprueba las contraseñas. |
 | `pom.xml` | Define Java, Maven y las librerías necesarias. |
+
+## 2.1. Pilares de programación orientada a objetos
+
+- **Abstracción:** `Persona` representa los datos comunes sin depender de cómo se almacenan en MySQL.
+- **Encapsulamiento:** los atributos de `Persona`, `Cliente` y `Usuario` son privados y se accede a ellos mediante métodos.
+- **Herencia:** `Cliente` y `Usuario` heredan nombre, apellido y correo de `Persona`.
+- **Polimorfismo:** cada clase implementa `getDescripcionCorta()` de manera propia; al mostrar objetos como personas, Java usa la implementación correspondiente al tipo real.
 
 ### Ventanas
 
@@ -77,7 +85,7 @@ db.user=usuario
 db.password=contraseña
 ```
 
-Usá `config.properties.example` como plantilla y completalo con los datos que te dieron. No compartas el archivo real: contiene la contraseña de la base.
+Usá `config.properties.example` como plantilla y completalo con los datos que te dieron. No compartas el archivo real: contiene la contraseña de la base y está excluido en `.gitignore`. Si ya compartiste una copia con credenciales, cambiá la contraseña de la base.
 
 ## 6. Ejecutar desde Eclipse
 
