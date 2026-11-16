@@ -263,6 +263,9 @@ CREATE TABLE IF NOT EXISTS `pago` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 CALL agregar_columna_si_falta('pago', 'tipoPago', 'VARCHAR(20) NOT NULL DEFAULT ''SENA'' AFTER `metodoPago`');
 CALL agregar_columna_si_falta('pago', 'estado', 'VARCHAR(20) NOT NULL DEFAULT ''CONFIRMADO'' AFTER `tipoPago`');
+CALL agregar_columna_si_falta('pedido_alojamiento', 'fechaLimiteRevisionSena', 'DATETIME NULL AFTER `fechaLimiteSena`');
+CALL agregar_columna_si_falta('pago', 'archivoComprobante', 'VARCHAR(255) NULL AFTER `comprobante`');
+CALL agregar_columna_si_falta('pago', 'observacion', 'VARCHAR(255) NULL AFTER `archivoComprobante`');
 
 CREATE TABLE IF NOT EXISTS `reembolso` (
   `idReembolso` INT NOT NULL AUTO_INCREMENT,

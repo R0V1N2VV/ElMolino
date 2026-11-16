@@ -199,6 +199,7 @@ CREATE TABLE IF NOT EXISTS `pedido_alojamiento` (
   `porcentajeSena` DECIMAL(5,2) NOT NULL DEFAULT 30.00,
   `montoSena` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
   `fechaLimiteSena` DATETIME DEFAULT NULL,
+  `fechaLimiteRevisionSena` DATETIME DEFAULT NULL,
   `senaPagadaEn` DATETIME DEFAULT NULL,
   `canceladoEn` DATETIME DEFAULT NULL,
   `creadoEn` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -322,6 +323,8 @@ CREATE TABLE IF NOT EXISTS `pago` (
   `estado` VARCHAR(20) NOT NULL DEFAULT 'CONFIRMADO',
   `fechaPago` DATE NOT NULL,
   `comprobante` VARCHAR(150) DEFAULT NULL,
+  `archivoComprobante` VARCHAR(255) DEFAULT NULL,
+  `observacion` VARCHAR(255) DEFAULT NULL,
   PRIMARY KEY (`idPago`),
   KEY `idx_pago_reserva` (`idReserva`),
   CONSTRAINT `fk_pago_reserva`
