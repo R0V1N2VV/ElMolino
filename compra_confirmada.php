@@ -52,7 +52,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $idPedido,
                     $idCliente,
                     (string) ($_POST['referencia_pago'] ?? ''),
-                    (string) ($_POST['monto_transferido'] ?? '')
+                    (string) ($_POST['monto_transferido'] ?? ''),
+                    is_array($_FILES['comprobante_archivo'] ?? null) ? $_FILES['comprobante_archivo'] : []
                 );
                 $pedido = $gestor->obtenerPedido($idPedido, $idCliente);
                 $mensaje = 'Registramos la transferencia. Administración debe verificarla para confirmar la estadía.';
@@ -85,7 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="stylesheet" href="estilos/estilos.css?v=<?= (int) filemtime(__DIR__ . '/estilos/estilos.css') ?>">
 </head>
 <body class="pagina-compra">
-    <header class="encabezado encabezado-compra"><div class="contenedor barra-navegacion"><?= Vista::marca() ?><nav class="navegacion-compra" aria-label="Navegación de compra"><a href="index.php">Inicio</a><a href="alojamientos.php">Alojamientos</a></nav></div></header>
+    <?= Vista::encabezadoPrincipal($usuario, '', 'estadía') ?>
     <main class="contenedor contenido-compra">
         <p class="texto-destacado">PEDIDO #<?= (int) $pedido['idPedido'] ?></p>
         <h1>Recibimos tu solicitud de reserva</h1>
@@ -95,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php if ((float) ($pedido['montoPagado'] ?? 0) > 0): ?><p>Pagado: <strong>$<?= number_format((float) $pedido['montoPagado'], 2, ',', '.') ?></strong> · Saldo pendiente: <strong>$<?= number_format(max(0, (float) $pedido['total'] - (float) $pedido['montoPagado']), 2, ',', '.') ?></strong></p><?php endif; ?>
         <p>Forma elegida para la seña: <strong><?= Utilidades::escapar($pedido['metodoPago']) ?></strong>. La reserva se confirma cuando se acredita el pago.</p>
         <section class="resumen-sena resumen-sena-confirmada">
-            <div><span>Seña requerida (<?= (int) $pedido['porcentajeSena'] ?>%)</span><small>Abonala antes del <?= Utilidades::escapar((new DateTimeImmutable((string) $pedido['fechaLimiteSena']))->format('d/m/Y H:i')) ?>.</small></div>
+            <div><span>Seña requerida (<?= (int) $pedido['porcentajeSena'] ?>%)</span><small>Tu pre-reserva se retiene hasta el <?= Utilidades::escapar((new DateTimeImmutable((string) $pedido['fechaLimiteSena']))->format('d/m/Y H:i')) ?>. Si no informás la seña, se libera automáticamente.</small></div>
             <strong>$<?= number_format((float) $pedido['montoSena'], 2, ',', '.') ?></strong>
         </section>
         <?php $estadoPago = strtoupper((string) $pedido['estadoPago']); ?>
@@ -104,7 +105,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <p class="texto-destacado">CONFIRMAR ESTADÍA</p>
                 <h2 id="titulo-pago-sena">Pagá la seña por transferencia</h2>
                 <?php if ($estadoPago === 'SENA_INFORMADA'): ?>
-                    <p>Ya informaste la transferencia. Administración la está verificando. Cuando el pago se marque como confirmado, se habilitarán las inscripciones a actividades.</p>
+                    <p>Ya informaste la transferencia y el alojamiento quedó retenido mientras Recepción la revisa. La revisión vence el <?= Utilidades::escapar((new DateTimeImmutable((string) $pedido['fechaLimiteRevisionSena']))->format('d/m/Y H:i')) ?>.</p>
                 <?php elseif ($configuracionPago['configurada']): ?>
                     <ol><li>Transferí exactamente <strong>$<?= number_format((float) $pedido['montoSena'], 2, ',', '.') ?></strong>.</li><li>Guardá el número de operación.</li><li>Informalo debajo para que administración pueda comprobarlo.</li></ol>
                     <dl class="datos-transferencia">
@@ -113,11 +114,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <?php if ($configuracionPago['cbu'] !== ''): ?><div><dt>CBU</dt><dd><?= Utilidades::escapar($configuracionPago['cbu']) ?></dd></div><?php endif; ?>
                         <?php if ($configuracionPago['cuit'] !== ''): ?><div><dt>CUIT</dt><dd><?= Utilidades::escapar($configuracionPago['cuit']) ?></dd></div><?php endif; ?>
                     </dl>
-                    <form method="post" class="formulario-informar-sena">
+                    <form method="post" enctype="multipart/form-data" class="formulario-informar-sena">
                         <input type="hidden" name="token_csrf" value="<?= Utilidades::escapar(Sesion::tokenCsrf()) ?>">
                         <input type="hidden" name="accion" value="informar_pago_sena">
-                        <label>Importe transferido<input type="number" name="monto_transferido" min="0.01" step="0.01" value="<?= number_format(max(0.01, (float) $pedido['montoSena'] - (float) ($pedido['montoPagado'] ?? 0)), 2, '.', '') ?>" required></label>
+                        <label>Importe transferido<input type="number" name="monto_transferido" min="<?= number_format(max(0.01, (float) $pedido['montoSena'] - (float) ($pedido['montoPagado'] ?? 0)), 2, '.', '') ?>" step="0.01" value="<?= number_format(max(0.01, (float) $pedido['montoSena'] - (float) ($pedido['montoPagado'] ?? 0)), 2, '.', '') ?>" required></label>
                         <label>Número de operación o referencia<input type="text" name="referencia_pago" minlength="4" maxlength="150" required></label>
+                        <label>Comprobante (imagen o PDF, hasta 5 MB)<input type="file" name="comprobante_archivo" accept="image/jpeg,image/png,image/webp,application/pdf" required></label>
                         <button class="boton boton-principal" type="submit">Ya transferí la seña</button>
                     </form>
                 <?php else: ?>
@@ -136,5 +138,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php if (!$correoEnviado): ?><form method="post" class="formulario-reenvio"><input type="hidden" name="token_csrf" value="<?= Utilidades::escapar(Sesion::tokenCsrf()) ?>"><input type="hidden" name="accion" value="reenviar_correo"><button class="boton boton-secundario" type="submit">Reenviar resumen por correo</button></form><?php endif; ?>
         <a class="boton boton-principal" href="index.php">Volver al inicio</a>
     </main>
+    <footer class="pie-pagina pie-pagina-simple"><div class="contenedor pie-inferior"><span>El Molino · Complejo recreativo</span><?= Vista::contactoPie() ?></div></footer>
 </body>
 </html>

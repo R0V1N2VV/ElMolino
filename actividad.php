@@ -97,7 +97,7 @@ $esCoordinador = class_exists('Autorizacion') && Autorizacion::esCoordinador($us
 </head>
 <body>
     <a class="enlace-saltar" href="#contenido">Saltar al contenido</a>
-    <header class="encabezado"><div class="contenedor barra-navegacion"><?= Vista::marca() ?><button class="boton-menu" type="button" aria-expanded="false" aria-controls="navegacion-principal"><span></span><span></span><span></span><span class="solo-lector">Abrir menú</span></button><nav class="navegacion-principal" id="navegacion-principal" aria-label="Navegación principal"><a href="index.php">Inicio</a><a href="index.php#nosotros">Quiénes somos</a><a href="index.php#alojamientos">Alojamientos</a><a class="enlace-activo" href="actividades.php">Actividades</a><a href="index.php#espacios">Espacios</a></nav><?= class_exists('Vista') ? Vista::accesoCuenta($usuario) : '<a class="boton boton-chico boton-encabezado" href="registro/login.php">Iniciar sesión</a>' ?></div></header>
+    <?= Vista::encabezadoPrincipal($usuario, '', 'actividades') ?>
 
     <main id="contenido" class="pagina-detalle-actividad"><div class="contenedor">
         <?php if ($mensaje): ?><div class="aviso-administracion mensaje-<?= Vista::escapar($mensaje['tipo']) ?>" role="status"><strong>Listo.</strong><span><?= Vista::escapar($mensaje['texto']) ?></span></div><?php endif; ?>
@@ -201,6 +201,6 @@ $esCoordinador = class_exists('Autorizacion') && Autorizacion::esCoordinador($us
             </form>
         </dialog>
     <?php endif; ?>
-    <footer class="pie-pagina pie-pagina-simple"><div class="contenedor pie-inferior"><span>El Molino · Complejo recreativo</span><a href="actividades.php">Volver a actividades</a></div></footer>
+    <footer class="pie-pagina pie-pagina-simple"><div class="contenedor pie-inferior"><span>El Molino · Complejo recreativo</span><?= Vista::contactoPie() ?><a href="actividades.php">Volver a actividades</a></div></footer>
 </body>
 </html>

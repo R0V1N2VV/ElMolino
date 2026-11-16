@@ -32,7 +32,7 @@ $tituloCategoria = $categoria?->nombre ?? 'Actividades';
 </head>
 <body>
     <a class="enlace-saltar" href="#contenido">Saltar al contenido</a>
-    <header class="encabezado"><div class="contenedor barra-navegacion"><?= Vista::marca() ?><button class="boton-menu" type="button" aria-expanded="false" aria-controls="navegacion-principal"><span></span><span></span><span></span><span class="solo-lector">Abrir menú</span></button><nav class="navegacion-principal" id="navegacion-principal" aria-label="Navegación principal"><a href="index.php">Inicio</a><a href="index.php#nosotros">Quiénes somos</a><a href="index.php#alojamientos">Alojamientos</a><a class="enlace-activo" href="actividades.php" aria-current="page">Actividades</a><a href="index.php#espacios">Espacios</a></nav><?= class_exists('Vista') ? Vista::accesoCuenta($usuario) : '<a class="boton boton-chico boton-encabezado" href="registro/login.php">Iniciar sesión</a>' ?></div></header>
+    <?= Vista::encabezadoPrincipal($usuario, '', 'actividades') ?>
 
     <main id="contenido" class="pagina-categoria-actividades">
         <?php if ($mensaje): ?><div class="aviso-administracion mensaje-<?= Vista::escapar($mensaje['tipo']) ?>" role="status"><?= Vista::escapar($mensaje['texto']) ?></div><?php endif; ?>
@@ -53,6 +53,6 @@ $tituloCategoria = $categoria?->nombre ?? 'Actividades';
         </div></section>
         <?php endif; ?>
     </main>
-    <footer class="pie-pagina"><div class="contenedor grilla-pie"><div><?= Vista::marca('', 'index.php', true) ?><p>Deporte, descanso y recreación en un mismo lugar.</p></div><nav aria-label="Enlaces del pie de página"><a href="index.php#nosotros">Quiénes somos</a><a href="index.php#alojamientos">Alojamientos</a><a href="actividades.php">Actividades</a><a href="index.php#espacios">Espacios</a><a href="registro/registro.php">Crear cuenta</a></nav></div><div class="contenedor pie-inferior"><span>El Molino · Complejo recreativo</span><span>Información sujeta a confirmación</span></div></footer>
+    <footer class="pie-pagina"><div class="contenedor grilla-pie"><div><?= Vista::marca('', 'index.php', true) ?><p>Deporte, descanso y recreación en un mismo lugar.</p></div><nav aria-label="Enlaces del pie de página"><a href="index.php#nosotros">Quiénes somos</a><a href="index.php#alojamientos">Alojamientos</a><a href="actividades.php">Actividades</a><a href="index.php#espacios">Espacios</a><a href="registro/registro.php">Crear cuenta</a></nav><?= Vista::contactoPie() ?></div><div class="contenedor pie-inferior"><span>El Molino · Complejo recreativo</span><span>Información sujeta a confirmación</span></div></footer>
 </body>
 </html>

@@ -91,7 +91,7 @@ Sesion::tomarMensaje();
     <script src="script.js?v=<?= (int) filemtime(__DIR__ . '/script.js') ?>" defer></script>
 </head>
 <body class="pagina-compra">
-    <header class="encabezado encabezado-compra"><div class="contenedor barra-navegacion"><?= Vista::marca() ?><nav class="navegacion-compra" aria-label="Navegación de compra"><a href="carrito.php">Volver a mi estadía</a><a href="index.php">Inicio</a></nav></div></header>
+    <?= Vista::encabezadoPrincipal($usuario, '', 'estadía') ?>
     <main class="contenedor contenido-compra">
         <p class="texto-destacado">FINALIZAR COMPRA</p>
         <h1>Resumen del pedido</h1>
@@ -153,5 +153,6 @@ Sesion::tomarMensaje();
             </form>
         <?php endif; ?>
     </main>
+    <footer class="pie-pagina pie-pagina-simple"><div class="contenedor pie-inferior"><span>El Molino · Complejo recreativo</span><?= Vista::contactoPie() ?></div></footer>
 </body>
 </html>

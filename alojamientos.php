@@ -84,19 +84,7 @@ $cantidadCarrito = isset($gestor) ? $gestor->cantidad() : 0;
     <script src="script.js?v=<?= (int) filemtime(__DIR__ . '/script.js') ?>" defer></script>
 </head>
 <body class="pagina-compra">
-    <header class="encabezado encabezado-compra">
-        <div class="contenedor barra-navegacion">
-            <?= Vista::marca() ?>
-            <nav class="navegacion-compra" aria-label="Navegación de compra">
-                <a href="index.php">Inicio</a>
-                <a class="enlace-activo" href="alojamientos.php">Alojamientos</a>
-                <a class="enlace-estadia" href="carrito.php">Mi estadía <span><?= $cantidadCarrito ?></span></a>
-            </nav>
-            <div class="acciones-encabezado">
-                <?= Vista::accesoCuenta($usuario) ?>
-            </div>
-        </div>
-    </header>
+    <?= Vista::encabezadoPrincipal($usuario, '', 'alojamientos') ?>
     <main class="contenedor contenido-compra">
         <section class="portada-alojamientos">
             <p class="texto-destacado">ALOJAMIENTOS</p>
@@ -161,5 +149,6 @@ $cantidadCarrito = isset($gestor) ? $gestor->cantidad() : 0;
             <?php endif; ?>
         <?php endif; ?>
     </main>
+    <footer class="pie-pagina pie-pagina-simple"><div class="contenedor pie-inferior"><span>El Molino · Complejo recreativo</span><?= Vista::contactoPie() ?></div></footer>
 </body>
 </html>

@@ -29,31 +29,7 @@ $cantidadCarrito = is_array($carritoSesion) ? count($carritoSesion) : 0;
 <body id="inicio">
     <a class="enlace-saltar" href="#contenido">Saltar al contenido</a>
 
-    <header class="encabezado">
-        <div class="contenedor barra-navegacion">
-            <?= Vista::marca('', '#inicio') ?>
-
-            <button class="boton-menu" type="button" aria-expanded="false" aria-controls="navegacion-principal">
-                <span></span>
-                <span></span>
-                <span></span>
-                <span class="solo-lector">Abrir menú</span>
-            </button>
-
-            <nav class="navegacion-principal" id="navegacion-principal" aria-label="Navegación principal">
-                <a href="#inicio">Inicio</a>
-                <a href="#nosotros">Quiénes somos</a>
-                <a href="#alojamientos">Alojamientos</a>
-                <a href="actividades.php">Actividades</a>
-                <a href="#espacios">Espacios</a>
-                <a class="enlace-estadia" href="carrito.php">Mi estadía <span><?= $cantidadCarrito ?></span></a>
-            </nav>
-
-            <div class="acciones-encabezado">
-                <?= Vista::accesoCuenta($usuario) ?>
-            </div>
-        </div>
-    </header>
+    <?= Vista::encabezadoPrincipal($usuario, '', 'inicio') ?>
 
     <button class="boton-bajar-seccion" type="button" data-bajar-seccion aria-label="Bajar a la sección siguiente"><span aria-hidden="true">↓</span></button>
 
@@ -245,6 +221,7 @@ $cantidadCarrito = is_array($carritoSesion) ? count($carritoSesion) : 0;
                 <a href="#espacios">Espacios</a>
                 <a href="registro/registro.php">Crear cuenta</a>
             </nav>
+            <?= Vista::contactoPie() ?>
         </div>
         <div class="contenedor pie-inferior">
             <span>El Molino · Complejo recreativo</span>

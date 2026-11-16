@@ -45,7 +45,7 @@ $usuario = Sesion::usuario();
     <script src="script.js?v=<?= (int) filemtime(__DIR__ . '/script.js') ?>" defer></script>
 </head>
 <body class="pagina-compra">
-    <header class="encabezado encabezado-compra"><div class="contenedor barra-navegacion"><?= Vista::marca() ?><nav class="navegacion-compra" aria-label="Navegación de la estadía"><a href="index.php">Inicio</a><a href="alojamientos.php">Alojamientos</a></nav><div class="acciones-encabezado"><?= Vista::accesoCuenta($usuario) ?></div></div></header>
+    <?= Vista::encabezadoPrincipal($usuario, '', 'estadía') ?>
     <main class="contenedor contenido-compra">
         <p class="texto-destacado">MI ESTADÍA</p>
         <h1>Tu estadía</h1>
@@ -72,5 +72,6 @@ $usuario = Sesion::usuario();
             <div class="acciones-carrito"><a class="boton boton-secundario" href="alojamientos.php">Seguir eligiendo</a><?php if ($totalCentavos > 0 && !array_filter($elementos, static fn(array $item): bool => !empty($item['error']))): ?><a class="boton boton-principal" href="compra.php">Continuar con la compra</a><?php endif; ?></div>
         <?php endif; ?>
     </main>
+    <footer class="pie-pagina pie-pagina-simple"><div class="contenedor pie-inferior"><span>El Molino · Complejo recreativo</span><?= Vista::contactoPie() ?></div></footer>
 </body>
 </html>
