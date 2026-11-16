@@ -141,14 +141,14 @@ public class VentanaClientes extends JFrame {
      * Prepara y muestra formulario.
      */
     private void mostrarFormulario(Cliente original) {
-        // Si no hay cliente original, crea uno nuevo; si existe, guarda sus cambios.
-        boolean edicion = original != null;
-        JTextField dni = new JTextField(edicion ? String.valueOf(original.getDni()) : "");
-        JTextField nombre = new JTextField(edicion ? original.getNombre() : "");
-        JTextField apellido = new JTextField(edicion ? original.getApellido() : "");
-        JTextField telefono = new JTextField(edicion ? original.getTelefono() : "");
-        JTextField correo = new JTextField(edicion ? original.getEmail() : "");
-        JTextField direccion = new JTextField(edicion ? original.getDireccion() : "");
+        // Esta pantalla solo permite editar clientes creados desde el sitio.
+        if (original == null) return;
+        JTextField dni = new JTextField(String.valueOf(original.getDni()));
+        JTextField nombre = new JTextField(original.getNombre());
+        JTextField apellido = new JTextField(original.getApellido());
+        JTextField telefono = new JTextField(original.getTelefono());
+        JTextField correo = new JTextField(original.getEmail());
+        JTextField direccion = new JTextField(original.getDireccion());
 
         JPanel formulario = new JPanel(new GridLayout(0, 2, 8, 8));
         formulario.add(new JLabel("DNI:")); formulario.add(dni);
@@ -159,7 +159,7 @@ public class VentanaClientes extends JFrame {
         formulario.add(new JLabel("Dirección:")); formulario.add(direccion);
 
         int opcion = JOptionPane.showConfirmDialog(this, formulario,
-                edicion ? "Editar cliente" : "Nuevo cliente",
+                "Editar cliente",
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
         if (opcion != JOptionPane.OK_OPTION) {
             return;
@@ -170,18 +170,17 @@ public class VentanaClientes extends JFrame {
         String apellidoTexto = apellido.getText().trim();
         String telefonoTexto = telefono.getText().trim();
         if (!dniTexto.matches("\\d{1,10}") || nombreTexto.isEmpty() || apellidoTexto.isEmpty()
-                || !telefonoTexto.matches("\\d{1,10}") || correo.getText().trim().isEmpty()
+                || !telefonoTexto.matches("\\d{6,15}") || correo.getText().trim().isEmpty()
                 || direccion.getText().trim().isEmpty()) {
             JOptionPane.showMessageDialog(this,
-                    "Completá todos los campos y verificá que DNI y teléfono sean numéricos.",
+                    "Completá todos los campos. El DNI debe ser numérico y el teléfono debe tener entre 6 y 15 dígitos.",
                     "Revisá los datos", JOptionPane.WARNING_MESSAGE);
             return;
         }
         try {
             Integer.parseInt(dniTexto);
-            Integer.parseInt(telefonoTexto);
         } catch (NumberFormatException excepcion) {
-            JOptionPane.showMessageDialog(this, "El DNI y el teléfono no pueden superar el límite numérico permitido.",
+            JOptionPane.showMessageDialog(this, "El DNI no puede superar el límite numérico permitido.",
                     "Revisá los datos", JOptionPane.WARNING_MESSAGE);
             return;
         }
@@ -192,21 +191,17 @@ public class VentanaClientes extends JFrame {
             return;
         }
 
-        Cliente cliente = new Cliente(edicion ? original.getIdCliente() : 0,
+        Cliente cliente = new Cliente(original.getIdCliente(),
                 Integer.parseInt(dniTexto), nombreTexto, apellidoTexto,
                 telefonoTexto, correoTexto, direccion.getText().trim());
-        estado.setText(edicion ? "Guardando cambios..." : "Creando cliente...");
+        estado.setText("Guardando cambios...");
         new SwingWorker<Boolean, Void>() {
             /**
              * Ejecuta la tarea pesada en segundo plano para que la interfaz no se congele.
              */
             @Override
             protected Boolean doInBackground() throws Exception {
-                if (edicion) {
-                    return accesoDatosCliente.actualizar(cliente);
-                }
-                accesoDatosCliente.insertar(cliente);
-                return true;
+                return accesoDatosCliente.actualizar(cliente);
             }
 
             /**
@@ -231,51 +226,6 @@ public class VentanaClientes extends JFrame {
     /**
      * Elimina seleccionado del sistema.
      */
-    private void eliminarSeleccionado() {
-        // Pide confirmacion antes de borrar para evitar una eliminacion por error.
-        int filaVista = tabla.getSelectedRow();
-        if (filaVista < 0) {
-            JOptionPane.showMessageDialog(this, "Seleccioná un cliente de la tabla.",
-                    "Eliminar cliente", JOptionPane.INFORMATION_MESSAGE);
-            return;
-        }
-        int fila = tabla.convertRowIndexToModel(filaVista);
-        int id = (int) modelo.getValueAt(fila, 0);
-        int confirmar = JOptionPane.showConfirmDialog(this,
-                "¿Querés eliminar este cliente?", "Confirmar eliminación",
-                JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
-        if (confirmar != JOptionPane.YES_OPTION) {
-            return;
-        }
-
-        estado.setText("Eliminando cliente...");
-        new SwingWorker<Boolean, Void>() {
-            /**
-             * Ejecuta la tarea pesada en segundo plano para que la interfaz no se congele.
-             */
-            @Override
-            protected Boolean doInBackground() throws Exception {
-                return accesoDatosCliente.eliminar(id);
-            }
-
-            /**
-             * Recibe en la interfaz el resultado de la tarea en segundo plano y actualiza la pantalla.
-             */
-            @Override
-            protected void done() {
-                try {
-                    if (!get()) {
-                        JOptionPane.showMessageDialog(VentanaClientes.this,
-                                "No se encontró el cliente para eliminar.",
-                                "Cliente no eliminado", JOptionPane.WARNING_MESSAGE);
-                    }
-                    cargarClientes();
-                } catch (Exception excepcion) {
-                    mostrarError("No se pudo eliminar. Puede tener reservas asociadas.", excepcion);
-                }
-            }
-        }.execute();
-    }
 
     /**
      * Prepara y muestra error.

@@ -114,10 +114,15 @@ public class VentanaGestion extends JFrame {
             @Override public boolean isCellEditable(int fila, int columna) { return false; }
         };
         this.tabla = new JTable(modelo);
+        tabla.setRowHeight(25);
+        configurarAnchosRelaciones();
         if (esModuloActividades()) {
             tabla.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
             int[] anchos = {55, 180, 200, 105, 115, 95, 95, 110, 135, 120, 110, 65, 150, 110, 90, 125, 95, 105};
             for (int indice = 0; indice < anchos.length; indice++) tabla.getColumnModel().getColumn(indice).setPreferredWidth(anchos[indice]);
+        }
+        if (List.of("reservas", "pago", "inscripcionActividad", "acompañante").contains(modulo.tabla())) {
+            tabla.removeColumn(tabla.getColumnModel().getColumn(0));
         }
 
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
@@ -189,6 +194,25 @@ public class VentanaGestion extends JFrame {
             }
         });
         cargar();
+    }
+
+    /** Ajusta las columnas clave para que los nombres y fechas se lean sin abrir cada fila. */
+    private void configurarAnchosRelaciones() {
+        String tablaModulo = modulo.tabla();
+        int[] anchos;
+        if ("inscripcionActividad".equals(tablaModulo)) {
+            anchos = new int[]{60, 190, 190, 120, 145, 110};
+        } else if ("reservas".equals(tablaModulo)) {
+            anchos = new int[]{60, 190, 160, 125, 125, 105, 110, 130, 120};
+        } else if ("acompañante".equals(tablaModulo)) {
+            anchos = new int[]{60, 190, 100, 180, 180, 80, 120, 100};
+        } else {
+            return;
+        }
+        tabla.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        for (int indice = 0; indice < Math.min(anchos.length, tabla.getColumnModel().getColumnCount()); indice++) {
+            tabla.getColumnModel().getColumn(indice).setPreferredWidth(anchos[indice]);
+        }
     }
 
     /**
@@ -300,7 +324,7 @@ public class VentanaGestion extends JFrame {
                         || (revisionSena && !List.of("estado", "observacion").contains(campo.columna()));
                 etiqueta.setEnabled(!estadoBloqueado);
                 formulario.add(etiqueta);
-                java.awt.Component componente = crearEditor(campo);
+                java.awt.Component componente = crearEditor(campo, original == null);
                 componente.setEnabled(!estadoBloqueado);
                 componentes.put(campo, componente);
                 formulario.add(componente);
@@ -441,7 +465,7 @@ public class VentanaGestion extends JFrame {
     /**
      * Crea editor a partir de los datos recibidos.
      */
-    private java.awt.Component crearEditor(Campo campo) throws Exception {
+    private java.awt.Component crearEditor(Campo campo, boolean nuevo) throws Exception {
         // Elige un control segun el tipo de campo: texto, clave, lista u opcion.
         if (campo.tipo() == Tipo.CLAVE) return new JPasswordField(20);
         if (esTextoLargo(campo)) {
@@ -459,12 +483,18 @@ public class VentanaGestion extends JFrame {
                     if (!campo.obligatorio() && esEnumActividad(campo.columna())) {
                         selector.addItem(new OpcionEnum("", "— Sin especificar —"));
                     }
-                    for (String opcion : campo.opciones()) {
+                    List<String> opciones = "rol".equals(campo.columna()) && nuevo
+                            ? List.of("ADMINISTRADOR") : campo.opciones();
+                    if ("reservas".equals(modulo.tabla()) && "estadoReserva".equals(campo.columna())) {
+                        opciones = opciones.stream().filter(opcion -> !"CANCELADA".equalsIgnoreCase(opcion)
+                                && !"CANCELADO".equalsIgnoreCase(opcion)).toList();
+                    }
+                    for (String opcion : opciones) {
                         if ("alojamientos".equals(modulo.tabla()) && "estado".equals(campo.columna())) {
                             if (esRecepcion() && "En limpieza".equals(opcion)) continue;
                             if (esLimpieza() && !List.of("En limpieza", "Disponible").contains(opcion)) continue;
                         }
-                        if ("rol".equals(campo.columna()) && "SUPERADMIN".equals(opcion)) continue;
+                        if ("rol".equals(campo.columna()) && "SUPERADMIN".equals(opcion) && !esSuperAdmin()) continue;
                         selector.addItem(esEnumActividad(campo.columna())
                                 ? new OpcionEnum(opcion, etiquetaEnumActividad(campo.columna(), opcion)) : opcion);
                     }
@@ -496,21 +526,35 @@ public class VentanaGestion extends JFrame {
                         ? valorBooleano : valor != null && ((Number) valor).intValue() != 0;
                 selector.setSelectedItem(marcado);
             } else if (campo.consultaOpciones() != null && valor != null) {
+                boolean encontrado = false;
                 for (int indice = 0; indice < selector.getItemCount(); indice++) {
                     Object elemento = selector.getItemAt(indice);
                     if (elemento instanceof Opcion opcion && opcion.id() == ((Number) valor).intValue()) {
                         selector.setSelectedIndex(indice);
+                        encontrado = true;
                         break;
                     }
                 }
+                if (!encontrado) {
+                    @SuppressWarnings("unchecked") JComboBox<Object> selectorOpciones = (JComboBox<Object>) selector;
+                    selectorOpciones.addItem(new Opcion(((Number) valor).intValue(), "ID " + valor));
+                    selector.setSelectedIndex(selector.getItemCount() - 1);
+                }
             } else if (esEnumActividad(campo.columna())) {
                 String codigo = valor == null ? "" : valor.toString();
+                boolean encontrado = false;
                 for (int indice = 0; indice < selector.getItemCount(); indice++) {
                     Object elemento = selector.getItemAt(indice);
                     if (elemento instanceof OpcionEnum opcion && opcion.valor().equals(codigo)) {
                         selector.setSelectedIndex(indice);
+                        encontrado = true;
                         break;
                     }
+                }
+                if (!encontrado && !codigo.isEmpty()) {
+                    @SuppressWarnings("unchecked") JComboBox<Object> selectorOpciones = (JComboBox<Object>) selector;
+                    selectorOpciones.addItem(new OpcionEnum(codigo, codigo));
+                    selector.setSelectedIndex(selector.getItemCount() - 1);
                 }
             } else if ("rol".equals(campo.columna()) && "SUPERADMIN".equals(valor) && esSuperAdmin()) {
                 selector.setSelectedItem("SUPERADMIN");
@@ -523,9 +567,26 @@ public class VentanaGestion extends JFrame {
                     }
                 }
                 if (opcionVisible) selector.setSelectedItem(valor.toString());
-                else selector.setSelectedIndex(-1);
+                else {
+                    @SuppressWarnings("unchecked") JComboBox<Object> selectorOpciones = (JComboBox<Object>) selector;
+                    selectorOpciones.addItem(valor.toString());
+                    selector.setSelectedItem(valor.toString());
+                }
             } else if (valor != null) {
-                selector.setSelectedItem(valor.toString());
+                String opcionActual = valor.toString();
+                boolean encontrado = false;
+                for (int indice = 0; indice < selector.getItemCount(); indice++) {
+                    if (opcionActual.equals(selector.getItemAt(indice))) {
+                        selector.setSelectedIndex(indice);
+                        encontrado = true;
+                        break;
+                    }
+                }
+                if (!encontrado) {
+                    @SuppressWarnings("unchecked") JComboBox<Object> selectorOpciones = (JComboBox<Object>) selector;
+                    selectorOpciones.addItem(opcionActual);
+                    selector.setSelectedItem(opcionActual);
+                }
             } else if (!campo.obligatorio() && selector.getItemCount() > 0
                     && selector.getItemAt(0) instanceof Opcion opcion && opcion.id() == 0) {
                 selector.setSelectedIndex(0);
@@ -595,11 +656,12 @@ public class VentanaGestion extends JFrame {
      */
     private void eliminarSeleccionado() {
         // Una reserva cambia a estado cancelada; las demas filas siguen la regla de borrado.
-        int fila = tabla.getSelectedRow();
-        if (fila < 0) {
+        int filaVista = tabla.getSelectedRow();
+        if (filaVista < 0) {
             JOptionPane.showMessageDialog(this, "Seleccioná un registro de la tabla.", "Eliminar", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
+        int fila = tabla.convertRowIndexToModel(filaVista);
         int id = (int) modelo.getValueAt(fila, 0);
         if ("usuarios".equals(modulo.tabla()) && SesionActual.get() != null
                 && id == SesionActual.get().getIdUsuario()) {
@@ -703,8 +765,7 @@ public class VentanaGestion extends JFrame {
 
     /** Indica qué roles pueden cerrar una estadía y registrar el dinero recibido. */
     private boolean puedeCobrarSaldo() {
-        if (SesionActual.get() == null) return false;
-        return List.of("SUPERADMIN", "ADMINISTRADOR", "ADMINISTRACION", "RECEPCION").contains(SesionActual.get().getRol());
+        return esSuperAdmin();
     }
 
     /**

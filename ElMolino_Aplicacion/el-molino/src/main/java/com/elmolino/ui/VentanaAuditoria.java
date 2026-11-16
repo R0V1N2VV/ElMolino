@@ -27,7 +27,7 @@ public class VentanaAuditoria extends JFrame {
 
     private final VentanaPrincipal principal;
     private final DefaultTableModel modelo = new DefaultTableModel(new String[]{
-            "Fecha y hora", "Usuario", "Rol", "Acción", "Sección", "ID afectado", "Antes", "Después"}, 0) {
+            "Fecha y hora", "Descripción", "Usuario", "Rol", "Acción", "Sección", "ID afectado", "Antes", "Después", "ID interno"}, 0) {
         /**
          * Indica si una celda de la tabla puede ser modificada por el usuario.
          */
@@ -35,6 +35,7 @@ public class VentanaAuditoria extends JFrame {
     };
     private final JTable tabla = new JTable(modelo);
     private final JLabel estado = new JLabel(" ");
+    private final JButton verMas = new JButton("Ver más");
 
     /**
      * Construye el objeto, guarda sus datos iniciales y deja sus componentes preparados para usarse.
@@ -54,6 +55,12 @@ public class VentanaAuditoria extends JFrame {
         JButton verInformacion = new JButton("Ver información");
         verInformacion.setToolTipText("Abrí los detalles completos del cambio seleccionado");
         verInformacion.addActionListener(evento -> mostrarInformacion());
+        JButton volver = new JButton("Volver este cambio");
+        volver.setToolTipText("Revierte una edición si el registro no cambió después; altas, bajas y cancelaciones no se revierten aquí");
+        volver.addActionListener(evento -> revertirSeleccionado());
+        verMas.setVisible(false);
+        verMas.addActionListener(evento -> cargar(false));
+        tabla.removeColumn(tabla.getColumnModel().getColumn(9));
         tabla.addMouseListener(new MouseAdapter() {
             /**
              * Ejecuta la lógica de “mouse clicked” en VentanaAuditoria.java.
@@ -69,8 +76,10 @@ public class VentanaAuditoria extends JFrame {
         acciones.add(salir);
         acciones.add(actualizar);
         acciones.add(verInformacion);
+        acciones.add(volver);
+        acciones.add(verMas);
         JPanel barra = new JPanel(new BorderLayout());
-        barra.add(new JLabel("Historial de cambios · solo lectura"), BorderLayout.NORTH);
+        barra.add(new JLabel("Historial de cambios"), BorderLayout.NORTH);
         barra.add(acciones, BorderLayout.WEST);
         barra.add(FiltroTabla.crear(tabla), BorderLayout.EAST);
 
@@ -89,6 +98,35 @@ public class VentanaAuditoria extends JFrame {
         cargar();
     }
 
+    /** Revierte el cambio seleccionado y conserva la reversión como un nuevo movimiento auditado. */
+    private void revertirSeleccionado() {
+        int filaVista = tabla.getSelectedRow();
+        if (filaVista < 0) {
+            JOptionPane.showMessageDialog(this, "Seleccioná un cambio de la tabla.", "Volver cambio", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        int fila = tabla.convertRowIndexToModel(filaVista);
+        long idAuditoria = ((Number) modelo.getValueAt(fila, 9)).longValue();
+        String accion = textoCelda(fila, 4);
+        String seccion = textoCelda(fila, 5);
+        int confirmacion = JOptionPane.showConfirmDialog(this,
+                "Se intentará volver " + accion.toLowerCase() + " en «" + seccion + "». La reversión se registra en auditoría.",
+                "Confirmar reversión", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+        if (confirmacion != JOptionPane.YES_OPTION) return;
+        estado.setText("Revirtiendo cambio...");
+        new SwingWorker<Void, Void>() {
+            @Override protected Void doInBackground() throws Exception { AuditoriaDAO.revertir(idAuditoria); return null; }
+            @Override protected void done() {
+                try { get(); JOptionPane.showMessageDialog(VentanaAuditoria.this, "Se restauró el estado anterior.", "Cambio revertido", JOptionPane.INFORMATION_MESSAGE); cargar(); }
+                catch (Exception error) {
+                    Throwable causa = error.getCause() == null ? error : error.getCause();
+                    JOptionPane.showMessageDialog(VentanaAuditoria.this, causa.getMessage(), "No se pudo revertir", JOptionPane.WARNING_MESSAGE);
+                    estado.setText("No se revirtió el cambio");
+                }
+            }
+        }.execute();
+    }
+
     /**
      * Prepara y muestra informacion.
      */
@@ -101,13 +139,14 @@ public class VentanaAuditoria extends JFrame {
         }
         int fila = tabla.convertRowIndexToModel(filaVista);
         String fecha = textoCelda(fila, 0);
-        String usuario = textoCelda(fila, 1);
-        String rol = textoCelda(fila, 2);
-        String accion = textoCelda(fila, 3);
-        String seccion = textoCelda(fila, 4);
-        String identificador = textoCelda(fila, 5);
-        String anterior = formatearJson(textoCelda(fila, 6));
-        String nuevo = formatearJson(textoCelda(fila, 7));
+        String descripcion = textoCelda(fila, 1);
+        String usuario = textoCelda(fila, 2);
+        String rol = textoCelda(fila, 3);
+        String accion = textoCelda(fila, 4);
+        String seccion = textoCelda(fila, 5);
+        String identificador = textoCelda(fila, 6);
+        String anterior = formatearJson(textoCelda(fila, 7));
+        String nuevo = formatearJson(textoCelda(fila, 8));
 
         JDialog dialogo = new JDialog(this, "Detalle del cambio", true);
         dialogo.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
@@ -119,7 +158,7 @@ public class VentanaAuditoria extends JFrame {
         datos.add(new JLabel("Acción: " + accion));
         datos.add(new JLabel("Sección: " + seccion));
         datos.add(new JLabel("ID afectado: " + identificador));
-        datos.add(new JLabel(" "));
+        datos.add(new JLabel("Descripción: " + descripcion));
 
         JTabbedPane pestañas = new JTabbedPane();
         pestañas.addTab("Antes", crearPanelTexto(anterior, "No hay datos anteriores para este registro."));
@@ -208,30 +247,38 @@ public class VentanaAuditoria extends JFrame {
     /**
      * Carga los datos que necesita esta parte del sistema.
      */
-    private void cargar() {
+    private void cargar() { cargar(true); }
+
+    private void cargar(boolean reiniciar) {
+        int offset = reiniciar ? 0 : modelo.getRowCount();
         estado.setText("Cargando historial...");
-        new SwingWorker<List<Object[]>, Void>() {
+        verMas.setEnabled(false);
+        new SwingWorker<AuditoriaDAO.Pagina, Void>() {
             /**
              * Ejecuta la tarea pesada en segundo plano para que la interfaz no se congele.
              */
-            @Override protected List<Object[]> doInBackground() throws Exception {
-                return AuditoriaDAO.listar();
+            @Override protected AuditoriaDAO.Pagina doInBackground() throws Exception {
+                return AuditoriaDAO.listar(offset);
             }
             /**
              * Recibe en la interfaz el resultado de la tarea en segundo plano y actualiza la pantalla.
              */
             @Override protected void done() {
                 try {
-                    List<Object[]> filas = get();
-                    modelo.setRowCount(0);
-                    for (Object[] fila : filas) modelo.addRow(fila);
-                    estado.setText(filas.size() + " cambios registrados");
+                    AuditoriaDAO.Pagina pagina = get();
+                    if (reiniciar) modelo.setRowCount(0);
+                    for (Object[] fila : pagina.filas()) modelo.addRow(fila);
+                    estado.setText(modelo.getRowCount() + " de " + pagina.total() + " cambios registrados");
+                    verMas.setVisible(modelo.getRowCount() < pagina.total());
+                    verMas.setEnabled(true);
                 } catch (InterruptedException excepcion) {
                     Thread.currentThread().interrupt();
                     estado.setText("Se interrumpió la consulta");
+                    verMas.setEnabled(true);
                 } catch (ExecutionException excepcion) {
                     Throwable causa = excepcion.getCause() == null ? excepcion : excepcion.getCause();
                     estado.setText("No se pudo cargar el historial");
+                    verMas.setEnabled(true);
                     JOptionPane.showMessageDialog(VentanaAuditoria.this,
                             "No se pudo consultar el registro de auditoría:\n" + causa.getMessage(),
                             "Error", JOptionPane.ERROR_MESSAGE);

@@ -159,7 +159,7 @@ final class Registro
         }
         try {
             $this->conexion->beginTransaction();
-            $this->conexion->prepare('INSERT INTO cliente (dni, nombre, apellido, telefono, email, direccion) VALUES (:dni, :nombre, :apellido, :telefono, :email, :direccion)')->execute(['dni' => $pendiente['dni'], 'nombre' => $pendiente['nombre'], 'apellido' => $pendiente['apellido'], 'telefono' => $pendiente['telefono'], 'email' => $pendiente['email'], 'direccion' => $pendiente['direccion']]);
+            $this->conexion->prepare('INSERT INTO cliente (dni, nombre, apellido, telefono, email, direccion, password_hash) VALUES (:dni, :nombre, :apellido, :telefono, :email, :direccion, :password_hash)')->execute(['dni' => $pendiente['dni'], 'nombre' => $pendiente['nombre'], 'apellido' => $pendiente['apellido'], 'telefono' => $pendiente['telefono'], 'email' => $pendiente['email'], 'direccion' => $pendiente['direccion'], 'password_hash' => $pendiente['password_hash']]);
             $idCliente = (int) $this->conexion->lastInsertId();
             $acompanantes = isset($pendiente['acompanantes_json'])
                 ? json_decode((string) $pendiente['acompanantes_json'], true)
@@ -177,12 +177,10 @@ final class Registro
                     'parentesco' => (string) ($acompanante['parentesco'] ?? ''),
                 ]);
             }
-            $this->conexion->prepare('INSERT INTO usuarios (nombre, apellido, email, password_hash, rol) VALUES (:nombre, :apellido, :email, :password_hash, :rol)')->execute(['nombre' => $pendiente['nombre'], 'apellido' => $pendiente['apellido'], 'email' => $pendiente['email'], 'password_hash' => $pendiente['password_hash'], 'rol' => 'cliente']);
-            $idUsuario = (int) $this->conexion->lastInsertId();
             $this->conexion->prepare('DELETE FROM registro_pendiente WHERE idRegistroPendiente = :id')->execute(['id' => $id]);
             $this->conexion->commit();
             Sesion::eliminar('registro_acompanantes_' . $id);
-            return ['errores' => [], 'usuario' => ['id_usuario' => $idUsuario, 'id_cliente' => $idCliente, 'nombre' => $pendiente['nombre'], 'email' => $pendiente['email'], 'rol' => 'cliente']];
+            return ['errores' => [], 'usuario' => ['id_usuario' => null, 'id_cliente' => $idCliente, 'nombre' => $pendiente['nombre'], 'email' => $pendiente['email'], 'rol' => 'cliente']];
         } catch (PDOException) {
             if ($this->conexion->inTransaction()) $this->conexion->rollBack();
             return ['errores' => ['No se pudo activar la cuenta. Es posible que esos datos ya estén registrados.'], 'usuario' => null];

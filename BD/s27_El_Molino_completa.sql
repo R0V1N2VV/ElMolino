@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS `cliente` (
   `telefono` VARCHAR(20) NOT NULL,
   `email` VARCHAR(100) NOT NULL,
   `direccion` VARCHAR(150) NOT NULL,
+  `password_hash` VARCHAR(255) DEFAULT NULL,
   PRIMARY KEY (`idCliente`),
   UNIQUE KEY `uk_cliente_dni` (`dni`),
   UNIQUE KEY `uk_cliente_telefono` (`telefono`),

@@ -13,8 +13,10 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Time;
+import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -24,6 +26,8 @@ import java.util.Map;
 
 /** Reune las consultas y reglas para los modulos de gestion. */
 public final class GestionDAO {
+
+    public enum Operacion { CREAR, EDITAR, ELIMINAR }
 
     // Indica que tipo de dato usa un campo y que editor debe mostrar la interfaz.
     public enum Tipo { TEXTO, ENTERO, DECIMAL, FECHA, HORA, BOOLEANO, OPCION, CLAVE }
@@ -131,11 +135,6 @@ public final class GestionDAO {
             texto("descripcion", "Descripción", false),
             opcion("estado", "Estado", List.of("Disponible", "En limpieza", "Fuera de servicio", "Reservado"))));
 
-    public static final Modulo ESPACIOS = new Modulo("Espacios recreativos", "EspacioRecreativo", "idEspacio", List.of(
-            texto("nombre", "Nombre", true), texto("descripcion", "Descripción", true),
-            texto("ubicacion", "Ubicación", true), hora("horarioApertura", "Abre (HH:mm)"),
-            hora("horarioCierre", "Cierra (HH:mm)"), booleano("requiereReserva", "Requiere reserva")));
-
     public static final Modulo ACTIVIDADES = new Modulo("Actividades", "Actividad", "idActividad", List.of(
             texto("slug", "Identificador web (sin espacios)", true), texto("nombre", "Nombre", true),
             relacion("idCategoria", "Categoría", "SELECT idCategoria, nombre FROM `CategoriaActividad` WHERE activa = 1 ORDER BY nombre"),
@@ -168,7 +167,8 @@ public final class GestionDAO {
             opcion("estado", "Estado", List.of("ACTIVA", "CANCELADA"))));
 
     public static final Modulo PAGOS = new Modulo("Pagos", "pago", "idPago", List.of(
-            relacion("idReserva", "Reserva", "SELECT idReserva, CONCAT('Reserva ', idReserva, ' - cliente ', idCliente) FROM `reservas` ORDER BY idReserva DESC"),
+            relacion("idReserva", "Reserva", "SELECT r.idReserva, CONCAT('Reserva ', r.idReserva, ' - ', c.apellido, ', ', c.nombre) "
+                    + "FROM reservas r JOIN cliente c ON c.idCliente=r.idCliente ORDER BY r.idReserva DESC"),
             decimal("montoTotal", "Monto"), opcion("metodoPago", "Medio de pago", List.of("Efectivo", "Transferencia", "Tarjeta", "Otro")),
             opcion("tipoPago", "Concepto", List.of("SENA", "SALDO", "ACTIVIDAD", "REEMBOLSO")),
             opcion("estado", "Estado", List.of("PENDIENTE", "CONFIRMADO", "ANULADO")),
@@ -206,6 +206,30 @@ public final class GestionDAO {
         if (SesionActual.get() == null || !tieneAccesoTabla(modulo.tabla(), SesionActual.get().getRol())) {
             throw new SQLException("Tu rol no tiene acceso a la sección " + modulo.titulo() + ".");
         }
+    }
+
+    /** Valida las escrituras en la capa de datos, aunque se invoque fuera de la interfaz. */
+    public static void validarPermisoEscritura(String tabla, String seccion, Operacion operacion) throws SQLException {
+        String rol = SesionActual.get() == null ? "" : SesionActual.get().getRol();
+        boolean permitido = switch (operacion) {
+            case CREAR -> switch (rol) {
+                case "SUPERADMIN" -> tieneAccesoTabla(tabla, rol) && !"cliente".equals(tabla);
+                case "ADMINISTRADOR" -> "usuarios".equals(tabla);
+                case "COORDINADOR" -> "inscripcionActividad".equals(tabla);
+                case "ADMINISTRACION" -> "reservaAcompañante".equals(tabla);
+                default -> false;
+            };
+            case EDITAR -> tieneAccesoTabla(tabla, rol)
+                    && (!"pago".equals(tabla) || "SUPERADMIN".equals(rol))
+                    && (!"usuarios".equals(tabla) || List.of("ADMINISTRADOR", "SUPERADMIN").contains(rol))
+                    && (!"inscripcionActividad".equals(tabla) || "SUPERADMIN".equals(rol));
+            case ELIMINAR -> tieneAccesoTabla(tabla, rol)
+                    && (!List.of("pago", "inscripcionActividad").contains(tabla) || "SUPERADMIN".equals(rol))
+                    && (!"usuarios".equals(tabla) || List.of("ADMINISTRADOR", "SUPERADMIN").contains(rol))
+                    && (!"alojamientos".equals(tabla) || !List.of("RECEPCION", "LIMPIEZA").contains(rol));
+        };
+        if (!permitido) throw new SQLException("Tu rol no puede " + operacion.name().toLowerCase(Locale.ROOT)
+                + " registros de " + seccion + ".");
     }
 
     /** Cuenta las transferencias informadas que todavía requieren revisión humana. */
@@ -248,12 +272,12 @@ public final class GestionDAO {
         // Esta lista tambien protege las operaciones que llegan directo al DAO.
         return switch (rol) {
             case "SUPERADMIN" -> List.of("cliente", "usuarios", "reservas", "pago", "reembolso", "alojamientos",
-                    "acompañante", "reservaAcompañante", "EspacioRecreativo", "Actividad", "inscripcionActividad").contains(tabla);
+                    "acompañante", "reservaAcompañante", "Actividad", "inscripcionActividad").contains(tabla);
             case "ADMINISTRADOR" -> List.of("cliente", "usuarios", "reservas", "pago", "reembolso").contains(tabla);
             case "GERENCIA" -> List.of("cliente", "reservas", "pago", "reembolso", "alojamientos").contains(tabla);
-            case "RECEPCION" -> List.of("cliente", "alojamientos", "pago", "reembolso", "EspacioRecreativo").contains(tabla);
+            case "RECEPCION" -> List.of("cliente", "alojamientos", "pago", "reembolso").contains(tabla);
             case "ADMINISTRACION" -> List.of("cliente", "acompañante", "alojamientos", "reservas", "pago", "reembolso", "reservaAcompañante").contains(tabla);
-            case "COORDINADOR" -> List.of("EspacioRecreativo", "Actividad", "inscripcionActividad").contains(tabla);
+            case "COORDINADOR" -> List.of("Actividad", "inscripcionActividad").contains(tabla);
             case "LIMPIEZA" -> "alojamientos".equals(tabla);
             default -> false;
         };
@@ -303,6 +327,7 @@ public final class GestionDAO {
     /** Registra el cierre: un movimiento de saldo y, si corresponde, otro de actividades. */
     public static void registrarCobroFinal(int idReserva, String metodoPago, String comprobante) throws SQLException {
         validarAcceso(PAGOS);
+        validarPermisoEscritura("pago", "Pagos", Operacion.CREAR);
         if (!List.of("Efectivo", "Transferencia", "Tarjeta", "Otro").contains(metodoPago)) {
             throw new IllegalArgumentException("Elegí un medio de pago válido.");
         }
@@ -353,24 +378,68 @@ public final class GestionDAO {
         validarAcceso(modulo);
         if ("Actividad".equals(modulo.tabla())) return listarActividades();
         List<Campo> visibles = camposVisibles(modulo);
-        String columnas = visibles.stream().map(campo -> q(campo.columna())).reduce((acumulado, siguiente) -> acumulado + ", " + siguiente).orElse("");
+        String columnas = visibles.stream().map(campo -> expresionVisible(modulo, campo))
+                .reduce((acumulado, siguiente) -> acumulado + ", " + siguiente).orElse("");
         String consultaSql = "SELECT " + q(modulo.id()) + (columnas.isEmpty() ? "" : ", " + columnas)
                 + " FROM " + q(modulo.tabla());
+        if ("usuarios".equals(modulo.tabla())) {
+            consultaSql += " WHERE UPPER(rol) IN (" + String.join(",", java.util.Collections.nCopies(UsuarioDAO.ROLES_EMPLEADO.size(), "?")) + ")";
+        }
         consultaSql += " ORDER BY " + q(modulo.id()) + " DESC";
         List<Object[]> filas = new ArrayList<>();
         try (Connection conexion = Conexion.obtener();
-             PreparedStatement sentencia = conexion.prepareStatement(consultaSql);
-             ResultSet resultados = sentencia.executeQuery()) {
+             PreparedStatement sentencia = conexion.prepareStatement(consultaSql)) {
+            if ("usuarios".equals(modulo.tabla())) {
+                int parametro = 1;
+                for (String rol : UsuarioDAO.ROLES_EMPLEADO) sentencia.setString(parametro++, rol);
+            }
+            try (ResultSet resultados = sentencia.executeQuery()) {
             while (resultados.next()) {
                 Object[] fila = new Object[visibles.size() + 1];
                 fila[0] = resultados.getInt(1);
                 for (int indice = 0; indice < visibles.size(); indice++) {
-                    fila[indice + 1] = resultados.getObject(indice + 2);
+                    Campo campo = visibles.get(indice);
+                    Object valor = campo.tipo() == Tipo.BOOLEANO
+                            ? resultados.getBoolean(indice + 2) : resultados.getObject(indice + 2);
+                    fila[indice + 1] = formatearValor(campo, valor);
                 }
                 filas.add(fila);
             }
+            }
         }
         return filas;
+    }
+
+    /** Muestra nombres legibles en lugar de claves foráneas en los listados de gestión. */
+    private static String expresionVisible(Modulo modulo, Campo campo) {
+        if ("idCliente".equals(campo.columna())) {
+            return "(SELECT CONCAT(c.apellido, ', ', c.nombre) FROM cliente c WHERE c.idCliente = "
+                    + q(modulo.tabla()) + ".idCliente) AS " + q(campo.columna());
+        }
+        if ("inscripcionActividad".equals(modulo.tabla()) && "idActividad".equals(campo.columna())) {
+            return "(SELECT a.nombre FROM Actividad a WHERE a.idActividad = inscripcionActividad.idActividad) AS idActividad";
+        }
+        if ("reservas".equals(modulo.tabla()) && "idAlojamiento".equals(campo.columna())) {
+            return "(SELECT CONCAT(a.numero, ' - ', a.tipo) FROM alojamientos a WHERE a.idAlojamiento=reservas.idAlojamiento) AS idAlojamiento";
+        }
+        if ("pago".equals(modulo.tabla()) && "idReserva".equals(campo.columna())) {
+            return "(SELECT CONCAT('Reserva ', r.idReserva, ' - ', c.apellido, ', ', c.nombre) "
+                    + "FROM reservas r JOIN cliente c ON c.idCliente=r.idCliente WHERE r.idReserva=pago.idReserva) AS idReserva";
+        }
+        return q(campo.columna());
+    }
+
+    /** Da formato de lectura a fechas, booleanos y valores monetarios sin alterar el dato persistido. */
+    private static Object formatearValor(Campo campo, Object valor) {
+        if (valor == null) return "";
+        if (campo.tipo() == Tipo.FECHA && valor instanceof Date fecha) {
+            return fecha.toLocalDate().format(DateTimeFormatter.ofPattern("dd/MM/yyyy", Locale.forLanguageTag("es-AR")));
+        }
+        if (campo.tipo() == Tipo.BOOLEANO) return Boolean.TRUE.equals(valor) ? "Sí" : "No";
+        if (campo.tipo() == Tipo.DECIMAL && valor instanceof Number numero) {
+            return NumberFormat.getCurrencyInstance(Locale.forLanguageTag("es-AR")).format(numero);
+        }
+        return valor;
     }
 
     /**
@@ -417,7 +486,9 @@ public final class GestionDAO {
                         resultados.getString(5), etiquetaMomentoDia(resultados.getString(6)), resultados.getString(7), resultados.getString(8),
                         resultados.getString(9), etiquetaEdad(resultados.getString(10)), etiquetaModalidad(resultados.getString(11)),
                         resultados.getBoolean(12) ? "Sí" : "No", resultados.getString(13) == null ? "Sin asignar" : resultados.getString(13),
-                        inscriptos + " / " + cupoMax, resultados.getInt(16), resultados.getString(17), resultados.getBigDecimal(18), resultados.getString(19)});
+                        inscriptos + " / " + cupoMax, resultados.getInt(16), resultados.getString(17),
+                        NumberFormat.getCurrencyInstance(Locale.forLanguageTag("es-AR")).format(resultados.getBigDecimal(18)),
+                        resultados.getString(19)});
             }
         }
         return filas;
@@ -493,6 +564,7 @@ public final class GestionDAO {
     public static void guardar(Modulo modulo, Integer id, Map<String, String> valores) throws SQLException {
         // Revisa permisos, convierte datos y guarda una fila nueva o sus cambios.
         validarAcceso(modulo);
+        validarPermisoEscritura(modulo.tabla(), modulo.titulo(), id == null ? Operacion.CREAR : Operacion.EDITAR);
         boolean rolLimpieza = esLimpieza();
         boolean rolRecepcion = esRecepcion();
         boolean gestionAlojamientos = "alojamientos".equals(modulo.tabla());
@@ -506,6 +578,7 @@ public final class GestionDAO {
         try (Connection conexion = Conexion.obtener()) {
             conexion.setAutoCommit(false);
             try {
+                if ("usuarios".equals(modulo.tabla()) && id != null) validarCuentaEmpleado(conexion, id);
                 Map<String, Object> datos = new LinkedHashMap<>();
                 for (Campo campo : modulo.campos()) {
                     if (rolLimpieza && !"estado".equals(campo.columna())) continue;
@@ -618,6 +691,10 @@ public final class GestionDAO {
     public static void eliminar(Modulo modulo, int id) throws SQLException {
         // Verifica permisos y relaciones antes de borrar el registro.
         validarAcceso(modulo);
+        validarPermisoEscritura(modulo.tabla(), modulo.titulo(), Operacion.ELIMINAR);
+        if ("usuarios".equals(modulo.tabla())) {
+            try (Connection conexion = Conexion.obtener()) { validarCuentaEmpleado(conexion, id); }
+        }
         if ("inscripcionActividad".equals(modulo.tabla())) {
             cancelarInscripcionActividad(id);
             return;
@@ -680,12 +757,26 @@ public final class GestionDAO {
         }
     }
 
+    /** Impide editar o eliminar cuentas web ajenas al conjunto de roles del personal. */
+    private static void validarCuentaEmpleado(Connection conexion, int idUsuario) throws SQLException {
+        try (PreparedStatement sentencia = conexion.prepareStatement("SELECT rol FROM usuarios WHERE idUsuario=?")) {
+            sentencia.setInt(1, idUsuario);
+            try (ResultSet resultados = sentencia.executeQuery()) {
+                if (!resultados.next() || resultados.getString(1) == null
+                        || !UsuarioDAO.ROLES_EMPLEADO.contains(resultados.getString(1).toUpperCase(Locale.ROOT))) {
+                    throw new SQLException("Solo se pueden editar o eliminar cuentas del personal de la aplicación.");
+                }
+            }
+        }
+    }
+
     /**
      * Cancela reserva de manera controlada.
      */
     public static void cancelarReserva(int idReserva) throws SQLException {
         // Conserva la reserva y cambia su estado para mantener el historial.
         validarAcceso(RESERVAS);
+        validarPermisoEscritura("reservas", RESERVAS.titulo(), Operacion.ELIMINAR);
         try (Connection conexion = Conexion.obtener()) {
             conexion.setAutoCommit(false);
             try {
@@ -779,7 +870,7 @@ public final class GestionDAO {
     }
 
     /** Revisa las actividades después de activar o desactivar un acompañante. */
-    private static void sincronizarActividadesDeAcompanante(Connection conexion, int idAcompanante) throws SQLException {
+    static void sincronizarActividadesDeAcompanante(Connection conexion, int idAcompanante) throws SQLException {
         try (PreparedStatement sentencia = conexion.prepareStatement(
                 "SELECT idCliente FROM `acompañante` WHERE idAcompañante=?")) {
             sentencia.setInt(1, idAcompanante);
@@ -900,6 +991,7 @@ public final class GestionDAO {
 
     /** Cancela una inscripción conservando el registro y anulando su cargo pendiente. */
     private static void cancelarInscripcionActividad(int idInscripcion) throws SQLException {
+        validarPermisoEscritura("inscripcionActividad", ACTIVIDAD_INSCRIPTOS.titulo(), Operacion.ELIMINAR);
         try (Connection conexion = Conexion.obtener()) {
             conexion.setAutoCommit(false);
             try {
@@ -939,7 +1031,7 @@ public final class GestionDAO {
     }
 
     /** Guarda el valor histórico que se cobrará por una actividad paga. */
-    private static void sincronizarCargoActividad(Connection conexion, int idInscripcion) throws SQLException {
+    static void sincronizarCargoActividad(Connection conexion, int idInscripcion) throws SQLException {
         int idCliente;
         int idActividad;
         Integer idPedido;
@@ -1063,6 +1155,13 @@ public final class GestionDAO {
     private static void validarCambioEstadoAlojamiento(Integer id, String nuevoEstado,
                                                         boolean rolLimpieza) throws SQLException {
         if (id == null) throw new SQLException("No se encontró el alojamiento seleccionado.");
+        try (Connection conexion = Conexion.obtener(); PreparedStatement sentencia = conexion.prepareStatement(
+                "SELECT estado FROM alojamientos WHERE idAlojamiento=?")) {
+            sentencia.setInt(1, id);
+            try (ResultSet resultados = sentencia.executeQuery()) {
+                if (resultados.next() && nuevoEstado.equals(resultados.getString(1))) return;
+            }
+        }
         List<String> estadosPermitidos = rolLimpieza
                 ? List.of("En limpieza", "Disponible")
                 : List.of("Disponible", "Reservado", "Fuera de servicio");
@@ -1231,6 +1330,9 @@ public final class GestionDAO {
             throw new SQLException("Solo un administrador puede gestionar usuarios.");
         }
         Object rolNuevo = datos.get("rol");
+        if (id == null && !"ADMINISTRADOR".equals(rolNuevo)) {
+            throw new SQLException("Desde la aplicación solo se pueden crear usuarios con rol ADMINISTRADOR.");
+        }
         if ("SUPERADMIN".equals(rolNuevo)) {
             boolean yaEsSuperAdmin = false;
             if (id != null) {
@@ -1323,6 +1425,17 @@ public final class GestionDAO {
                 if (resultados.next() && resultados.getInt(1) > 0) throw new IllegalArgumentException("Ese alojamiento ya tiene una reserva para parte de esas fechas.");
             }
         }
+        if (id != null) {
+            try (PreparedStatement sentencia = conexion.prepareStatement(
+                    "SELECT COUNT(*) FROM `reservaAcompañante` WHERE idReserva = ?")) {
+                sentencia.setInt(1, id);
+                try (ResultSet resultados = sentencia.executeQuery()) {
+                    if (resultados.next() && personas < resultados.getInt(1) + 1) {
+                        throw new IllegalArgumentException("La cantidad de personas no puede ser menor que el titular y sus acompañantes ya asociados.");
+                    }
+                }
+            }
+        }
         BigDecimal total = (BigDecimal) datos.get("precioTotal");
         if (total.signum() < 0) throw new IllegalArgumentException("El precio total no puede ser negativo.");
         if (total.signum() == 0) {
@@ -1353,6 +1466,16 @@ public final class GestionDAO {
             }
         }
         validarFechaActividad(fechaActividad, diasHabilitados);
+        try (PreparedStatement sentencia = conexion.prepareStatement(
+                "SELECT 1 FROM inscripcionActividad WHERE idCliente=? AND idActividad=? "
+                        + "AND fechaActividad=? AND UPPER(estado)='ACTIVA' LIMIT 1")) {
+            sentencia.setInt(1, (Integer) datos.get("idCliente"));
+            sentencia.setInt(2, (Integer) datos.get("idActividad"));
+            sentencia.setDate(3, Date.valueOf(fechaActividad));
+            try (ResultSet resultados = sentencia.executeQuery()) {
+                if (resultados.next()) throw new IllegalArgumentException("El cliente ya tiene una inscripción activa para esta actividad y fecha.");
+            }
+        }
         try (PreparedStatement sentencia = conexion.prepareStatement(
                 "SELECT 1 FROM reservas r "
                         + "JOIN detalle_pedido_alojamiento d ON d.idReserva=r.idReserva "

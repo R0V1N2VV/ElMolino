@@ -29,15 +29,17 @@ Para habilitar el primer SuperAdmin, crea desde la aplicación una cuenta con ro
 ## Módulos disponibles
 
 - Clientes: consulta y edición. Las altas se realizan desde la página web.
-- Alojamientos, espacios y acompañantes: consulta, edición y eliminación de registros existentes.
-- Reservas: consulta, edición y cancelación; valida fechas, capacidad y cruces, y conserva el registro cancelado.
+- Alojamientos y acompañantes: consulta, edición y eliminación de registros existentes.
+- Reservas: consulta, edición y cancelación; valida fechas, capacidad, acompañantes asociados y cruces, y conserva el registro cancelado.
 - Acompañantes por reserva: edición o eliminación de una asociación existente.
 - Actividades: consulta y edición desde la aplicación. La grilla muestra datos operativos y la ocupación de la fecha con más participantes; el cálculo incluye titulares y acompañantes. Las altas se realizan desde la página web.
-- Inscripciones: consulta y alta desde la aplicación; solicita la fecha y comprueba el cupo correspondiente a ese día.
+- Inscripciones: consulta y alta desde la aplicación; muestra clientes y actividades por nombre, comprueba el cupo por fecha y evita duplicar inscripciones activas del mismo cliente.
 - Pagos: solo consulta para los roles habituales; SuperAdmin puede gestionarlos.
-- Usuarios: gestión y asignación de roles por el administrador.
+- Usuarios: gestión por el administrador. Desde la aplicación solo se pueden crear cuentas con rol `ADMINISTRADOR`; `SUPERADMIN` no se puede crear ni asignar desde el formulario.
 
-El menú muestra los módulos según el rol. `SUPERADMIN` puede acceder a todos los módulos e informes, pero no puede asignar el rol `SUPERADMIN` desde la aplicación. `RECEPCION` puede cambiar el estado de un alojamiento entre `Disponible`, `Reservado` y `Mantenimiento`. `LIMPIEZA` puede ver todos los tipos de alojamiento y cambiar entre `Limpieza` y `Disponible`; no puede modificar alojamientos que estén `Reservados` o en `Mantenimiento`. Las pantallas de gestión tienen **Volver al menú**. Las relaciones entre módulos usan listas para elegir clientes, alojamientos, espacios, actividades y usuarios existentes.
+El menú muestra los módulos según el rol y ya no incluye Espacios Recreativos. `SUPERADMIN` puede acceder a los informes y a todos los módulos, pero no puede crear ni asignar el rol `SUPERADMIN` desde la aplicación. `RECEPCION` puede cambiar el estado de un alojamiento entre `Disponible`, `Reservado` y `Fuera de servicio`. `LIMPIEZA` puede ver todos los tipos de alojamiento y cambiar entre `En limpieza` y `Disponible`; no puede modificar alojamientos que estén `Reservados` o en `Fuera de servicio`. Las pantallas de gestión tienen **Volver al menú**. Las relaciones muestran nombres legibles de clientes, actividades y alojamientos.
+
+En **Registro de auditoría**, el botón **Volver este cambio** puede revertir ediciones de clientes, alojamientos, actividades, inscripciones, acompañantes y reservas, siempre que el registro no haya cambiado después. Las altas, eliminaciones y cancelaciones requieren operaciones específicas y no se revierten desde ese botón.
 
 El proyecto debe usar las tablas del esquema MySQL entregado para El Molino. No vuelvas a importar ni ejecutar el volcado completo sobre una base que ya contiene información.
 

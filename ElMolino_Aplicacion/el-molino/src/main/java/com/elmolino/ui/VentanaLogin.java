@@ -8,7 +8,6 @@ import com.elmolino.util.SesionActual;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
-import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -206,7 +205,9 @@ public class VentanaLogin extends JFrame {
             protected Usuario doInBackground() throws Exception {
                 if (!LimiteIntentosLogin.tiempoRestante(correo).isZero()) return null;
                 Usuario usuario = accesoDatosUsuario.buscarPorEmail(correo);
-                if (usuario != null && SeguridadPassword.verificar(
+                if (usuario != null && usuario.getRol() != null
+                        && UsuarioDAO.ROLES_EMPLEADO.contains(usuario.getRol().toUpperCase(java.util.Locale.ROOT))
+                        && SeguridadPassword.verificar(
                         contrasena.toCharArray(), usuario.getPasswordHash())) {
                     if (SeguridadPassword.necesitaMigracion(usuario.getPasswordHash())) {
                         accesoDatosUsuario.actualizarPasswordHash(usuario.getIdUsuario(),
@@ -253,133 +254,4 @@ public class VentanaLogin extends JFrame {
     /**
      * Prepara y muestra registro.
      */
-    private void mostrarRegistro() {
-        // El formulario registra una cuenta nueva con el rol inicial definido por el DAO.
-        JDialog dialogo = new JDialog(this, "Crear cuenta", true);
-        dialogo.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
-        dialogo.setSize(430, 380);
-        dialogo.setLocationRelativeTo(this);
-
-        JTextField nombre = new JTextField(18);
-        JTextField apellido = new JTextField(18);
-        JTextField correo = new JTextField(18);
-        JPasswordField contrasena = new JPasswordField(18);
-        JPasswordField confirmar = new JPasswordField(18);
-        JLabel mensaje = new JLabel("Las cuentas nuevas comienzan con rol Recepción.");
-        JButton crear = new JButton("Registrarse");
-        JButton cancelar = new JButton("Cancelar");
-
-        JPanel formulario = new JPanel(new GridBagLayout());
-        formulario.setBorder(BorderFactory.createEmptyBorder(18, 22, 18, 22));
-        GridBagConstraints restricciones = new GridBagConstraints();
-        restricciones.insets = new Insets(6, 6, 6, 6);
-        restricciones.fill = GridBagConstraints.HORIZONTAL;
-        restricciones.gridx = 0;
-        restricciones.gridy = 0;
-        formulario.add(new JLabel("Nombre:"), restricciones);
-        restricciones.gridx = 1;
-        formulario.add(nombre, restricciones);
-        restricciones.gridx = 0;
-        restricciones.gridy++;
-        formulario.add(new JLabel("Apellido:"), restricciones);
-        restricciones.gridx = 1;
-        formulario.add(apellido, restricciones);
-        restricciones.gridx = 0;
-        restricciones.gridy++;
-        formulario.add(new JLabel("Email:"), restricciones);
-        restricciones.gridx = 1;
-        formulario.add(correo, restricciones);
-        restricciones.gridx = 0;
-        restricciones.gridy++;
-        formulario.add(new JLabel("Contraseña:"), restricciones);
-        restricciones.gridx = 1;
-        formulario.add(contrasena, restricciones);
-        restricciones.gridx = 0;
-        restricciones.gridy++;
-        formulario.add(new JLabel("Repetir contraseña:"), restricciones);
-        restricciones.gridx = 1;
-        formulario.add(confirmar, restricciones);
-        restricciones.gridx = 0;
-        restricciones.gridy++;
-        restricciones.gridwidth = 2;
-        formulario.add(mensaje, restricciones);
-
-        JPanel acciones = new JPanel();
-        acciones.add(crear);
-        acciones.add(cancelar);
-        restricciones.gridy++;
-        formulario.add(acciones, restricciones);
-        dialogo.setContentPane(formulario);
-
-        cancelar.addActionListener(evento -> dialogo.dispose());
-        crear.addActionListener(evento -> {
-            String nombreValor = nombre.getText().trim();
-            String apellidoValor = apellido.getText().trim();
-            String correoValor = correo.getText().trim().toLowerCase(java.util.Locale.ROOT);
-            char[] clave = contrasena.getPassword();
-            char[] claveConfirmada = confirmar.getPassword();
-
-            if (nombreValor.isEmpty() || apellidoValor.isEmpty()) {
-                mensaje.setText("Completá tu nombre y apellido.");
-                return;
-            }
-            if (!correoValor.matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")) {
-                mensaje.setText("Ingresá un email válido.");
-                return;
-            }
-            if (clave.length < 8) {
-                mensaje.setText("La contraseña debe tener al menos 8 caracteres.");
-                return;
-            }
-            if (!java.util.Arrays.equals(clave, claveConfirmada)) {
-                mensaje.setText("Las contraseñas no coinciden.");
-                return;
-            }
-
-            crear.setEnabled(false);
-            cancelar.setEnabled(false);
-            mensaje.setText("Creando cuenta...");
-            new SwingWorker<Boolean, Void>() {
-                /**
-                 * Ejecuta la tarea pesada en segundo plano para que la interfaz no se congele.
-                 */
-                @Override
-                protected Boolean doInBackground() throws Exception {
-                    String huella = SeguridadPassword.crearHash(clave);
-                    return accesoDatosUsuario.crearCuenta(nombreValor, apellidoValor, correoValor, huella);
-                }
-
-                /**
-                 * Recibe en la interfaz el resultado de la tarea en segundo plano y actualiza la pantalla.
-                 */
-                @Override
-                protected void done() {
-                    crear.setEnabled(true);
-                    cancelar.setEnabled(true);
-                    try {
-                        if (!get()) {
-                            mensaje.setText("Ese email ya está registrado.");
-                            return;
-                        }
-                        campoCorreo.setText(correoValor);
-                        dialogo.dispose();
-                        JOptionPane.showMessageDialog(VentanaLogin.this,
-                                "Cuenta creada. Ya podés iniciar sesión.",
-                                "Registro completado", JOptionPane.INFORMATION_MESSAGE);
-                    } catch (InterruptedException excepcion) {
-                        Thread.currentThread().interrupt();
-                        mensaje.setText("Se interrumpió el registro. Intentá de nuevo.");
-                    } catch (ExecutionException excepcion) {
-                        Throwable causa = excepcion.getCause() != null ? excepcion.getCause() : excepcion;
-                        mensaje.setText("No se pudo crear la cuenta.");
-                        JOptionPane.showMessageDialog(dialogo,
-                                "No se pudo completar el registro:\n" + causa.getMessage(),
-                                "Error", JOptionPane.ERROR_MESSAGE);
-                    }
-                }
-            }.execute();
-        });
-        dialogo.getRootPane().setDefaultButton(crear);
-        dialogo.setVisible(true);
-    }
 }

@@ -23,6 +23,7 @@ El código está dentro de `src/main/java/com/elmolino`.
 | `Main.java` | Inicia la aplicación y abre el ingreso. |
 | `ui/` | Contiene las ventanas y los formularios. |
 | `dao/` | Contiene el código que consulta o cambia la base de datos. |
+| `dao/BaseDAO.java` | Base abstracta genérica que centraliza consultas JDBC de lectura y el mapeo de filas. |
 | `model/` | Define objetos como clientes y usuarios. |
 | `model/Persona.java` | Reúne los datos comunes y define una representación que cada tipo concreta. |
 | `util/Conexion.java` | Abre la conexión con MySQL. |
@@ -38,6 +39,8 @@ El código está dentro de `src/main/java/com/elmolino`.
 - **Herencia:** `Cliente` y `Usuario` heredan nombre, apellido y correo de `Persona`.
 - **Polimorfismo:** cada clase implementa `getDescripcionCorta()` de manera propia; al mostrar objetos como personas, Java usa la implementación correspondiente al tipo real.
 
+Los DAO también usan estos pilares: `BaseDAO<T>` abstrae las consultas de lectura, encapsula la conexión y sus recursos JDBC, y es heredado por `ClienteDAO`, `UsuarioDAO` y `ReservaAcompananteDAO`. Cada uno implementa `mapear(ResultSet)` de acuerdo con su entidad (`Cliente`, `Usuario` o `Vinculo`), que es el comportamiento polimórfico.
+
 ### Ventanas
 
 - `VentanaLogin`: pantalla para ingresar.
@@ -45,7 +48,8 @@ El código está dentro de `src/main/java/com/elmolino`.
 - `VentanaClientes`: muestra y permite editar clientes.
 - `VentanaGestion`: ventana compartida por alojamientos, reservas, pagos, actividades, usuarios y otros módulos.
 - `VentanaAcompanantesReserva`: permite editar o quitar acompañantes de una reserva.
-- `VentanaInformes`: ventana antigua de informes; ya no aparece en el menú.
+- `VentanaInformes`: muestra informes disponibles para SuperAdmin.
+- `VentanaAuditoria`: consulta el historial, muestra más registros por páginas y permite revertir ciertas ediciones.
 
 ## 3. Permisos y acciones disponibles
 
@@ -54,16 +58,16 @@ Cada rol ve distintas secciones en el menú.
 | Sección | Qué se puede hacer en la app |
 | --- | --- |
 | Clientes | Consultar y editar. Se agregan desde la web. |
-| Alojamientos, espacios y acompañantes | Consultar, editar y eliminar. No se agregan desde la app. |
-| Reservas | Consultar, editar y cancelar. |
+| Alojamientos y acompañantes | Consultar, editar y eliminar. No se agregan desde la app. |
+| Reservas | Consultar, editar y cancelar; valida capacidad con titular y acompañantes asociados. |
 | Acompañantes por reserva | Editar o quitar una asociación. |
 | Pagos | Solo consultar. |
 | Actividades | Consultar y editar datos operativos, cupo, precio y disponibilidad calculada desde las inscripciones. Las altas se realizan desde la web. |
 | Inscripciones | Consultar y agregar. La asistencia no se cambia desde esta pantalla. |
 | Usuarios | El administrador puede crear usuarios y asignar roles. |
-| Informes | Ya no aparecen en el menú. |
+| Informes | SuperAdmin puede consultarlos. |
 
-Recepción, Coordinación y Limpieza conservan sus módulos actuales. Administración ve Clientes, Acompañantes, Acompañantes por reserva, Alojamientos, Reservas y Pagos. Gerencia ve Clientes, Reservas, Pagos y Alojamientos. El Administrador ve únicamente Clientes, Reservas, Pagos y Usuarios. Al crear o editar usuarios ya no se puede asignar el rol Administración.
+Recepción, Coordinación y Limpieza conservan sus módulos actuales. Administración ve Clientes, Acompañantes, Acompañantes por reserva, Alojamientos, Reservas y Pagos. Gerencia ve Clientes, Reservas, Pagos y Alojamientos. El Administrador ve únicamente Clientes, Reservas, Pagos y Usuarios. SuperAdmin también puede consultar los informes. Espacios Recreativos ya no aparece en el menú. Al crear o editar usuarios ya no se puede asignar el rol Administración, y al crear solo se permite Administrador.
 
 ## 4. Cómo se configura un módulo
 
@@ -102,6 +106,6 @@ mvn compile exec:java
 
 ## 7. Cambios y límites
 
-- El código de la página web no está en esta carpeta. Por eso, esta guía solo describe la aplicación Java.
+- El código de la página web está en la carpeta hermana `ElMolino`; el registro web guarda clientes en `cliente`, separados de los usuarios internos.
 - La base puede conservar datos como horarios o duración aunque ya no aparezcan en la aplicación.
 - La web agrega clientes, actividades y reservas. La app permite gestionarlos. Las excepciones son las inscripciones y los usuarios creados por un administrador.

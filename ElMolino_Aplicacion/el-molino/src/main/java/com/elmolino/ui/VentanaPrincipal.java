@@ -240,7 +240,6 @@ public class VentanaPrincipal extends JFrame {
                 accesos.add(modulo("Usuarios", "Crear usuarios y asignar cualquier rol", GestionDAO.USUARIOS));
                 accesos.add(modulo("Acompañantes", "Gestionar acompañantes", GestionDAO.ACOMPANANTES));
                 accesos.add(new Acceso("Acompañantes por reserva", "Gestionar acompañantes asociados", () -> abrirAcompanantes()));
-                accesos.add(modulo("Espacios recreativos", "Gestionar espacios recreativos", GestionDAO.ESPACIOS));
                 accesos.add(modulo("Actividades", "Gestionar actividades", GestionDAO.ACTIVIDADES));
                 accesos.add(modulo("Inscripciones", "Gestionar inscripciones", GestionDAO.ACTIVIDAD_INSCRIPTOS));
                 accesos.add(new Acceso("Informes", "Ver resumenes de reservas, alojamientos, actividades y pagos", () -> abrirInformes()));
@@ -251,7 +250,6 @@ public class VentanaPrincipal extends JFrame {
                 accesos.add(modulo("Alojamientos", "Consultar y actualizar alojamientos", GestionDAO.ALOJAMIENTOS));
                 accesos.add(modulo("Pagos", "Consultar pagos registrados", GestionDAO.PAGOS));
                 accesos.add(modulo("Reintegros", "Consultar devoluciones pendientes", GestionDAO.REEMBOLSOS));
-                accesos.add(modulo("Espacios recreativos", "Consultar y actualizar espacios", GestionDAO.ESPACIOS));
             }
             case "ADMINISTRACION" -> {
                 accesos.add(modulo("Clientes", "Consultar y editar datos de clientes", null));
@@ -264,7 +262,6 @@ public class VentanaPrincipal extends JFrame {
                 accesos.add(new Acceso("Registro de auditoría", "Consultar quién realizó cambios en el sistema", () -> abrirAuditoria()));
             }
             case "COORDINADOR" -> {
-                accesos.add(modulo("Espacios recreativos", "Consultar y actualizar espacios", GestionDAO.ESPACIOS));
                 accesos.add(modulo("Actividades", "Consultar y actualizar actividades", GestionDAO.ACTIVIDADES));
                 accesos.add(modulo("Inscripciones", "Agregar y consultar inscripciones", GestionDAO.ACTIVIDAD_INSCRIPTOS));
             }
