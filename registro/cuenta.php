@@ -68,7 +68,8 @@ if ($idCliente > 0) {
                         (int) ($_POST['id_pedido'] ?? 0),
                         $idCliente,
                         (string) ($_POST['referencia_pago'] ?? ''),
-                        (string) ($_POST['monto_transferido'] ?? '')
+                        (string) ($_POST['monto_transferido'] ?? ''),
+                        is_array($_FILES['comprobante_archivo'] ?? null) ? $_FILES['comprobante_archivo'] : []
                     );
                     Sesion::guardarMensaje('exito', 'Registramos la transferencia. Administración debe verificarla para confirmar la estadía.');
                     Utilidades::redirigir('cuenta.php');
@@ -150,7 +151,7 @@ if ($idCliente > 0) {
             "SELECT r.idReserva, r.fechaIngreso, r.fechaEgreso, r.cantidadPersonas,
                     r.estadoReserva, r.precioTotal, a.tipo, a.capacidad,
                     p.idPedido, p.estadoPedido, p.estadoPago, p.metodoPago,
-                    p.total, p.montoSena, p.fechaLimiteSena,
+                    p.total, p.montoSena, p.fechaLimiteSena, p.fechaLimiteRevisionSena,
                     (SELECT COALESCE(SUM(CASE WHEN pg2.estado='CONFIRMADO' AND pg2.tipoPago IN ('SENA','SALDO') THEN pg2.montoTotal ELSE 0 END),0)
                        FROM pago pg2 JOIN detalle_pedido_alojamiento dg2 ON dg2.idReserva=pg2.idReserva WHERE dg2.idPedido=p.idPedido) AS montoPagado,
                     (SELECT COALESCE(SUM(CASE WHEN rf.estado='PENDIENTE' THEN rf.monto ELSE 0 END),0) FROM reembolso rf WHERE rf.idPedido=p.idPedido) AS reintegroPendiente,
@@ -159,12 +160,14 @@ if ($idCliente > 0) {
                        JOIN detalle_pedido_alojamiento dg ON dg.idReserva = pg.idReserva
                       WHERE dg.idPedido = p.idPedido AND pg.tipoPago = 'SENA'
                       ORDER BY pg.idPago DESC LIMIT 1) AS comprobanteSena
+                    ,(SELECT pg.observacion FROM pago pg JOIN detalle_pedido_alojamiento dg ON dg.idReserva=pg.idReserva WHERE dg.idPedido=p.idPedido ORDER BY pg.idPago DESC LIMIT 1) AS observacionPago
                FROM reservas r
                JOIN alojamientos a ON a.idAlojamiento = r.idAlojamiento
           LEFT JOIN detalle_pedido_alojamiento d ON d.idReserva = r.idReserva
           LEFT JOIN pedido_alojamiento p ON p.idPedido = d.idPedido
               WHERE r.idCliente = :cliente
-                AND UPPER(TRIM(r.estadoReserva)) NOT IN ('CANCELADA', 'CANCELADO')
+                AND (UPPER(TRIM(r.estadoReserva)) NOT IN ('CANCELADA', 'CANCELADO')
+                     OR UPPER(COALESCE(p.estadoPago, '')) = 'PAGO_RECHAZADO')
               ORDER BY (r.fechaEgreso >= CURRENT_DATE) DESC, r.fechaIngreso ASC
               LIMIT 6"
         );
@@ -206,18 +209,7 @@ if ($idCliente > 0) {
 </head>
 <body class="pagina-cuenta">
     <a class="enlace-saltar" href="#contenido">Saltar al contenido</a>
-    <header class="encabezado">
-        <div class="contenedor barra-navegacion">
-            <?= Vista::marca('../') ?>
-            <button class="boton-menu" type="button" aria-expanded="false" aria-controls="navegacion-principal"><span></span><span></span><span></span><span class="solo-lector">Abrir menú</span></button>
-            <nav class="navegacion-principal" id="navegacion-principal" aria-label="Navegación principal">
-                <a href="../index.php">Inicio</a>
-                <a href="../alojamientos.php">Alojamientos</a>
-                <a href="../actividades.php">Actividades</a>
-            </nav>
-            <div class="acciones-encabezado"><?= Vista::accesoCuenta($usuario, '../') ?></div>
-        </div>
-    </header>
+    <?= Vista::encabezadoPrincipal($usuario, '../') ?>
 
     <main class="contenedor contenido-cuenta" id="contenido">
         <section class="cabecera-cuenta">
@@ -247,6 +239,8 @@ if ($idCliente > 0) {
                                 <p class="participantes-cuenta"><strong>Participan:</strong> <?= Utilidades::escapar(implode(', ', $participantes)) ?></p>
                                 <?php if (($actividad['estadoCargo'] ?? '') === 'PENDIENTE'): ?>
                                     <p class="participantes-cuenta"><strong>Cargo pendiente:</strong> $<?= number_format((float) $actividad['montoTotal'], 2, ',', '.') ?> al finalizar la estadía (<?= (int) $actividad['cantidadParticipantes'] ?> <?= (int) $actividad['cantidadParticipantes'] === 1 ? 'persona' : 'personas' ?>).</p>
+                                <?php elseif (($actividad['estadoCargo'] ?? '') === 'PAGADO'): ?>
+                                    <p class="participantes-cuenta"><strong>Actividad abonada:</strong> $<?= number_format((float) $actividad['montoTotal'], 2, ',', '.') ?>.</p>
                                 <?php endif; ?>
                                 <a href="../actividad.php?id=<?= rawurlencode((string) $actividad['slug']) ?>">Ver actividad →</a>
                             </article>
@@ -268,6 +262,7 @@ if ($idCliente > 0) {
                             $mostrarPago = $idPedidoActual > 0 && !in_array($idPedidoActual, $pedidosPagoMostrados, true);
                             if ($mostrarPago) $pedidosPagoMostrados[] = $idPedidoActual;
                             $estadoPagoActual = strtoupper((string) ($alojamiento['estadoPago'] ?? ''));
+                            $esPreReserva = in_array($estadoPagoActual, ['SENA_PENDIENTE', 'SENA_INFORMADA'], true);
                             ?>
                             <article class="item-resumen-cuenta">
                                 <div><h3><?= Utilidades::escapar($alojamiento['tipo']) ?> para <?= (int) $alojamiento['capacidad'] ?> personas</h3><p><?= $fechaPerfil($alojamiento['fechaIngreso']) ?> al <?= $fechaPerfil($alojamiento['fechaEgreso']) ?></p></div>
@@ -275,14 +270,15 @@ if ($idCliente > 0) {
                                 <?php if (!empty($alojamiento['montoSena'])): ?><p><strong>Seña:</strong> $<?= number_format((float) $alojamiento['montoSena'], 2, ',', '.') ?> · <?= Utilidades::escapar(str_replace('_', ' ', (string) $alojamiento['estadoPago'])) ?></p><?php endif; ?>
                                 <?php if ((float) ($alojamiento['montoPagado'] ?? 0) > 0): ?><p><strong>Pagado:</strong> $<?= number_format((float) $alojamiento['montoPagado'], 2, ',', '.') ?> · <strong>Saldo:</strong> $<?= number_format(max(0, (float) $alojamiento['total'] - (float) $alojamiento['montoPagado']), 2, ',', '.') ?></p><?php endif; ?>
                                 <?php if ((float) ($alojamiento['reintegroPendiente'] ?? 0) > 0): ?><p><strong>Reintegro pendiente:</strong> $<?= number_format((float) $alojamiento['reintegroPendiente'], 2, ',', '.') ?></p><?php endif; ?>
-                                <?php if ($mostrarPago && !in_array($estadoPagoActual, ['SENA_PAGADA', 'PAGADO', 'CANCELADO', 'REEMBOLSO_PENDIENTE'], true)): ?>
+                                <?php if (!empty($alojamiento['observacionPago'])): ?><p><strong>Estado del pago:</strong> <?= Utilidades::escapar((string) $alojamiento['observacionPago']) ?></p><?php endif; ?>
+                                <?php if ($mostrarPago && !in_array($estadoPagoActual, ['SENA_PAGADA', 'PAGADO', 'CANCELADO', 'REEMBOLSO_PENDIENTE', 'PAGO_RECHAZADO', 'VENCIDO'], true)): ?>
                                     <details class="pagar-sena-cuenta"<?= $estadoPagoActual === 'SENA_INFORMADA' ? '' : ' open' ?>>
                                         <summary><?= $estadoPagoActual === 'SENA_INFORMADA' ? 'Transferencia informada' : 'Cómo pagar la seña' ?></summary>
                                         <?php if ($estadoPagoActual === 'SENA_INFORMADA'): ?>
-                                            <p>Referencia informada: <strong><?= Utilidades::escapar((string) ($alojamiento['comprobanteSena'] ?? '')) ?></strong>. Administración la está revisando.</p>
+                                            <p>Referencia informada: <strong><?= Utilidades::escapar((string) ($alojamiento['comprobanteSena'] ?? '')) ?></strong>. Recepción la revisará hasta el <?= Utilidades::escapar((new DateTimeImmutable((string) $alojamiento['fechaLimiteRevisionSena']))->format('d/m/Y H:i')) ?>.</p>
                                         <?php elseif ($configuracionPago['configurada']): ?>
                                             <div class="datos-transferencia-cuenta">
-                                                <p>Transferí <strong>$<?= number_format((float) $alojamiento['montoSena'], 2, ',', '.') ?></strong> antes del <?= Utilidades::escapar((new DateTimeImmutable((string) $alojamiento['fechaLimiteSena']))->format('d/m/Y H:i')) ?>.</p>
+                                                <p>Tu pre-reserva se retiene hasta el <strong><?= Utilidades::escapar((new DateTimeImmutable((string) $alojamiento['fechaLimiteSena']))->format('d/m/Y H:i')) ?></strong>. Informá la seña completa antes de ese momento.</p>
                                                 <dl>
                                                     <div><dt>Titular</dt><dd><?= Utilidades::escapar($configuracionPago['titular']) ?></dd></div>
                                                     <?php if ($configuracionPago['alias'] !== ''): ?><div><dt>Alias</dt><dd><?= Utilidades::escapar($configuracionPago['alias']) ?></dd></div><?php endif; ?>
@@ -290,12 +286,13 @@ if ($idCliente > 0) {
                                                     <?php if ($configuracionPago['cuit'] !== ''): ?><div><dt>CUIT</dt><dd><?= Utilidades::escapar($configuracionPago['cuit']) ?></dd></div><?php endif; ?>
                                                 </dl>
                                             </div>
-                                            <form method="post" class="formulario-informar-sena">
+                                            <form method="post" enctype="multipart/form-data" class="formulario-informar-sena">
                                                 <input type="hidden" name="token_csrf" value="<?= Utilidades::escapar(Sesion::tokenCsrf()) ?>">
                                                 <input type="hidden" name="accion" value="informar_pago_sena">
                                                 <input type="hidden" name="id_pedido" value="<?= $idPedidoActual ?>">
-                                                <label>Importe transferido<input type="number" name="monto_transferido" min="0.01" step="0.01" value="<?= number_format(max(0.01, (float) $alojamiento['montoSena'] - (float) ($alojamiento['montoPagado'] ?? 0)), 2, '.', '') ?>" required></label>
+                                                <label>Importe transferido<input type="number" name="monto_transferido" min="<?= number_format(max(0.01, (float) $alojamiento['montoSena'] - (float) ($alojamiento['montoPagado'] ?? 0)), 2, '.', '') ?>" step="0.01" value="<?= number_format(max(0.01, (float) $alojamiento['montoSena'] - (float) ($alojamiento['montoPagado'] ?? 0)), 2, '.', '') ?>" required></label>
                                                 <label>Número de operación o referencia<input type="text" name="referencia_pago" minlength="4" maxlength="150" required></label>
+                                                <label>Comprobante (imagen o PDF, hasta 5 MB)<input type="file" name="comprobante_archivo" accept="image/jpeg,image/png,image/webp,application/pdf" required></label>
                                                 <button class="boton boton-principal" type="submit">Ya transferí la seña</button>
                                             </form>
                                         <?php else: ?>
@@ -305,8 +302,16 @@ if ($idCliente > 0) {
                                 <?php endif; ?>
                                 <?php if ($alojamiento['acompanantes']): ?><p><strong>Acompañantes:</strong> <?= Utilidades::escapar(implode(', ', array_column($alojamiento['acompanantes'], 'nombre'))) ?></p><?php endif; ?>
                                 <?php if ((string) $alojamiento['fechaIngreso'] > date('Y-m-d')): ?>
+                                    <?php if ($esPreReserva): ?>
+                                        <form method="post" onsubmit="return confirm('¿Querés cancelar esta pre-reserva? El alojamiento quedará disponible inmediatamente.')">
+                                            <input type="hidden" name="token_csrf" value="<?= Utilidades::escapar(Sesion::tokenCsrf()) ?>">
+                                            <input type="hidden" name="accion" value="cancelar_reserva">
+                                            <input type="hidden" name="id_reserva" value="<?= (int) $alojamiento['idReserva'] ?>">
+                                            <button class="boton-enlace boton-cancelar-reserva" type="submit">Cancelar pre-reserva</button>
+                                        </form>
+                                    <?php endif; ?>
                                     <details class="gestionar-reserva-cuenta">
-                                        <summary>Gestionar reserva</summary>
+                                        <summary><?= $esPreReserva ? 'Modificar acompañantes' : 'Gestionar reserva' ?></summary>
                                         <form method="post" class="formulario-acompanantes-reserva-cuenta">
                                             <input type="hidden" name="token_csrf" value="<?= Utilidades::escapar(Sesion::tokenCsrf()) ?>">
                                             <input type="hidden" name="accion" value="actualizar_acompanantes_reserva">
@@ -321,12 +326,12 @@ if ($idCliente > 0) {
                                             </fieldset>
                                             <button class="boton boton-secundario" type="submit">Guardar acompañantes</button>
                                         </form>
-                                        <form method="post" onsubmit="return confirm('¿Querés cancelar esta reserva?')">
+                                        <?php if (!$esPreReserva): ?><form method="post" onsubmit="return confirm('¿Querés cancelar esta reserva?')">
                                             <input type="hidden" name="token_csrf" value="<?= Utilidades::escapar(Sesion::tokenCsrf()) ?>">
                                             <input type="hidden" name="accion" value="cancelar_reserva">
                                             <input type="hidden" name="id_reserva" value="<?= (int) $alojamiento['idReserva'] ?>">
                                             <button class="boton-enlace boton-cancelar-reserva" type="submit">Cancelar reserva</button>
-                                        </form>
+                                        </form><?php endif; ?>
                                     </details>
                                 <?php endif; ?>
                             </article>
@@ -367,5 +372,6 @@ if ($idCliente > 0) {
 
         <?php if (Autorizacion::esCoordinador($usuario)): ?><a class="boton boton-principal" href="../administrar-actividades.php">Gestionar actividades</a><?php endif; ?>
     </main>
+    <footer class="pie-pagina pie-pagina-simple"><div class="contenedor pie-inferior"><span>El Molino · Complejo recreativo</span><?= Vista::contactoPie() ?></div></footer>
 </body>
 </html>

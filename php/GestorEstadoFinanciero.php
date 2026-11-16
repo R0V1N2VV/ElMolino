@@ -12,23 +12,25 @@ final class GestorEstadoFinanciero
     public static function vencerPedidosPendientes(PDO $conexion): int
     {
         $consulta = $conexion->query(
-            "SELECT pa.idPedido
+            "SELECT pa.idPedido, UPPER(pa.estadoPedido) AS estadoPedido, UPPER(pa.estadoPago) AS estadoPago
                FROM pedido_alojamiento pa
-              WHERE pa.fechaLimiteSena IS NOT NULL
-                AND pa.fechaLimiteSena < NOW()
-                AND UPPER(pa.estadoPedido) IN ('ESPERANDO_SENA','PENDIENTE')
-                AND (SELECT COALESCE(SUM(pg.montoTotal),0)
-                       FROM pago pg
-                       JOIN detalle_pedido_alojamiento dpg ON dpg.idReserva=pg.idReserva
-                      WHERE dpg.idPedido=pa.idPedido AND UPPER(pg.estado)='CONFIRMADO'
-                        AND UPPER(pg.tipoPago) IN ('SENA','SALDO')) < pa.montoSena"
+              WHERE ((UPPER(pa.estadoPedido) IN ('ESPERANDO_SENA','PENDIENTE')
+                     AND UPPER(pa.estadoPago)='SENA_PENDIENTE'
+                     AND pa.fechaLimiteSena IS NOT NULL AND pa.fechaLimiteSena < NOW()
+                     AND (SELECT COALESCE(SUM(pg.montoTotal),0)
+                            FROM pago pg JOIN detalle_pedido_alojamiento dpg ON dpg.idReserva=pg.idReserva
+                           WHERE dpg.idPedido=pa.idPedido AND UPPER(pg.estado)='CONFIRMADO'
+                             AND UPPER(pg.tipoPago) IN ('SENA','SALDO')) < pa.montoSena)
+                  OR (UPPER(pa.estadoPago)='SENA_INFORMADA' AND pa.fechaLimiteRevisionSena < NOW()))"
         );
-        $ids = array_map('intval', $consulta->fetchAll(PDO::FETCH_COLUMN));
-        foreach ($ids as $idPedido) {
+        $pedidos = $consulta->fetchAll();
+        foreach ($pedidos as $pedido) {
+            $idPedido = (int) $pedido['idPedido'];
+            $enRevision = strtoupper((string) $pedido['estadoPago']) === 'SENA_INFORMADA';
             $conexion->prepare(
-                "UPDATE pedido_alojamiento SET estadoPedido='VENCIDO', estadoPago='VENCIDO', canceladoEn=NOW()
+                "UPDATE pedido_alojamiento SET estadoPedido='VENCIDO', estadoPago=:estadoPago, fechaLimiteRevisionSena=NULL, canceladoEn=NOW()
                   WHERE idPedido=:pedido"
-            )->execute(['pedido' => $idPedido]);
+            )->execute(['pedido' => $idPedido, 'estadoPago' => $enRevision ? 'PAGO_RECHAZADO' : 'VENCIDO']);
             $conexion->prepare(
                 "UPDATE reservas r JOIN detalle_pedido_alojamiento d ON d.idReserva=r.idReserva
                     SET r.estadoReserva='CANCELADA'
@@ -36,11 +38,11 @@ final class GestorEstadoFinanciero
             )->execute(['pedido' => $idPedido]);
             $conexion->prepare(
                 "UPDATE pago pg JOIN detalle_pedido_alojamiento d ON d.idReserva=pg.idReserva
-                    SET pg.estado='ANULADO'
+                    SET pg.estado='ANULADO', pg.observacion=:motivo
                   WHERE d.idPedido=:pedido AND UPPER(pg.estado)='PENDIENTE'"
-            )->execute(['pedido' => $idPedido]);
+            )->execute(['pedido' => $idPedido, 'motivo' => $enRevision ? 'La recepción no pudo confirmar la transferencia dentro de las 24 horas.' : 'Venció el plazo de 30 minutos para informar la seña.']);
         }
-        return count($ids);
+        return count($pedidos);
     }
 
     /** Recalcula importes y estados usando únicamente reservas vigentes y dinero confirmado. */

@@ -85,7 +85,15 @@ final class GestorReservasCliente
             $pedido = $this->conexion->prepare('SELECT idPedido FROM detalle_pedido_alojamiento WHERE idReserva=:reserva LIMIT 1 FOR UPDATE');
             $pedido->execute(['reserva' => $idReserva]);
             $idPedido = (int) ($pedido->fetchColumn() ?: 0);
-            if ($idPedido > 0) GestorEstadoFinanciero::solicitarReembolsoCancelacion($this->conexion, $idPedido);
+            if ($idPedido > 0) {
+                // Un comprobante aún no confirmado deja de ser revisable al cancelar la pre-reserva.
+                $this->conexion->prepare(
+                    "UPDATE pago p JOIN detalle_pedido_alojamiento d ON d.idReserva=p.idReserva
+                        SET p.estado='ANULADO', p.observacion='La pre-reserva fue cancelada por el cliente antes de confirmar el pago.'
+                      WHERE d.idPedido=:pedido AND UPPER(p.estado)='PENDIENTE'"
+                )->execute(['pedido' => $idPedido]);
+                GestorEstadoFinanciero::solicitarReembolsoCancelacion($this->conexion, $idPedido);
+            }
             $this->conexion->commit();
         } catch (Throwable $error) {
             if ($this->conexion->inTransaction()) $this->conexion->rollBack();

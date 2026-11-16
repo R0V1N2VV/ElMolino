@@ -7,12 +7,13 @@
  * confirma automáticamente el pedido y las reservas relacionadas.
  */
 declare(strict_types=1);
+require_once __DIR__ . '/GestorComprobantePago.php';
 
 final class GestorPagosSena
 {
     public function __construct(private PDO $conexion) {}
 
-    public function informarTransferencia(int $idPedido, int $idCliente, string $referencia, string $montoInformado): void
+    public function informarTransferencia(int $idPedido, int $idCliente, string $referencia, string $montoInformado, array $archivo): void
     {
         $referencia = trim($referencia);
         if (strlen($referencia) < 4 || strlen($referencia) > 150) {
@@ -21,6 +22,7 @@ final class GestorPagosSena
         $monto = (float) str_replace(',', '.', trim($montoInformado));
         if ($monto <= 0) throw new InvalidArgumentException('Ingresá el importe que transferiste.');
 
+        $archivoGuardado = null;
         $this->conexion->beginTransaction();
         try {
             $consulta = $this->conexion->prepare(
@@ -44,8 +46,11 @@ final class GestorPagosSena
                  WHERE dpg.idPedido=:pedido AND pg.estado='CONFIRMADO' AND pg.tipoPago IN ('SENA','SALDO')"
             );
             $pagado->execute(['pedido' => $idPedido]);
-            $restanteTotal = max(0, (float) $pedido['total'] - (float) $pagado->fetchColumn());
+            $montoYaConfirmado = (float) $pagado->fetchColumn();
+            $restanteTotal = max(0, (float) $pedido['total'] - $montoYaConfirmado);
             if ($monto > $restanteTotal + 0.009) throw new RuntimeException('El importe informado supera el saldo pendiente del pedido.');
+            $senaPendiente = max(0, (float) $pedido['montoSena'] - $montoYaConfirmado);
+            if ($monto + 0.009 < $senaPendiente) throw new RuntimeException('Para retener la estadía informá el importe completo de la seña: $' . number_format($senaPendiente, 2, ',', '.'));
             $duplicado = $this->conexion->prepare("SELECT COUNT(*) FROM pago WHERE comprobante=:referencia AND estado<>'ANULADO'");
             $duplicado->execute(['referencia' => $referencia]);
             if ((int) $duplicado->fetchColumn() > 0) throw new RuntimeException('Ese número de operación ya fue informado.');
@@ -77,11 +82,13 @@ final class GestorPagosSena
             );
             $pagoExistente->execute(['pedido' => $idPedido]);
             $idPago = (int) ($pagoExistente->fetchColumn() ?: 0);
+            $archivoGuardado = GestorComprobantePago::guardar($archivo);
 
             $datosPago = [
                 'reserva' => $idReserva,
                 'monto' => number_format($monto, 2, '.', ''),
                 'comprobante' => $referencia,
+                'archivo' => $archivoGuardado,
             ];
             if ($idPago > 0) {
                 $datosPago['pago'] = $idPago;
@@ -89,25 +96,26 @@ final class GestorPagosSena
                     "UPDATE pago
                         SET idReserva = :reserva, montoTotal = :monto,
                             metodoPago = 'Transferencia', fechaPago = CURRENT_DATE,
-                            comprobante = :comprobante
+                            comprobante = :comprobante, archivoComprobante = :archivo, observacion = NULL
                       WHERE idPago = :pago"
                 )->execute($datosPago);
             } else {
                 $this->conexion->prepare(
                     "INSERT INTO pago
-                        (idReserva, montoTotal, metodoPago, tipoPago, estado, fechaPago, comprobante)
-                     VALUES (:reserva, :monto, 'Transferencia', 'SENA', 'PENDIENTE', CURRENT_DATE, :comprobante)"
+                        (idReserva, montoTotal, metodoPago, tipoPago, estado, fechaPago, comprobante, archivoComprobante)
+                     VALUES (:reserva, :monto, 'Transferencia', 'SENA', 'PENDIENTE', CURRENT_DATE, :comprobante, :archivo)"
                 )->execute($datosPago);
             }
 
             $this->conexion->prepare(
                 "UPDATE pedido_alojamiento
-                    SET estadoPago = 'SENA_INFORMADA'
+                    SET estadoPago = 'SENA_INFORMADA', fechaLimiteRevisionSena = DATE_ADD(NOW(), INTERVAL 24 HOUR)
                   WHERE idPedido = :pedido"
             )->execute(['pedido' => $idPedido]);
             $this->conexion->commit();
         } catch (Throwable $error) {
             if ($this->conexion->inTransaction()) $this->conexion->rollBack();
+            if ($archivoGuardado !== null) @unlink(dirname(__DIR__) . '/' . $archivoGuardado);
             throw $error;
         }
     }

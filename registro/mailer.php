@@ -88,13 +88,13 @@ final class Correo
             ? '<p>Transferí a nombre de <strong>' . Utilidades::escapar($datosPago['titular']) . '</strong>'
                 . ($datosPago['alias'] !== '' ? '<br>Alias: <strong>' . Utilidades::escapar($datosPago['alias']) . '</strong>' : '')
                 . ($datosPago['cbu'] !== '' ? '<br>CBU: <strong>' . Utilidades::escapar($datosPago['cbu']) . '</strong>' : '')
-                . '</p><p>Después ingresá a Mi cuenta e informá el número de operación.</p>'
+                . '</p><p>La pre-reserva se retiene hasta <strong>' . Utilidades::escapar($limiteSena) . '</strong>. Después ingresá a Mi cuenta, informá el número de operación y adjuntá el comprobante.</p>'
             : '<p>Los datos bancarios todavía no están configurados. Contactá a recepción antes de transferir.</p>';
         $instruccionesTexto = $datosPago['configurada']
             ? "Transferí a nombre de {$datosPago['titular']}"
                 . ($datosPago['alias'] !== '' ? ", alias {$datosPago['alias']}" : '')
                 . ($datosPago['cbu'] !== '' ? ", CBU {$datosPago['cbu']}" : '')
-                . ". Después ingresá a Mi cuenta e informá el número de operación."
+                . ". La pre-reserva se retiene hasta {$limiteSena}. Después ingresá a Mi cuenta, informá el número de operación y adjuntá el comprobante."
             : 'Los datos bancarios todavía no están configurados. Contactá a recepción antes de transferir.';
         $filas = '';
         $textoLineas = [];

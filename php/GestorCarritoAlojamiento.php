@@ -501,10 +501,8 @@ final class GestorCarritoAlojamiento
 
             $senaCentavos = (int) round($totalCentavos * self::PORCENTAJE_SENA / 100);
             $ahora = new DateTimeImmutable('now', new DateTimeZone(self::ZONA_HORARIA));
-            $limiteNormal = $ahora->modify('+48 hours');
-            $limitePorIngreso = (new DateTimeImmutable((string) $fechaIngresoMasCercana, new DateTimeZone(self::ZONA_HORARIA)))->modify('-1 day')->setTime(18, 0);
-            $fechaLimiteSena = $limitePorIngreso < $limiteNormal ? $limitePorIngreso : $limiteNormal;
-            if ($fechaLimiteSena <= $ahora) $fechaLimiteSena = $ahora->modify('+1 hour');
+            // Una pre-reserva sin seña no puede inmovilizar un alojamiento por horas o días.
+            $fechaLimiteSena = $ahora->modify('+30 minutes');
             $crearPedido = $this->conexion->prepare(
                 'INSERT INTO pedido_alojamiento (idCliente, total, metodoPago, estadoPedido, estadoPago, porcentajeSena, montoSena, fechaLimiteSena) VALUES (:cliente, :total, :metodo, \'ESPERANDO_SENA\', \'SENA_PENDIENTE\', :porcentajeSena, :montoSena, :fechaLimiteSena)'
             );
@@ -574,7 +572,7 @@ final class GestorCarritoAlojamiento
     {
         $consulta = $this->conexion->prepare(
             "SELECT p.idPedido, p.total, p.metodoPago, p.estadoPedido, p.estadoPago,
-                    p.porcentajeSena, p.montoSena, p.fechaLimiteSena, p.creadoEn,
+                    p.porcentajeSena, p.montoSena, p.fechaLimiteSena, p.fechaLimiteRevisionSena, p.creadoEn,
                     (SELECT COALESCE(SUM(CASE WHEN pg.estado='CONFIRMADO' AND pg.tipoPago IN ('SENA','SALDO') THEN pg.montoTotal ELSE 0 END),0)
                        FROM pago pg JOIN detalle_pedido_alojamiento dp ON dp.idReserva=pg.idReserva WHERE dp.idPedido=p.idPedido) AS montoPagado,
                     (SELECT COALESCE(SUM(CASE WHEN rf.estado='PENDIENTE' THEN rf.monto ELSE 0 END),0) FROM reembolso rf WHERE rf.idPedido=p.idPedido) AS reintegroPendiente,

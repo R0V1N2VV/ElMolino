@@ -78,6 +78,36 @@ final class Vista
             . '</a>';
     }
 
+    /** Devuelve los canales de contacto públicos que comparten los pies de página. */
+    public static function contactoPie(): string
+    {
+        return '<div class="contacto-pie"><strong>Contacto</strong>'
+            . '<p>Gmail: <a href="mailto:centrorecreativoelmolino403@gmail.com">centrorecreativoelmolino403@gmail.com</a></p>'
+            . '<p>Teléfono: <a href="tel:+541178900880">11 7890 0880</a></p></div>';
+    }
+
+    /** Construye el mismo encabezado principal en todas las secciones públicas. */
+    public static function encabezadoPrincipal(?array $usuario, string $prefijo = '', string $seccion = ''): string
+    {
+        $inicio = $prefijo === '' ? '#inicio' : $prefijo . 'index.php';
+        $ancla = static fn(string $nombre): string => $prefijo === '' ? '#' . $nombre : $prefijo . 'index.php#' . $nombre;
+        $activo = static fn(string $nombre): string => $seccion === $nombre ? ' class="enlace-activo" aria-current="page"' : '';
+        $carrito = class_exists('Sesion') ? Sesion::obtener('carrito_alojamiento', []) : [];
+        $cantidad = is_array($carrito) ? count($carrito) : 0;
+
+        return '<header class="encabezado"><div class="contenedor barra-navegacion">'
+            . self::marca($prefijo, $prefijo === '' ? '#inicio' : 'index.php')
+            . '<button class="boton-menu" type="button" aria-expanded="false" aria-controls="navegacion-principal"><span></span><span></span><span></span><span class="solo-lector">Abrir menú</span></button>'
+            . '<nav class="navegacion-principal" id="navegacion-principal" aria-label="Navegación principal">'
+            . '<a' . $activo('inicio') . ' href="' . self::escapar($inicio) . '">Inicio</a>'
+            . '<a' . $activo('nosotros') . ' href="' . self::escapar($ancla('nosotros')) . '">Quiénes somos</a>'
+            . '<a' . $activo('alojamientos') . ' href="' . self::escapar($ancla('alojamientos')) . '">Alojamientos</a>'
+            . '<a' . $activo('actividades') . ' href="' . self::escapar($prefijo . 'actividades.php') . '">Actividades</a>'
+            . '<a' . $activo('espacios') . ' href="' . self::escapar($ancla('espacios')) . '">Espacios</a>'
+            . '<a class="enlace-estadia' . ($seccion === 'estadía' ? ' enlace-activo' : '') . '" href="' . self::escapar($prefijo . 'carrito.php') . '">Mi estadía <span>' . $cantidad . '</span></a>'
+            . '</nav><div class="acciones-encabezado">' . self::accesoCuenta($usuario, $prefijo) . '</div></div></header>';
+    }
+
     /**
      * Ejecuta la lógica de “tarjeta actividad” en Vista.php.
      *

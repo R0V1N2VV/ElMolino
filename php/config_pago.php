@@ -4,8 +4,8 @@
  * Si el servidor usa variables de entorno, esos valores tienen prioridad.
  */
 return [
-    'titular' => '',
-    'alias' => '',
-    'cbu' => '',
+    'titular' => 'Felipe Lopez Mochi',
+    'alias' => 'digo.balde.raba.mp',
+    'cbu' => '0000003100008666182777',
     'cuit' => '',
 ];

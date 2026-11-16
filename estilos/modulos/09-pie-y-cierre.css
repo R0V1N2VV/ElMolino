@@ -71,6 +71,18 @@
     color: var(--naranja-claro);
 }
 
+.contacto-pie {
+    display: grid;
+    align-content: start;
+    gap: 8px;
+    font-size: 0.92rem;
+}
+
+.contacto-pie strong { color: var(--blanco); }
+.contacto-pie p { margin: 0; }
+.contacto-pie a { color: var(--celeste); overflow-wrap: anywhere; }
+.contacto-pie a:hover { color: var(--naranja-claro); }
+
 .pie-inferior {
     display: flex;
     justify-content: space-between;
