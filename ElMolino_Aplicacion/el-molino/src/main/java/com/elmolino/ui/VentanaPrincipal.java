@@ -41,6 +41,7 @@ public class VentanaPrincipal extends JFrame {
     private static final Color VERDE_MEDIO = new Color(0x4F7358);
     private static final Color NARANJA = new Color(0xC97B3D);
     private final float escala;
+    private int seniasPorConfirmar;
 
     /**
      * Construye el objeto, guarda sus datos iniciales y deja sus componentes preparados para usarse.
@@ -49,6 +50,9 @@ public class VentanaPrincipal extends JFrame {
         super("El Molino | Gestión");
         try { GestionDAO.vencerPedidosPendientes(); } catch (SQLException error) {
             System.err.println("No se pudieron revisar las señas vencidas: " + error.getMessage());
+        }
+        try { seniasPorConfirmar = GestionDAO.contarSeniasPorConfirmar(); } catch (SQLException error) {
+            seniasPorConfirmar = 0;
         }
         escala = calcularEscala();
         setDefaultCloseOperation(EXIT_ON_CLOSE);
@@ -198,11 +202,14 @@ public class VentanaPrincipal extends JFrame {
         Color[] acentos = {VERDE_MEDIO, AZUL, NARANJA, new Color(0x7FA87A)};
         Color fondoTarjeta = fondos[indice % fondos.length];
         Color acentoTarjeta = acentos[indice % acentos.length];
+        String aviso = acceso.alertas() > 0
+                ? "<br><span style='font-size:" + escalar(11) + "pt;color:#B42318'><b>" + acceso.alertas() + " seña(s) por revisar</b></span>"
+                : "";
         JButton boton = new TarjetaAcceso("<html><div style='text-align:left'>"
                 + "<b style='font-size:" + escalar(21) + "pt;color:#2D4A3E'>" + acceso.titulo() + "</b><br>"
-                + "<span style='font-size:" + escalar(14) + "pt;color:#52645E'>" + acceso.descripcion() + "</span><br><br>"
+                + "<span style='font-size:" + escalar(14) + "pt;color:#52645E'>" + acceso.descripcion() + "</span>" + aviso + "<br><br>"
                 + "<span style='font-size:" + escalar(11) + "pt;color:#1B6B7A'><b>ABRIR SECCIÓN&nbsp; &#8594;</b></span>"
-                + "</div></html>", fondoTarjeta, acentoTarjeta);
+                + "</div></html>", fondoTarjeta, acentoTarjeta, acceso.alertas());
         boton.setHorizontalAlignment(SwingConstants.LEFT);
         boton.setVerticalAlignment(SwingConstants.CENTER);
         boton.setForeground(PETROLEO);
@@ -293,7 +300,13 @@ public class VentanaPrincipal extends JFrame {
             setVisible(false);
             if (modulo == null) new VentanaClientes(this).setVisible(true);
             else new VentanaGestion(this, modulo).setVisible(true);
-        });
+        }, modulo != null && "pago".equals(modulo.tabla()) ? seniasPorConfirmar : 0);
+    }
+
+    /** Vuelve al inicio recreando el menú para que las alertas de pago se recalculen. */
+    public void volverYActualizar() {
+        dispose();
+        new VentanaPrincipal().setVisible(true);
     }
 
     /**
@@ -339,20 +352,24 @@ public class VentanaPrincipal extends JFrame {
         };
     }
 
-    private record Acceso(String titulo, String descripcion, Runnable accion) { }
+    private record Acceso(String titulo, String descripcion, Runnable accion, int alertas) {
+        private Acceso(String titulo, String descripcion, Runnable accion) { this(titulo, descripcion, accion, 0); }
+    }
 
     // Dibuja las tarjetas con esquinas suaves, borde de foco y una franja de color.
     private final class TarjetaAcceso extends JButton {
         private final Color fondoTarjeta;
         private final Color acentoTarjeta;
+        private final int alertas;
 
         /**
          * Construye el objeto, guarda sus datos iniciales y deja sus componentes preparados para usarse.
          */
-        private TarjetaAcceso(String texto, Color fondoTarjeta, Color acentoTarjeta) {
+        private TarjetaAcceso(String texto, Color fondoTarjeta, Color acentoTarjeta, int alertas) {
             super(texto);
             this.fondoTarjeta = fondoTarjeta;
             this.acentoTarjeta = acentoTarjeta;
+            this.alertas = alertas;
             setOpaque(false);
             setContentAreaFilled(false);
             setBorder(BorderFactory.createEmptyBorder(escalar(18), escalar(24), escalar(18), escalar(20)));
@@ -375,6 +392,16 @@ public class VentanaPrincipal extends JFrame {
             lienzo.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, escalar(18), escalar(18));
             lienzo.setColor(acentoTarjeta);
             lienzo.fillRoundRect(0, escalar(13), escalar(6), getHeight() - escalar(26), escalar(6), escalar(6));
+            if (alertas > 0) {
+                int diametro = escalar(18);
+                lienzo.setColor(new Color(0xD92D20));
+                lienzo.fillOval(getWidth() - diametro - escalar(14), escalar(14), diametro, diametro);
+                lienzo.setColor(Color.WHITE);
+                lienzo.setFont(getFont().deriveFont(Font.BOLD, 10f * escala));
+                String texto = alertas > 9 ? "9+" : Integer.toString(alertas);
+                int ancho = lienzo.getFontMetrics().stringWidth(texto);
+                lienzo.drawString(texto, getWidth() - diametro - escalar(14) + (diametro - ancho) / 2, escalar(27));
+            }
             lienzo.dispose();
             super.paintComponent(graficos);
         }

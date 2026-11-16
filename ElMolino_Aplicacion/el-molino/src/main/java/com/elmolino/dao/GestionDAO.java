@@ -36,6 +36,10 @@ public final class GestionDAO {
         @Override public String toString() { return nombre; }
     }
 
+    /** Resume el importe que se cobrará al terminar una estadía. */
+    public record ResumenCobroFinal(String cliente, BigDecimal saldoAlojamiento,
+                                    BigDecimal actividadesPendientes, BigDecimal total) { }
+
     // Describe un campo, su etiqueta, reglas y posibles opciones de seleccion.
     public record Campo(String columna, String etiqueta, Tipo tipo, boolean obligatorio,
                         boolean visible, List<String> opciones, String consultaOpciones) {
@@ -166,9 +170,10 @@ public final class GestionDAO {
     public static final Modulo PAGOS = new Modulo("Pagos", "pago", "idPago", List.of(
             relacion("idReserva", "Reserva", "SELECT idReserva, CONCAT('Reserva ', idReserva, ' - cliente ', idCliente) FROM `reservas` ORDER BY idReserva DESC"),
             decimal("montoTotal", "Monto"), opcion("metodoPago", "Medio de pago", List.of("Efectivo", "Transferencia", "Tarjeta", "Otro")),
-            opcion("tipoPago", "Concepto", List.of("SENA", "SALDO", "REEMBOLSO")),
+            opcion("tipoPago", "Concepto", List.of("SENA", "SALDO", "ACTIVIDAD", "REEMBOLSO")),
             opcion("estado", "Estado", List.of("PENDIENTE", "CONFIRMADO", "ANULADO")),
-            fecha("fechaPago", "Fecha (AAAA-MM-DD)"), texto("comprobante", "Comprobante", false)));
+            fecha("fechaPago", "Fecha (AAAA-MM-DD)"), texto("comprobante", "Número de operación", false),
+            texto("archivoComprobante", "Archivo del comprobante", false), texto("observacion", "Observación para el cliente", false)));
 
     public static final Modulo REEMBOLSOS = new Modulo("Reintegros", "reembolso", "idReembolso", List.of(
             relacion("idPedido", "Pedido", "SELECT idPedido, CONCAT('Pedido ',idPedido,' - cliente ',idCliente) FROM pedido_alojamiento ORDER BY idPedido DESC"),
@@ -200,6 +205,16 @@ public final class GestionDAO {
     public static void validarAcceso(Modulo modulo) throws SQLException {
         if (SesionActual.get() == null || !tieneAccesoTabla(modulo.tabla(), SesionActual.get().getRol())) {
             throw new SQLException("Tu rol no tiene acceso a la sección " + modulo.titulo() + ".");
+        }
+    }
+
+    /** Cuenta las transferencias informadas que todavía requieren revisión humana. */
+    public static int contarSeniasPorConfirmar() throws SQLException {
+        try (Connection conexion = Conexion.obtener(); PreparedStatement sentencia = conexion.prepareStatement(
+                "SELECT COUNT(DISTINCT d.idPedido) FROM pago p JOIN detalle_pedido_alojamiento d ON d.idReserva=p.idReserva "
+                        + "JOIN pedido_alojamiento pa ON pa.idPedido=d.idPedido WHERE p.tipoPago='SENA' AND p.estado='PENDIENTE' "
+                        + "AND pa.estadoPago='SENA_INFORMADA'" ); ResultSet resultados = sentencia.executeQuery()) {
+            return resultados.next() ? resultados.getInt(1) : 0;
         }
     }
 
@@ -264,6 +279,70 @@ public final class GestionDAO {
             }
         }
         return resultado;
+    }
+
+    /** Lista únicamente estadías ya terminadas que todavía tienen algo por cobrar. */
+    public static List<Opcion> reservasParaCobroFinal() throws SQLException {
+        validarAcceso(PAGOS);
+        return opciones("SELECT r.idReserva, CONCAT('Reserva ',r.idReserva,' · ',c.apellido,', ',c.nombre) "
+                + "FROM reservas r JOIN cliente c ON c.idCliente=r.idCliente "
+                + "JOIN detalle_pedido_alojamiento d ON d.idReserva=r.idReserva "
+                + "JOIN pedido_alojamiento pa ON pa.idPedido=d.idPedido "
+                + "WHERE r.fechaEgreso<=CURRENT_DATE AND UPPER(r.estadoReserva) IN ('CONFIRMADA','FINALIZADA') "
+                + "AND UPPER(pa.estadoPago) IN ('SENA_PAGADA','PAGADO') ORDER BY r.fechaEgreso DESC, r.idReserva DESC");
+    }
+
+    /** Calcula en forma segura el alojamiento y las actividades que quedan pendientes. */
+    public static ResumenCobroFinal resumenCobroFinal(int idReserva) throws SQLException {
+        validarAcceso(PAGOS);
+        try (Connection conexion = Conexion.obtener()) {
+            return leerResumenCobroFinal(conexion, idReserva, false);
+        }
+    }
+
+    /** Registra el cierre: un movimiento de saldo y, si corresponde, otro de actividades. */
+    public static void registrarCobroFinal(int idReserva, String metodoPago, String comprobante) throws SQLException {
+        validarAcceso(PAGOS);
+        if (!List.of("Efectivo", "Transferencia", "Tarjeta", "Otro").contains(metodoPago)) {
+            throw new IllegalArgumentException("Elegí un medio de pago válido.");
+        }
+        try (Connection conexion = Conexion.obtener()) {
+            conexion.setAutoCommit(false);
+            try {
+                ResumenCobroFinal resumen = leerResumenCobroFinal(conexion, idReserva, true);
+                if (resumen.total().signum() <= 0) throw new IllegalArgumentException("Esta estadía ya no tiene saldo pendiente.");
+                int idPedido = pedidoDeReserva(conexion, idReserva);
+                try (PreparedStatement insertar = conexion.prepareStatement(
+                        "INSERT INTO pago(idReserva,montoTotal,metodoPago,tipoPago,estado,fechaPago,comprobante) VALUES (?,?,? ,?, 'CONFIRMADO',CURRENT_DATE,?)")) {
+                    if (resumen.saldoAlojamiento().signum() > 0) {
+                        insertar.setInt(1, idReserva); insertar.setBigDecimal(2, resumen.saldoAlojamiento());
+                        insertar.setString(3, metodoPago); insertar.setString(4, "SALDO"); insertar.setString(5, comprobante);
+                        insertar.executeUpdate();
+                    }
+                    if (resumen.actividadesPendientes().signum() > 0) {
+                        insertar.setInt(1, idReserva); insertar.setBigDecimal(2, resumen.actividadesPendientes());
+                        insertar.setString(3, metodoPago); insertar.setString(4, "ACTIVIDAD"); insertar.setString(5, comprobante);
+                        insertar.executeUpdate();
+                    }
+                }
+                try (PreparedStatement cargos = conexion.prepareStatement(
+                        "UPDATE cargo_actividad SET estado='PAGADO', actualizadoEn=NOW() WHERE idPedido=? AND UPPER(estado)='PENDIENTE'")) {
+                    cargos.setInt(1, idPedido); cargos.executeUpdate();
+                }
+                try (PreparedStatement finalizar = conexion.prepareStatement("UPDATE reservas SET estadoReserva='FINALIZADA' WHERE idReserva=?")) {
+                    finalizar.setInt(1, idReserva); finalizar.executeUpdate();
+                }
+                sincronizarPedidoPorId(conexion, idPedido);
+                AuditoriaDAO.registrar(conexion, "COBRAR_SALDO", "Pagos", Integer.toString(idReserva), Map.of(),
+                        Map.of("cliente", resumen.cliente(), "total", resumen.total(), "medio", metodoPago));
+                conexion.commit();
+            } catch (Exception error) {
+                conexion.rollback();
+                if (error instanceof SQLException sql) throw sql;
+                if (error instanceof IllegalArgumentException argumento) throw argumento;
+                throw new SQLException("No se pudo registrar el cobro final", error);
+            } finally { conexion.setAutoCommit(true); }
+        }
     }
 
     /**
@@ -478,6 +557,10 @@ public final class GestionDAO {
                 }
                 Map<String, Object> datosAnteriores = crear ? Map.of()
                         : AuditoriaDAO.capturar(conexion, modulo.tabla(), modulo.id(), id);
+                if ("pago".equals(modulo.tabla())) {
+                    if (crear) throw new IllegalArgumentException("Los pagos nuevos se registran desde «Cobrar estadía final».");
+                    validarRevisionDeSena(datosAnteriores, datos);
+                }
                 int idGuardado = id == null ? -1 : id;
                 try (PreparedStatement sentencia = conexion.prepareStatement(
                         consultaSql, crear ? Statement.RETURN_GENERATED_KEYS : Statement.NO_GENERATED_KEYS)) {
@@ -641,6 +724,11 @@ public final class GestionDAO {
         try(PreparedStatement s=conexion.prepareStatement("SELECT total FROM pedido_alojamiento WHERE idPedido=? FOR UPDATE")){
             s.setInt(1,idPedido);try(ResultSet r=s.executeQuery()){r.next();totalAnterior=r.getBigDecimal(1);}
         }
+        try(PreparedStatement s=conexion.prepareStatement(
+                "UPDATE pago p JOIN detalle_pedido_alojamiento d ON d.idReserva=p.idReserva SET p.estado='ANULADO',"
+                        + "p.observacion='La pre-reserva fue cancelada antes de confirmar el pago.' WHERE d.idPedido=? AND p.estado='PENDIENTE'")) {
+            s.setInt(1,idPedido); s.executeUpdate();
+        }
         sincronizarPedidoPorId(conexion,idPedido);
         BigDecimal pagado=BigDecimal.ZERO, totalNuevo=BigDecimal.ZERO, senaNueva=BigDecimal.ZERO;
         int activas=0;
@@ -668,10 +756,13 @@ public final class GestionDAO {
             conexion.setAutoCommit(false);
             try(PreparedStatement s=conexion.prepareStatement(
                     "UPDATE pedido_alojamiento pa LEFT JOIN (SELECT d.idPedido,SUM(CASE WHEN p.estado='CONFIRMADO' AND p.tipoPago IN ('SENA','SALDO') THEN p.montoTotal ELSE 0 END) pagado FROM detalle_pedido_alojamiento d LEFT JOIN pago p ON p.idReserva=d.idReserva GROUP BY d.idPedido) x ON x.idPedido=pa.idPedido "
-                            + "SET pa.estadoPedido='VENCIDO',pa.estadoPago='VENCIDO',pa.canceladoEn=NOW() WHERE pa.fechaLimiteSena<NOW() AND pa.estadoPedido IN ('ESPERANDO_SENA','PENDIENTE') AND COALESCE(x.pagado,0)<pa.montoSena")){
+                            + "SET pa.estadoPedido='VENCIDO',pa.estadoPago='VENCIDO',pa.canceladoEn=NOW() WHERE pa.fechaLimiteSena<NOW() AND pa.estadoPedido IN ('ESPERANDO_SENA','PENDIENTE') AND pa.estadoPago='SENA_PENDIENTE' AND COALESCE(x.pagado,0)<pa.montoSena")){
                 s.executeUpdate();
             }
             try(PreparedStatement s=conexion.prepareStatement("UPDATE reservas r JOIN detalle_pedido_alojamiento d ON d.idReserva=r.idReserva JOIN pedido_alojamiento pa ON pa.idPedido=d.idPedido SET r.estadoReserva='CANCELADA' WHERE pa.estadoPedido='VENCIDO' AND UPPER(r.estadoReserva) NOT IN ('CANCELADA','CANCELADO','FINALIZADA')")){s.executeUpdate();}
+            try(PreparedStatement s=conexion.prepareStatement("UPDATE pedido_alojamiento SET estadoPedido='VENCIDO',estadoPago='PAGO_RECHAZADO',fechaLimiteRevisionSena=NULL,canceladoEn=NOW() WHERE estadoPago='SENA_INFORMADA' AND fechaLimiteRevisionSena<NOW()")){s.executeUpdate();}
+            try(PreparedStatement s=conexion.prepareStatement("UPDATE pago p JOIN detalle_pedido_alojamiento d ON d.idReserva=p.idReserva JOIN pedido_alojamiento pa ON pa.idPedido=d.idPedido SET p.estado='ANULADO',p.observacion='La recepción no pudo confirmar la transferencia dentro de las 24 horas.' WHERE pa.estadoPago='PAGO_RECHAZADO' AND p.estado='PENDIENTE'")){s.executeUpdate();}
+            try(PreparedStatement s=conexion.prepareStatement("UPDATE reservas r JOIN detalle_pedido_alojamiento d ON d.idReserva=r.idReserva JOIN pedido_alojamiento pa ON pa.idPedido=d.idPedido SET r.estadoReserva='CANCELADA' WHERE pa.estadoPago='PAGO_RECHAZADO' AND UPPER(r.estadoReserva) NOT IN ('CANCELADA','CANCELADO','FINALIZADA')")){s.executeUpdate();}
             conexion.commit();
         }
     }
@@ -1006,6 +1097,74 @@ public final class GestionDAO {
         sincronizarPedidoPorId(conexion, idPedido);
     }
 
+    /** Solo permite que recepción confirme o anule una seña que informó el cliente. */
+    private static void validarRevisionDeSena(Map<String, Object> anterior, Map<String, Object> nuevo) {
+        String tipo = String.valueOf(anterior.get("tipoPago"));
+        String estadoAnterior = String.valueOf(anterior.get("estado"));
+        String estadoNuevo = String.valueOf(nuevo.get("estado"));
+        if (!"SENA".equalsIgnoreCase(tipo) || !"PENDIENTE".equalsIgnoreCase(estadoAnterior)
+                || !List.of("CONFIRMADO", "ANULADO").contains(estadoNuevo)) {
+            throw new IllegalArgumentException("Solo se puede confirmar o anular una seña pendiente informada por el cliente.");
+        }
+        for (String campo : List.of("idReserva", "montoTotal", "metodoPago", "tipoPago", "fechaPago", "comprobante", "archivoComprobante")) {
+            Object antes = anterior.get(campo);
+            Object despues = nuevo.get(campo);
+            if (antes instanceof BigDecimal montoAntes && despues instanceof BigDecimal montoDespues) {
+                if (montoAntes.compareTo(montoDespues) != 0) throw new IllegalArgumentException("No se puede modificar el importe ni los datos de una seña informada.");
+            } else if (antes == null ? despues != null : !antes.toString().equals(despues == null ? null : despues.toString())) {
+                throw new IllegalArgumentException("No se puede modificar el importe ni los datos de una seña informada.");
+            }
+        }
+    }
+
+    /** Busca el pedido de una reserva y bloquea su lectura durante el cobro. */
+    private static int pedidoDeReserva(Connection conexion, int idReserva) throws SQLException {
+        try (PreparedStatement sentencia = conexion.prepareStatement(
+                "SELECT idPedido FROM detalle_pedido_alojamiento WHERE idReserva=? LIMIT 1 FOR UPDATE")) {
+            sentencia.setInt(1, idReserva);
+            try (ResultSet resultados = sentencia.executeQuery()) {
+                if (!resultados.next()) throw new IllegalArgumentException("La reserva no pertenece a un pedido web.");
+                return resultados.getInt(1);
+            }
+        }
+    }
+
+    /** Lee el importe pendiente sin permitir que se cobre una estadía que aún no terminó. */
+    private static ResumenCobroFinal leerResumenCobroFinal(Connection conexion, int idReserva, boolean bloquear) throws SQLException {
+        String bloqueo = bloquear ? " FOR UPDATE" : "";
+        int idPedido;
+        BigDecimal total;
+        BigDecimal pagado;
+        Date egreso;
+        String estado;
+        String cliente;
+        try (PreparedStatement sentencia = conexion.prepareStatement(
+                "SELECT pa.idPedido,pa.total,r.fechaEgreso,r.estadoReserva,CONCAT(c.apellido,', ',c.nombre),"
+                        + "(SELECT COALESCE(SUM(pg.montoTotal),0) FROM detalle_pedido_alojamiento dx JOIN pago pg ON pg.idReserva=dx.idReserva "
+                        + "WHERE dx.idPedido=pa.idPedido AND UPPER(pg.estado)='CONFIRMADO' AND UPPER(pg.tipoPago) IN ('SENA','SALDO')) "
+                        + "FROM reservas r JOIN cliente c ON c.idCliente=r.idCliente JOIN detalle_pedido_alojamiento d ON d.idReserva=r.idReserva "
+                        + "JOIN pedido_alojamiento pa ON pa.idPedido=d.idPedido WHERE r.idReserva=?" + bloqueo)) {
+            sentencia.setInt(1, idReserva);
+            try (ResultSet resultados = sentencia.executeQuery()) {
+                if (!resultados.next()) throw new IllegalArgumentException("No encontramos esa reserva.");
+                idPedido = resultados.getInt(1); total = resultados.getBigDecimal(2); egreso = resultados.getDate(3);
+                estado = resultados.getString(4); cliente = resultados.getString(5); pagado = resultados.getBigDecimal(6);
+            }
+        }
+        if (egreso == null || egreso.toLocalDate().isAfter(LocalDate.now())
+                || !List.of("CONFIRMADA", "FINALIZADA").contains(estado.toUpperCase(Locale.ROOT))) {
+            throw new IllegalArgumentException("El saldo solo se puede cobrar cuando la estadía terminó.");
+        }
+        BigDecimal actividades;
+        try (PreparedStatement sentencia = conexion.prepareStatement(
+                "SELECT COALESCE(SUM(montoTotal),0) FROM cargo_actividad WHERE idPedido=? AND UPPER(estado)='PENDIENTE'")) {
+            sentencia.setInt(1, idPedido);
+            try (ResultSet resultados = sentencia.executeQuery()) { resultados.next(); actividades = resultados.getBigDecimal(1); }
+        }
+        BigDecimal alojamiento = total.subtract(pagado).max(BigDecimal.ZERO);
+        return new ResumenCobroFinal(cliente, alojamiento, actividades, alojamiento.add(actividades));
+    }
+
     /** Recalcula el pedido después de confirmar una seña, saldo o reintegro. */
     private static void sincronizarPedidoPorId(Connection conexion, int idPedido) throws SQLException {
         BigDecimal total;
@@ -1044,11 +1203,12 @@ public final class GestionDAO {
 
         try (PreparedStatement sentencia = conexion.prepareStatement(
                 "UPDATE pedido_alojamiento SET total=?, montoSena=?, estadoPedido=?, estadoPago=?, "
-                        + "senaPagadaEn=CASE WHEN ? THEN COALESCE(senaPagadaEn, NOW()) ELSE NULL END "
+                        + "senaPagadaEn=CASE WHEN ? THEN COALESCE(senaPagadaEn, NOW()) ELSE NULL END, "
+                        + "fechaLimiteRevisionSena=CASE WHEN ?='SENA_INFORMADA' THEN fechaLimiteRevisionSena ELSE NULL END "
                         + "WHERE idPedido=?")) {
             sentencia.setBigDecimal(1,total); sentencia.setBigDecimal(2,montoSena);
             sentencia.setString(3, nuevoEstadoPedido); sentencia.setString(4, nuevoEstadoPago);
-            sentencia.setBoolean(5, senaCompleta); sentencia.setInt(6, idPedido);
+            sentencia.setBoolean(5, senaCompleta); sentencia.setString(6, nuevoEstadoPago); sentencia.setInt(7, idPedido);
             sentencia.executeUpdate();
         }
         if (activas == 0) return;

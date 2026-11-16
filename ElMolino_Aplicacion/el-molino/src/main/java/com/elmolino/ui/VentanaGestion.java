@@ -29,6 +29,7 @@ import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.math.BigDecimal;
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.LinkedHashMap;
@@ -64,15 +65,16 @@ public class VentanaGestion extends JFrame {
         this.principal = principal;
         this.modulo = modulo;
         // Ajusta los botones visibles segun los permisos y las reglas de cada modulo.
-        boolean pagosSoloLectura = "pago".equals(modulo.tabla());
+        boolean moduloPagos = "pago".equals(modulo.tabla());
         boolean soloAltaInscripcion = "inscripcionActividad".equals(modulo.tabla());
         boolean altaUsuarioAdmin = "usuarios".equals(modulo.tabla()) && puedeGestionarUsuarios();
         // Los alojamientos se crean en la web, salvo cuando la sesion es SuperAdmin.
         botonNuevo.setVisible(esSuperAdmin() || soloAltaInscripcion || altaUsuarioAdmin);
-        if (pagosSoloLectura && !esSuperAdmin()) {
-            botonNuevo.setVisible(false);
-            botonEditar.setVisible(false);
+        if (moduloPagos) {
+            botonNuevo.setVisible(puedeCobrarSaldo());
             botonEliminar.setVisible(false);
+            botonNuevo.setText("Cobrar estadía final");
+            botonNuevo.setToolTipText("Calcula y registra el saldo de alojamiento y las actividades pendientes");
         }
         if (soloAltaInscripcion && !esSuperAdmin()) {
             botonEditar.setVisible(false);
@@ -136,7 +138,10 @@ public class VentanaGestion extends JFrame {
         botonEditar.setToolTipText("Seleccioná una fila y abrí el formulario de edición");
         botonVolver.addActionListener(evento -> dispose());
         botonActualizar.addActionListener(evento -> cargar());
-        botonNuevo.addActionListener(evento -> mostrarFormulario(null));
+        botonNuevo.addActionListener(evento -> {
+            if ("pago".equals(modulo.tabla())) mostrarCobroFinal();
+            else mostrarFormulario(null);
+        });
         botonEditar.addActionListener(evento -> editarSeleccionado());
         botonEliminar.addActionListener(evento -> eliminarSeleccionado());
         tabla.addMouseListener(new MouseAdapter() {
@@ -180,8 +185,7 @@ public class VentanaGestion extends JFrame {
              * Ejecuta la lógica de “window closed” en VentanaGestion.java.
              */
             @Override public void windowClosed(WindowEvent evento) {
-                principal.setVisible(true);
-                principal.toFront();
+                principal.volverYActualizar();
             }
         });
         cargar();
@@ -287,9 +291,13 @@ public class VentanaGestion extends JFrame {
             for (Campo campo : camposFormulario) {
                 JLabel etiqueta = new JLabel(campo.etiqueta() + (campo.obligatorio() ? " *" : ""));
                 Object valor = original == null ? null : original.valores().get(campo.columna());
+                boolean revisionSena = original != null && "pago".equals(modulo.tabla())
+                        && "SENA".equals(String.valueOf(original.valores().get("tipoPago")))
+                        && "PENDIENTE".equals(String.valueOf(original.valores().get("estado")));
                 boolean estadoBloqueado = ("alojamientos".equals(modulo.tabla()) && "estado".equals(campo.columna())
                         && !esSuperAdmin() && !esRecepcion() && !esLimpieza())
-                        || ("inscripcionActividad".equals(modulo.tabla()) && "estado".equals(campo.columna()));
+                        || ("inscripcionActividad".equals(modulo.tabla()) && "estado".equals(campo.columna()))
+                        || (revisionSena && !List.of("estado", "observacion").contains(campo.columna()));
                 etiqueta.setEnabled(!estadoBloqueado);
                 formulario.add(etiqueta);
                 java.awt.Component componente = crearEditor(campo);
@@ -360,6 +368,74 @@ public class VentanaGestion extends JFrame {
         });
         dialogo.getRootPane().setDefaultButton(guardar);
         dialogo.setVisible(true);
+    }
+
+    /** Abre un cobro guiado para evitar que recepción cargue importes a mano. */
+    private void mostrarCobroFinal() {
+        List<Opcion> reservas;
+        try { reservas = GestionDAO.reservasParaCobroFinal(); }
+        catch (SQLException error) { mostrarError("No se pudieron cargar las estadías para cobrar", error); return; }
+        if (reservas.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "No hay estadías terminadas con saldo pendiente.", "Cobro final", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        JDialog dialogo = new JDialog(this, "Cobrar estadía final", true);
+        JPanel formulario = new JPanel(new GridLayout(0, 2, 8, 10));
+        formulario.setBorder(BorderFactory.createEmptyBorder(16, 18, 16, 18));
+        JComboBox<Opcion> reserva = new JComboBox<>();
+        reservas.forEach(reserva::addItem);
+        JLabel cliente = new JLabel();
+        JLabel alojamiento = new JLabel();
+        JLabel actividades = new JLabel();
+        JLabel total = new JLabel();
+        JComboBox<String> metodo = new JComboBox<>(new String[]{"Efectivo", "Transferencia", "Tarjeta", "Otro"});
+        JTextField comprobante = new JTextField();
+        Runnable actualizar = () -> {
+            Opcion elegida = (Opcion) reserva.getSelectedItem();
+            if (elegida == null) return;
+            try {
+                GestionDAO.ResumenCobroFinal resumen = GestionDAO.resumenCobroFinal(elegida.id());
+                cliente.setText(resumen.cliente());
+                alojamiento.setText("$ " + resumen.saldoAlojamiento());
+                actividades.setText("$ " + resumen.actividadesPendientes());
+                total.setText("$ " + resumen.total());
+            } catch (SQLException | IllegalArgumentException error) {
+                cliente.setText("No disponible"); alojamiento.setText("—"); actividades.setText("—"); total.setText("—");
+            }
+        };
+        reserva.addActionListener(evento -> actualizar.run());
+        formulario.add(new JLabel("Estadía terminada *")); formulario.add(reserva);
+        formulario.add(new JLabel("Cliente")); formulario.add(cliente);
+        formulario.add(new JLabel("Saldo de alojamiento")); formulario.add(alojamiento);
+        formulario.add(new JLabel("Actividades pendientes")); formulario.add(actividades);
+        formulario.add(new JLabel("Total a cobrar")); formulario.add(total);
+        formulario.add(new JLabel("Medio de pago *")); formulario.add(metodo);
+        formulario.add(new JLabel("Comprobante / operación")); formulario.add(comprobante);
+        JButton cobrar = new JButton("Confirmar cobro");
+        JButton cancelar = new JButton("Cancelar");
+        JPanel acciones = new JPanel(); acciones.add(cobrar); acciones.add(cancelar);
+        formulario.add(new JLabel("")); formulario.add(acciones);
+        actualizar.run();
+        cancelar.addActionListener(evento -> dialogo.dispose());
+        cobrar.addActionListener(evento -> {
+            Opcion elegida = (Opcion) reserva.getSelectedItem();
+            if (elegida == null) return;
+            if (JOptionPane.showConfirmDialog(dialogo, "¿Confirmás el cobro final de esta estadía?", "Confirmar cobro", JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) return;
+            cobrar.setEnabled(false); cancelar.setEnabled(false);
+            new SwingWorker<Void, Void>() {
+                @Override protected Void doInBackground() throws Exception {
+                    GestionDAO.registrarCobroFinal(elegida.id(), (String) metodo.getSelectedItem(), comprobante.getText().trim());
+                    return null;
+                }
+                @Override protected void done() {
+                    try { get(); dialogo.dispose(); cargar(); }
+                    catch (Exception error) { cobrar.setEnabled(true); cancelar.setEnabled(true); mostrarError("No se pudo registrar el cobro", error); }
+                }
+            }.execute();
+        });
+        dialogo.setContentPane(formulario);
+        dialogo.pack(); dialogo.setMinimumSize(new java.awt.Dimension(560, dialogo.getHeight()));
+        dialogo.setLocationRelativeTo(this); dialogo.setVisible(true);
     }
 
     /**
@@ -623,6 +699,12 @@ public class VentanaGestion extends JFrame {
      */
     private boolean esRecepcion() {
         return SesionActual.get() != null && "RECEPCION".equals(SesionActual.get().getRol());
+    }
+
+    /** Indica qué roles pueden cerrar una estadía y registrar el dinero recibido. */
+    private boolean puedeCobrarSaldo() {
+        if (SesionActual.get() == null) return false;
+        return List.of("SUPERADMIN", "ADMINISTRADOR", "ADMINISTRACION", "RECEPCION").contains(SesionActual.get().getRol());
     }
 
     /**
