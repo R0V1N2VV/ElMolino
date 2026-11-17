@@ -319,6 +319,227 @@
     color: #7b3b36;
 }
 
+/* El perfil usa bloques tranquilos y jerarquía clara: evita paneles recargados. */
+.cabecera-cuenta {
+    align-items: center;
+    padding: clamp(24px, 4vw, 42px);
+    border: 0;
+    border-radius: 18px;
+    background: linear-gradient(120deg, #edf3ee 0%, #f9f7f0 100%);
+}
+
+.cabecera-cuenta h1 {
+    letter-spacing: -.035em;
+}
+
+.cabecera-cuenta > div > p:last-child {
+    max-width: 36rem;
+    color: #52615e;
+}
+
+.panel-resumen-cuenta,
+.seccion-cuenta-secundaria,
+.detalle-estadia-card,
+.linea-tiempo-estadia,
+.estado-vacio-estadia {
+    border-color: rgba(0, 77, 64, .13);
+    box-shadow: 0 10px 28px rgba(20, 49, 42, .05);
+}
+
+.encabezado-panel-cuenta > span {
+    display: grid;
+    min-width: 2rem;
+    min-height: 2rem;
+    place-items: center;
+    border-radius: 999px;
+    background: #edf3ee;
+    color: var(--verde-oscuro);
+}
+
+.item-resumen-cuenta {
+    padding: 20px 0;
+}
+
+.situacion-llegada-cuenta {
+    padding-left: 12px;
+    border-left: 3px solid #9ab8a1;
+}
+
+.enlace-ver-estadia {
+    display: inline-flex;
+    align-items: center;
+    margin-top: 4px;
+    color: var(--azul-oscuro);
+    font-size: .9rem;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.enlace-ver-estadia::after {
+    margin-left: 7px;
+    content: '→';
+}
+
+.enlace-ver-estadia:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+/* Página de detalle de la estadía. */
+.pagina-estadia-cliente {
+    min-height: 100vh;
+    background: #f6f8f6;
+    color: var(--texto);
+}
+
+.contenido-estadia {
+    padding-block: 38px 92px;
+}
+
+.volver-cuenta {
+    display: inline-flex;
+    margin-bottom: 20px;
+    color: var(--azul-oscuro);
+    font-size: .9rem;
+    font-weight: 750;
+    text-decoration: none;
+}
+
+.volver-cuenta::before {
+    margin-right: 7px;
+    content: '←';
+}
+
+.cabecera-estadia {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(260px, .62fr);
+    gap: 28px;
+    align-items: center;
+    padding: clamp(25px, 4vw, 46px);
+    border-radius: 18px;
+    background: #163f38;
+    color: #fff;
+}
+
+.cabecera-estadia .texto-destacado,
+.cabecera-estadia .rango-estadia {
+    color: rgba(255, 255, 255, .76);
+}
+
+.cabecera-estadia h1 {
+    max-width: 16ch;
+    margin: 4px 0 10px;
+    font-size: clamp(2rem, 4vw, 3.4rem);
+    line-height: 1.04;
+    letter-spacing: -.035em;
+}
+
+.rango-estadia { margin: 0; font-weight: 650; }
+
+.estado-estadia-pill {
+    display: grid;
+    gap: 7px;
+    padding: 20px;
+    border: 1px solid rgba(255, 255, 255, .22);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, .1);
+}
+
+.estado-estadia-pill strong { font-size: 1.1rem; }
+.estado-estadia-pill span { color: rgba(255, 255, 255, .76); font-size: .9rem; line-height: 1.45; }
+
+.metricas-estadia {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1px;
+    margin: 24px 0;
+    overflow: hidden;
+    border: 1px solid rgba(0, 77, 64, .13);
+    border-radius: 14px;
+    background: rgba(0, 77, 64, .13);
+}
+
+.metricas-estadia article {
+    display: grid;
+    gap: 7px;
+    min-height: 100px;
+    padding: 18px;
+    background: var(--blanco);
+}
+
+.metricas-estadia span,
+.detalle-estadia-card dt { color: #60706c; font-size: .78rem; font-weight: 750; text-transform: uppercase; letter-spacing: .045em; }
+.metricas-estadia strong { color: var(--azul-oscuro); font-size: 1rem; line-height: 1.25; }
+
+.linea-tiempo-estadia,
+.detalle-estadia-card,
+.estado-vacio-estadia {
+    padding: clamp(22px, 3vw, 30px);
+    border: 1px solid var(--beige);
+    border-radius: 14px;
+    background: var(--blanco);
+}
+
+.linea-tiempo-estadia h2,
+.detalle-estadia-card h2,
+.estado-vacio-estadia h1 { margin: 3px 0 18px; color: var(--azul-oscuro); }
+
+.linea-tiempo-estadia ol {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 22px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.linea-tiempo-estadia li {
+    position: relative;
+    display: grid;
+    gap: 8px;
+    padding: 16px 0 0;
+    border-top: 3px solid #d9dfda;
+}
+
+.linea-tiempo-estadia li::before { position: absolute; top: -8px; width: 12px; height: 12px; border-radius: 50%; background: #d9dfda; content: ''; }
+.linea-tiempo-estadia li.completo { border-color: var(--verde-medio); }
+.linea-tiempo-estadia li.completo::before { background: var(--verde-medio); }
+.linea-tiempo-estadia li.detenido { border-color: #ba8a5c; }
+.linea-tiempo-estadia li.detenido::before { background: #ba8a5c; }
+.linea-tiempo-estadia li span { color: #60706c; font-size: .88rem; line-height: 1.45; }
+
+.grilla-detalle-estadia { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; margin-top: 22px; }
+.detalle-estadia-card dl { display: grid; gap: 0; margin: 0; }
+.detalle-estadia-card dl > div { display: flex; justify-content: space-between; gap: 18px; padding: 12px 0; border-bottom: 1px solid var(--beige); }
+.detalle-estadia-card dd { margin: 0; color: var(--azul-oscuro); font-weight: 700; text-align: right; }
+.lista-huespedes-estadia { display: grid; gap: 8px; margin: 16px 0 0; padding: 0; list-style: none; }
+.lista-huespedes-estadia li { display: flex; justify-content: space-between; gap: 12px; color: #52615e; }
+.lista-huespedes-estadia span { color: #74817d; font-size: .84rem; }
+.texto-suave { margin: 16px 0 0; color: #60706c; line-height: 1.5; }
+.actividades-estadia { margin-top: 22px; }
+.actividades-estadia ul { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--beige); }
+.actividades-estadia li { display: flex; justify-content: space-between; gap: 20px; padding: 15px 0; border-bottom: 1px solid var(--beige); color: #52615e; font-size: .9rem; }
+.actividades-estadia li div { display: grid; gap: 4px; }
+.actividades-estadia li strong { color: var(--azul-oscuro); }
+.actividades-estadia li span { color: #60706c; }
+.estado-vacio-estadia { max-width: 580px; margin: 36px auto; text-align: center; }
+
+@media (max-width: 780px) {
+    .cabecera-estadia,
+    .grilla-detalle-estadia,
+    .linea-tiempo-estadia ol,
+    .metricas-estadia { grid-template-columns: 1fr; }
+    .metricas-estadia { gap: 1px; }
+    .cabecera-estadia h1 { max-width: none; }
+}
+
+@media (max-width: 500px) {
+    .contenido-estadia { padding-block: 26px 64px; }
+    .detalle-estadia-card dl > div,
+    .actividades-estadia li { align-items: flex-start; flex-direction: column; gap: 5px; }
+    .detalle-estadia-card dd { text-align: left; }
+}
+
 @media (max-width: 600px) {
     .datos-transferencia-cuenta dl,
     .formulario-nuevo-acompanante {

@@ -23,6 +23,19 @@ CREATE TABLE IF NOT EXISTS `cliente` (
   UNIQUE KEY `uk_cliente_email` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+CREATE TABLE IF NOT EXISTS `recuperacion_contrasena` (
+  `idRecuperacion` INT NOT NULL AUTO_INCREMENT,
+  `idCliente` INT NOT NULL,
+  `codigo_hash` VARCHAR(255) NOT NULL,
+  `venceEn` DATETIME NOT NULL,
+  `intentos` TINYINT UNSIGNED NOT NULL DEFAULT 0,
+  `creadoEn` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`idRecuperacion`),
+  UNIQUE KEY `uk_recuperacion_cliente` (`idCliente`),
+  CONSTRAINT `fk_recuperacion_cliente` FOREIGN KEY (`idCliente`) REFERENCES `cliente` (`idCliente`)
+    ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 CREATE TABLE IF NOT EXISTS `usuarios` (
   `idUsuario` INT NOT NULL AUTO_INCREMENT,
   `nombre` VARCHAR(50) NOT NULL,
@@ -174,7 +187,10 @@ CREATE TABLE IF NOT EXISTS `reservas` (
   `idCliente` INT NOT NULL,
   `idAlojamiento` INT NOT NULL,
   `fechaIngreso` DATE NOT NULL,
+  `checkInReal` DATETIME DEFAULT NULL,
   `fechaEgreso` DATE NOT NULL,
+  `checkOutReal` DATETIME DEFAULT NULL,
+  `estadoLlegada` VARCHAR(30) NOT NULL DEFAULT 'PENDIENTE_LLEGADA',
   `cantidadPersonas` INT NOT NULL,
   `temporada` VARCHAR(30) DEFAULT NULL,
   `estadoReserva` VARCHAR(30) NOT NULL,
@@ -247,7 +263,7 @@ CREATE TABLE IF NOT EXISTS `inscripcionActividad` (
   `motivoCancelacion` VARCHAR(100) DEFAULT NULL,
   `actualizadaEn` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`idInscripcion`),
-  UNIQUE KEY `uk_cliente_actividad` (`idCliente`, `idActividad`),
+  UNIQUE KEY `uk_cliente_actividad_fecha` (`idCliente`, `idActividad`, `fechaActividad`),
   KEY `idx_inscripcion_cliente` (`idCliente`),
   KEY `idx_inscripcion_actividad` (`idActividad`),
   CONSTRAINT `fk_inscripcion_cliente`
@@ -264,21 +280,22 @@ CREATE TABLE IF NOT EXISTS inscripcionActividadAcompanante (
     idClienteTitular INT NOT NULL,
     `idAcompañante` INT NOT NULL,
     idActividad INT NOT NULL,
+    fechaActividad DATE NOT NULL,
     fechaInscripcion DATE NOT NULL,
     asistencia TINYINT(1) NOT NULL DEFAULT 0,
     activo TINYINT(1) NOT NULL DEFAULT 1,
     canceladaEn DATETIME DEFAULT NULL,
     PRIMARY KEY (idInscripcionAcompanante),
-    UNIQUE KEY uk_acompanante_actividad (`idAcompañante`, idActividad),
+    UNIQUE KEY uk_acompanante_actividad_fecha (`idAcompañante`, idActividad, fechaActividad),
     KEY idx_inscripcion_acomp_titular (idClienteTitular),
     KEY idx_inscripcion_acomp_actividad (idActividad),
-    KEY idx_inscripcion_acomp_titular_actividad (idClienteTitular, idActividad),
+    KEY idx_inscripcion_acomp_titular_actividad (idClienteTitular, idActividad, fechaActividad),
     CONSTRAINT fk_inscripcion_acomp_persona
         FOREIGN KEY (`idAcompañante`) REFERENCES `acompañante`(`idAcompañante`)
         ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT fk_inscripcion_acomp_inscripcion
-        FOREIGN KEY (idClienteTitular, idActividad)
-        REFERENCES inscripcionActividad(idCliente, idActividad)
+    FOREIGN KEY (idClienteTitular, idActividad, fechaActividad)
+        REFERENCES inscripcionActividad(idCliente, idActividad, fechaActividad)
         ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 

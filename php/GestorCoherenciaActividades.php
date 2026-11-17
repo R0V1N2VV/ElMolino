@@ -43,10 +43,11 @@ final class GestorCoherenciaActividades
                     AND iaa.idActividad = (
                         SELECT idActividad FROM inscripcionActividad WHERE idInscripcion = :inscripcion
                     )
+                    AND iaa.fechaActividad = :fecha
                     AND iaa.activo = 1
                   FOR UPDATE'
             );
-            $acompanantes->execute(['cliente' => $idCliente, 'inscripcion' => $idInscripcion]);
+            $acompanantes->execute(['cliente' => $idCliente, 'inscripcion' => $idInscripcion, 'fecha' => $fecha]);
             foreach ($acompanantes->fetchAll() as $acompanante) {
                 if (!self::acompananteTieneEstadia(
                     $conexion,
@@ -86,7 +87,7 @@ final class GestorCoherenciaActividades
                       WHERE r.idCliente = ia.idCliente
                         AND UPPER(r.estadoReserva) = 'CONFIRMADA'
                         AND UPPER(p.estadoPago) IN ('SENA_PAGADA', 'PAGADO')
-                        AND ia.fechaActividad BETWEEN r.fechaIngreso AND r.fechaEgreso
+                        AND ia.fechaActividad >= r.fechaIngreso AND ia.fechaActividad < r.fechaEgreso
                       ORDER BY r.fechaIngreso DESC, p.idPedido DESC LIMIT 1) AS idPedido
                FROM inscripcionActividad ia
                JOIN Actividad a ON a.idActividad = ia.idActividad
@@ -167,6 +168,7 @@ final class GestorCoherenciaActividades
             'UPDATE inscripcionActividadAcompanante iaa
                 JOIN inscripcionActividad ia
                   ON ia.idCliente = iaa.idClienteTitular AND ia.idActividad = iaa.idActividad
+                 AND ia.fechaActividad = iaa.fechaActividad
                 SET iaa.activo = 0, iaa.canceladaEn = NOW()
               WHERE ia.idInscripcion = :inscripcion AND iaa.activo = 1'
         )->execute(['inscripcion' => $idInscripcion]);
@@ -184,7 +186,8 @@ final class GestorCoherenciaActividades
             'SELECT (CASE WHEN ia.participaTitular = 1 AND UPPER(ia.estado) = \'ACTIVA\' THEN 1 ELSE 0 END)
                     + (SELECT COUNT(*) FROM inscripcionActividadAcompanante iaa
                         WHERE iaa.idClienteTitular = ia.idCliente
-                          AND iaa.idActividad = ia.idActividad AND iaa.activo = 1)
+                          AND iaa.idActividad = ia.idActividad
+                          AND iaa.fechaActividad = ia.fechaActividad AND iaa.activo = 1)
                FROM inscripcionActividad ia
               WHERE ia.idInscripcion = :inscripcion'
         );
@@ -201,10 +204,10 @@ final class GestorCoherenciaActividades
               WHERE r.idCliente = :cliente
                 AND UPPER(r.estadoReserva) = 'CONFIRMADA'
                 AND UPPER(p.estadoPago) IN ('SENA_PAGADA', 'PAGADO')
-                AND :fecha BETWEEN r.fechaIngreso AND r.fechaEgreso
+                AND :fechaInicio >= r.fechaIngreso AND :fechaFin < r.fechaEgreso
               LIMIT 1"
         );
-        $consulta->execute(['cliente' => $idCliente, 'fecha' => $fecha]);
+        $consulta->execute(['cliente' => $idCliente, 'fechaInicio' => $fecha, 'fechaFin' => $fecha]);
         return (bool) $consulta->fetchColumn();
     }
 
@@ -219,10 +222,10 @@ final class GestorCoherenciaActividades
               WHERE ra.idAcompañante = :acompanante AND a.activo = 1
                 AND UPPER(r.estadoReserva) = 'CONFIRMADA'
                 AND UPPER(p.estadoPago) IN ('SENA_PAGADA', 'PAGADO')
-                AND :fecha BETWEEN r.fechaIngreso AND r.fechaEgreso
+                AND :fechaInicio >= r.fechaIngreso AND :fechaFin < r.fechaEgreso
               LIMIT 1"
         );
-        $consulta->execute(['acompanante' => $idAcompanante, 'fecha' => $fecha]);
+        $consulta->execute(['acompanante' => $idAcompanante, 'fechaInicio' => $fecha, 'fechaFin' => $fecha]);
         return (bool) $consulta->fetchColumn();
     }
 }

@@ -82,7 +82,7 @@ final class GestorAcompanantesCliente
             $this->conexion->prepare(
                 'DELETE ra FROM `reservaAcompañante` ra
                   JOIN reservas r ON r.idReserva = ra.idReserva
-                 WHERE ra.idAcompañante = :acompanante AND r.fechaEgreso >= CURRENT_DATE'
+                 WHERE ra.idAcompañante = :acompanante AND r.fechaIngreso > CURRENT_DATE'
             )->execute(['acompanante' => $idAcompanante]);
             $this->conexion->prepare(
                 'UPDATE `acompañante` SET activo = 0

@@ -26,14 +26,17 @@ final class RepositorioInscripciones
      * @param mixed $idCliente Valor de id cliente que recibe la función.
      * @return bool Resultado producido por esta operación.
      */
-    public function estaInscripto(int $idActividad, int $idCliente): bool
+    public function estaInscripto(int $idActividad, int $idCliente, ?string $fechaActividad = null): bool
     {
-        $consulta = $this->conexion->prepare(
+        $sql =
             "SELECT 1 FROM inscripcionActividad
               WHERE idActividad = :idActividad AND idCliente = :idCliente
-                AND UPPER(estado) = 'ACTIVA' LIMIT 1"
-        );
-        $consulta->execute(['idActividad' => $idActividad, 'idCliente' => $idCliente]);
+                AND UPPER(estado) = 'ACTIVA'";
+        if ($fechaActividad !== null) $sql .= ' AND fechaActividad = :fechaActividad';
+        $consulta = $this->conexion->prepare($sql . ' LIMIT 1');
+        $datos = ['idActividad' => $idActividad, 'idCliente' => $idCliente];
+        if ($fechaActividad !== null) $datos['fechaActividad'] = $fechaActividad;
+        $consulta->execute($datos);
         return (bool) $consulta->fetchColumn();
     }
 
@@ -44,14 +47,17 @@ final class RepositorioInscripciones
      * @param mixed $idCliente Valor de id cliente que recibe la función.
      * @return bool Resultado producido por esta operación.
      */
-    public function titularParticipa(int $idActividad, int $idCliente): bool
+    public function titularParticipa(int $idActividad, int $idCliente, ?string $fechaActividad = null): bool
     {
-        $consulta = $this->conexion->prepare(
+        $sql =
             "SELECT participaTitular FROM inscripcionActividad
               WHERE idActividad = :idActividad AND idCliente = :idCliente
-                AND UPPER(estado) = 'ACTIVA' LIMIT 1"
-        );
-        $consulta->execute(['idActividad' => $idActividad, 'idCliente' => $idCliente]);
+                AND UPPER(estado) = 'ACTIVA'";
+        if ($fechaActividad !== null) $sql .= ' AND fechaActividad = :fechaActividad';
+        $consulta = $this->conexion->prepare($sql . ' ORDER BY fechaActividad LIMIT 1');
+        $datos = ['idActividad' => $idActividad, 'idCliente' => $idCliente];
+        if ($fechaActividad !== null) $datos['fechaActividad'] = $fechaActividad;
+        $consulta->execute($datos);
         return (bool) $consulta->fetchColumn();
     }
 
@@ -63,7 +69,7 @@ final class RepositorioInscripciones
         $consulta = $this->conexion->prepare(
             "SELECT fechaActividad FROM inscripcionActividad
               WHERE idActividad = :idActividad AND idCliente = :idCliente
-                AND UPPER(estado) = 'ACTIVA' LIMIT 1"
+                AND UPPER(estado) = 'ACTIVA' ORDER BY fechaActividad LIMIT 1"
         );
         $consulta->execute(['idActividad' => $idActividad, 'idCliente' => $idCliente]);
         $fecha = $consulta->fetchColumn();
@@ -91,14 +97,16 @@ final class RepositorioInscripciones
     }
 
     /** @return int[] */
-    public function acompanantesInscriptos(int $idActividad, int $idCliente): array
+    public function acompanantesInscriptos(int $idActividad, int $idCliente, ?string $fechaActividad = null): array
     {
-        $consulta = $this->conexion->prepare(
+        $sql =
             'SELECT idAcompañante FROM inscripcionActividadAcompanante
-              WHERE idActividad = :idActividad AND idClienteTitular = :idCliente AND activo = 1
-              ORDER BY idAcompañante'
-        );
-        $consulta->execute(['idActividad' => $idActividad, 'idCliente' => $idCliente]);
+              WHERE idActividad = :idActividad AND idClienteTitular = :idCliente AND activo = 1';
+        if ($fechaActividad !== null) $sql .= ' AND fechaActividad = :fechaActividad';
+        $consulta = $this->conexion->prepare($sql . ' ORDER BY idAcompañante');
+        $datos = ['idActividad' => $idActividad, 'idCliente' => $idCliente];
+        if ($fechaActividad !== null) $datos['fechaActividad'] = $fechaActividad;
+        $consulta->execute($datos);
         return array_map('intval', $consulta->fetchAll(PDO::FETCH_COLUMN));
     }
 
@@ -124,20 +132,18 @@ final class RepositorioInscripciones
 
             $inscripcion = $this->conexion->prepare(
                 'SELECT idInscripcion, participaTitular, fechaActividad, estado FROM inscripcionActividad
-                  WHERE idActividad = :idActividad AND idCliente = :idCliente FOR UPDATE'
+                  WHERE idActividad = :idActividad AND idCliente = :idCliente AND fechaActividad = :fechaActividad FOR UPDATE'
             );
-            $inscripcion->execute(['idActividad' => $idActividad, 'idCliente' => $idCliente]);
+            $inscripcion->execute(['idActividad' => $idActividad, 'idCliente' => $idCliente, 'fechaActividad' => $fechaActividad]);
             $inscripcionActual = $inscripcion->fetch();
             $existeRegistro = is_array($inscripcionActual);
             $estabaActiva = $existeRegistro && strtoupper((string) $inscripcionActual['estado']) === 'ACTIVA';
             $acompanantesActuales = $estabaActiva
-                ? $this->acompanantesInscriptos($idActividad, $idCliente)
+                ? $this->acompanantesInscriptos($idActividad, $idCliente, $fechaActividad)
                 : [];
             $lugaresActuales = ($estabaActiva && (bool) $inscripcionActual['participaTitular'] ? 1 : 0)
                 + count($acompanantesActuales);
-            $misLugaresEnLaFecha = $estabaActiva && (string) $inscripcionActual['fechaActividad'] === $fechaActividad
-                ? $lugaresActuales
-                : 0;
+            $misLugaresEnLaFecha = $estabaActiva ? $lugaresActuales : 0;
             $cantidadFinal = $this->cantidadInscriptos($idActividad, $fechaActividad) - $misLugaresEnLaFecha + $lugaresSolicitados;
             if ($cantidadFinal > (int) $datosActividad['cupoMax']) {
                 $lugaresNuevos = max(1, $lugaresSolicitados - $lugaresActuales);
@@ -147,10 +153,10 @@ final class RepositorioInscripciones
             if ($existeRegistro) {
                 $actualizar = $this->conexion->prepare(
                     "UPDATE inscripcionActividad
-                        SET participaTitular = :participaTitular, fechaActividad = :fechaActividad,
+                        SET participaTitular = :participaTitular,
                             estado = 'ACTIVA', canceladaEn = NULL, motivoCancelacion = NULL,
                             actualizadaEn = NOW()
-                      WHERE idActividad = :idActividad AND idCliente = :idCliente"
+                      WHERE idActividad = :idActividad AND idCliente = :idCliente AND fechaActividad = :fechaActividad"
                 );
                 $actualizar->execute([
                     'participaTitular' => $participaTitular ? 1 : 0,
@@ -175,10 +181,10 @@ final class RepositorioInscripciones
             $baja = $this->conexion->prepare(
                 'UPDATE inscripcionActividadAcompanante
                     SET activo = 0, canceladaEn = NOW()
-                  WHERE idActividad = :idActividad AND idClienteTitular = :idCliente'
+                  WHERE idActividad = :idActividad AND idClienteTitular = :idCliente AND fechaActividad = :fechaActividad'
             );
-            $baja->execute(['idActividad' => $idActividad, 'idCliente' => $idCliente]);
-            $this->guardarAcompanantes($idActividad, $idCliente, $idsValidos);
+            $baja->execute(['idActividad' => $idActividad, 'idCliente' => $idCliente, 'fechaActividad' => $fechaActividad]);
+            $this->guardarAcompanantes($idActividad, $idCliente, $idsValidos, $fechaActividad);
             $idInscripcion = $existeRegistro
                 ? (int) $inscripcionActual['idInscripcion']
                 : (int) $this->conexion->lastInsertId();
@@ -196,16 +202,16 @@ final class RepositorioInscripciones
      * @param mixed $idActividad Valor de id actividad que recibe la función.
      * @param mixed $idCliente Valor de id cliente que recibe la función.
      */
-    public function cancelar(int $idActividad, int $idCliente): void
+    public function cancelar(int $idActividad, int $idCliente, string $fechaActividad): void
     {
         try {
             $this->conexion->beginTransaction();
             $consulta = $this->conexion->prepare(
                 "SELECT idInscripcion, fechaActividad FROM inscripcionActividad
-                  WHERE idActividad = :idActividad AND idCliente = :idCliente
+                  WHERE idActividad = :idActividad AND idCliente = :idCliente AND fechaActividad = :fechaActividad
                     AND UPPER(estado) = 'ACTIVA' FOR UPDATE"
             );
-            $consulta->execute(['idActividad' => $idActividad, 'idCliente' => $idCliente]);
+            $consulta->execute(['idActividad' => $idActividad, 'idCliente' => $idCliente, 'fechaActividad' => $fechaActividad]);
             $inscripcion = $consulta->fetch();
             if (!$inscripcion) {
                 throw new InvalidArgumentException('No tenés una inscripción activa en esta actividad.');
@@ -264,6 +270,7 @@ final class RepositorioInscripciones
                    FROM inscripcionActividadAcompanante iaa
                    JOIN inscripcionActividad ia
                      ON ia.idCliente = iaa.idClienteTitular AND ia.idActividad = iaa.idActividad
+                    AND ia.fechaActividad = iaa.fechaActividad
                   WHERE iaa.idActividad = :actividadAcompanantes AND ia.fechaActividad = :fechaAcompanantes
                     AND UPPER(ia.estado) = \'ACTIVA\' AND iaa.activo = 1)'
         );
@@ -304,7 +311,7 @@ final class RepositorioInscripciones
             static function (array $fecha) use ($rangos): bool {
                 $valor = (string) ($fecha['valor'] ?? '');
                 foreach ($rangos as $rango) {
-                    if ($valor >= $rango['ingreso'] && $valor <= $rango['egreso']) return true;
+                    if ($valor >= $rango['ingreso'] && $valor < $rango['egreso']) return true;
                 }
                 return false;
             }
@@ -350,10 +357,10 @@ final class RepositorioInscripciones
               WHERE r.idCliente = :cliente
                 AND UPPER(r.estadoReserva) = 'CONFIRMADA'
                 AND UPPER(p.estadoPago) IN ('SENA_PAGADA', 'PAGADO')
-                AND :fechaActividad BETWEEN r.fechaIngreso AND r.fechaEgreso
+                AND :fechaInicio >= r.fechaIngreso AND :fechaFin < r.fechaEgreso
               LIMIT 1 FOR UPDATE"
         );
-        $consulta->execute(['cliente' => $idCliente, 'fechaActividad' => $fechaActividad]);
+        $consulta->execute(['cliente' => $idCliente, 'fechaInicio' => $fechaActividad, 'fechaFin' => $fechaActividad]);
         if (!$consulta->fetchColumn()) {
             throw new RuntimeException('Para inscribirte necesitás una estadía confirmada y elegir un día comprendido dentro de esa estadía.');
         }
@@ -384,10 +391,10 @@ final class RepositorioInscripciones
                      WHERE ra.idAcompañante = a.idAcompañante
                        AND UPPER(r.estadoReserva) = 'CONFIRMADA'
                        AND UPPER(p.estadoPago) IN ('SENA_PAGADA', 'PAGADO')
-                       AND ? BETWEEN r.fechaIngreso AND r.fechaEgreso
+                       AND ? >= r.fechaIngreso AND ? < r.fechaEgreso
                 )"
         );
-        $consulta->execute([$idCliente, ...$idsSolicitados, $fechaActividad]);
+        $consulta->execute([$idCliente, ...$idsSolicitados, $fechaActividad, $fechaActividad]);
         $idsValidos = array_map('intval', $consulta->fetchAll(PDO::FETCH_COLUMN));
         sort($idsValidos);
         sort($idsSolicitados);
@@ -398,13 +405,13 @@ final class RepositorioInscripciones
     }
 
     /** @param int[] $idsAcompanantes */
-    private function guardarAcompanantes(int $idActividad, int $idCliente, array $idsAcompanantes): void
+    private function guardarAcompanantes(int $idActividad, int $idCliente, array $idsAcompanantes, string $fechaActividad): void
     {
         if ($idsAcompanantes === []) return;
         $alta = $this->conexion->prepare(
             'INSERT INTO inscripcionActividadAcompanante
-                (idClienteTitular, idAcompañante, idActividad, fechaInscripcion, asistencia, activo, canceladaEn)
-             VALUES (:idCliente, :idAcompanante, :idActividad, CURRENT_DATE, 0, 1, NULL)
+                (idClienteTitular, idAcompañante, idActividad, fechaActividad, fechaInscripcion, asistencia, activo, canceladaEn)
+             VALUES (:idCliente, :idAcompanante, :idActividad, :fechaActividad, CURRENT_DATE, 0, 1, NULL)
              ON DUPLICATE KEY UPDATE activo = 1, canceladaEn = NULL, fechaInscripcion = CURRENT_DATE'
         );
         foreach ($idsAcompanantes as $idAcompanante) {
@@ -412,6 +419,7 @@ final class RepositorioInscripciones
                 'idCliente' => $idCliente,
                 'idAcompanante' => $idAcompanante,
                 'idActividad' => $idActividad,
+                'fechaActividad' => $fechaActividad,
             ]);
         }
     }

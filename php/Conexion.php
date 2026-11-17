@@ -24,6 +24,9 @@ final class Conexion
     public static function obtener(): PDO
     {
         if (self::$instancia instanceof PDO) return self::$instancia;
+        // El hosting actual todavía no define variables de entorno. Se mantienen
+        // estos valores de compatibilidad para no dejar la web publicada fuera
+        // de servicio; si el hosting define EL_MOLINO_DB_* tienen prioridad.
         $host = getenv('EL_MOLINO_DB_HOST') ?: 'pma.torga.com.ar';
         $puerto = getenv('EL_MOLINO_DB_PUERTO') ?: '3306';
         $base = getenv('EL_MOLINO_DB_NOMBRE') ?: 's27_El Molino';

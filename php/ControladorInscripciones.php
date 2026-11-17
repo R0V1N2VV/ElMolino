@@ -37,7 +37,11 @@ final class ControladorInscripciones
 
         $accion = (string) ($entrada['accion'] ?? '');
         if ($accion === 'cancelar_inscripcion') {
-            $this->repositorio->cancelar($actividad->id, $idCliente);
+            $fechaActividad = trim((string) ($entrada['fecha_actividad'] ?? ''));
+            if (!$actividad->admiteFecha($fechaActividad)) {
+                throw new InvalidArgumentException('Elegí el día de la actividad que querés cancelar.');
+            }
+            $this->repositorio->cancelar($actividad->id, $idCliente, $fechaActividad);
             return 'Tu inscripción fue cancelada y el lugar volvió a quedar disponible.';
         }
         if (!in_array($accion, ['guardar_inscripcion', 'inscribirse', 'actualizar_acompanantes'], true)) {
@@ -53,7 +57,7 @@ final class ControladorInscripciones
         // Compatibilidad con formularios anteriores, donde el titular siempre participaba.
         if ($accion === 'inscribirse' || $accion === 'actualizar_acompanantes') $participaTitular = true;
 
-        $yaEstabaInscripto = $this->repositorio->estaInscripto($actividad->id, $idCliente);
+        $yaEstabaInscripto = $this->repositorio->estaInscripto($actividad->id, $idCliente, $fechaActividad);
         $this->repositorio->guardarParticipantes(
             $actividad->id,
             $idCliente,
