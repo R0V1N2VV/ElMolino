@@ -1,0 +1,72 @@
+package com.elmolino.model;
+
+public class Cliente extends Persona {
+
+    // Guarda los datos que usa la tabla de clientes y sus formularios.
+    private int idCliente;
+    private int dni;
+    private String telefono;
+    private String direccion;
+
+    /**
+     * Construye el objeto, guarda sus datos iniciales y deja sus componentes preparados para usarse.
+     */
+    public Cliente() {
+    }
+
+    /**
+     * Construye el objeto, guarda sus datos iniciales y deja sus componentes preparados para usarse.
+     */
+    public Cliente(int idCliente, int dni, String nombre, String apellido,
+                   String telefono, String correo, String direccion) {
+        super(nombre, apellido, correo);
+        this.idCliente = idCliente;
+        this.dni = dni;
+        this.telefono = telefono;
+        this.direccion = direccion;
+    }
+
+    /**
+     * Devuelve id cliente para que otra parte del programa pueda utilizarlo.
+     */
+    public int getIdCliente() { return idCliente; }
+    /**
+     * Actualiza id cliente con la información recibida.
+     */
+    public void setIdCliente(int idCliente) { this.idCliente = idCliente; }
+
+    /**
+     * Devuelve dni para que otra parte del programa pueda utilizarlo.
+     */
+    public int getDni() { return dni; }
+    /**
+     * Actualiza dni con la información recibida.
+     */
+    public void setDni(int dni) { this.dni = dni; }
+
+    /**
+     * Devuelve telefono para que otra parte del programa pueda utilizarlo.
+     */
+    public String getTelefono() { return telefono; }
+    /**
+     * Actualiza telefono con la información recibida.
+     */
+    public void setTelefono(String telefono) { this.telefono = telefono; }
+
+    /**
+     * Devuelve direccion para que otra parte del programa pueda utilizarlo.
+     */
+    public String getDireccion() { return direccion; }
+    /**
+     * Actualiza direccion con la información recibida.
+     */
+    public void setDireccion(String direccion) { this.direccion = direccion; }
+
+    /**
+     * Devuelve el texto que representa al objeto cuando se muestra en listas, tablas o mensajes.
+     */
+    @Override
+    public String getDescripcionCorta() {
+        return getApellido() + ", " + getNombre() + " (DNI " + dni + ")";
+    }
+}
