@@ -51,13 +51,17 @@ if ($actividad && $_SERVER['REQUEST_METHOD'] === 'POST') {
 if ($actividad && isset($repositorioInscripciones) && $repositorioInscripciones && (int) ($usuario['id_cliente'] ?? 0) > 0) {
     try {
         $idCliente = (int) $usuario['id_cliente'];
-        $estaInscripto = $repositorioInscripciones->estaInscripto($actividad->id, $idCliente);
+        // La pantalla trabaja con un día puntual. Así no se mezclan los datos
+        // de una misma actividad tomada en lunes, miércoles, etc.
+        $fechaConsultada = trim((string) ($_POST['fecha_actividad'] ?? $_GET['fecha'] ?? ''));
+        if ($fechaConsultada === '') $fechaConsultada = $repositorioInscripciones->fechaSeleccionada($actividad->id, $idCliente) ?? '';
+        $estaInscripto = $fechaConsultada !== '' && $repositorioInscripciones->estaInscripto($actividad->id, $idCliente, $fechaConsultada);
         $titularParticipa = $estaInscripto
-            ? $repositorioInscripciones->titularParticipa($actividad->id, $idCliente)
+            ? $repositorioInscripciones->titularParticipa($actividad->id, $idCliente, $fechaConsultada)
             : false;
         $acompanantes = $repositorioInscripciones->listarAcompanantes($idCliente);
-        $acompanantesInscriptos = $repositorioInscripciones->acompanantesInscriptos($actividad->id, $idCliente);
-        $fechaActividadSeleccionada = $repositorioInscripciones->fechaSeleccionada($actividad->id, $idCliente);
+        $acompanantesInscriptos = $repositorioInscripciones->acompanantesInscriptos($actividad->id, $idCliente, $fechaConsultada ?: null);
+        $fechaActividadSeleccionada = $fechaConsultada ?: null;
         $puedeInscribirsePorEstadia = $repositorioInscripciones->tieneEstadiaConfirmada($idCliente);
     } catch (Throwable $excepcion) {
         error_log('No se pudieron cargar los datos de inscripción de la actividad: ' . $excepcion->getMessage());
@@ -176,6 +180,7 @@ $esCoordinador = class_exists('Autorizacion') && Autorizacion::esCoordinador($us
                             <form method="post" class="formulario-inscripcion cancelar-inscripcion" onsubmit="return confirm('¿Querés cancelar toda la inscripción?')">
                                 <input type="hidden" name="token_csrf" value="<?= Vista::escapar(Sesion::tokenCsrf()) ?>">
                                 <input type="hidden" name="accion" value="cancelar_inscripcion">
+                                <input type="hidden" name="fecha_actividad" value="<?= Vista::escapar((string) $fechaActividadSeleccionada) ?>">
                                 <button class="boton boton-neutral boton-ancho" type="submit">Cancelar inscripción</button>
                             </form>
                         <?php endif; ?>
