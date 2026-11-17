@@ -1,91 +1,232 @@
-# El Molino
+[![SWUbanner](https://raw.githubusercontent.com/vshymanskyy/StandWithUkraine/main/banner2-direct.svg)](https://supportukrainenow.org/)
 
-Sitio del Complejo Recreativo El Molino.
+![PHPMailer](https://raw.github.com/PHPMailer/PHPMailer/master/examples/images/phpmailer.png)
 
-## Páginas principales
+# PHPMailer – A full-featured email creation and transfer class for PHP
 
-- `index.php`: inicio del sitio.
-- `actividades.php`: portada con carrusel, tendencias y todas las categorías.
-- `categoria-actividades.php?categoria=deportes`: menú de una categoría con sus actividades y filtros.
-- `actividad.php?id=futbol-recreativo`: ficha de una actividad.
-- `administrar-actividades.php`: panel protegido donde el coordinador crea categorías y administra actividades.
+[![Test status](https://github.com/PHPMailer/PHPMailer/workflows/Tests/badge.svg)](https://github.com/PHPMailer/PHPMailer/actions)
+[![codecov.io](https://codecov.io/gh/PHPMailer/PHPMailer/branch/master/graph/badge.svg?token=iORZpwmYmM)](https://codecov.io/gh/PHPMailer/PHPMailer)
+[![Latest Stable Version](https://img.shields.io/packagist/v/phpmailer/phpmailer?label=stable)](https://packagist.org/packages/phpmailer/phpmailer)
+[![Total Downloads](https://img.shields.io/packagist/dt/phpmailer/phpmailer)](https://packagist.org/packages/phpmailer/phpmailer)
+[![License](https://img.shields.io/github/license/PHPMailer/PHPMailer)](https://packagist.org/packages/phpmailer/phpmailer)
+[![API Docs](https://github.com/phpmailer/phpmailer/workflows/Docs/badge.svg)](https://phpmailer.github.io/PHPMailer/)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/PHPMailer/PHPMailer/badge)](https://api.securityscorecards.dev/projects/github.com/PHPMailer/PHPMailer)
 
-## Actividades
+## Features
+- Probably the world's most popular code for sending email from PHP!
+- Used by many open-source projects: WordPress, Drupal, 1CRM, SugarCRM, Yii, Joomla! and many more
+- Integrated SMTP support – send without a local mail server
+- Send emails with multiple To, CC, BCC, and Reply-to addresses
+- Multipart/alternative emails for mail clients that do not read HTML email
+- Add attachments, including inline
+- Support for UTF-8 content and 8bit, base64, binary, and quoted-printable encodings
+- Full UTF-8 support when using servers that support `SMTPUTF8`.
+- Support for iCal events in multiparts and attachments
+- SMTP authentication with `LOGIN`, `PLAIN`, `CRAM-MD5`, and `XOAUTH2` mechanisms over SMTPS and SMTP+STARTTLS transports
+- Validates email addresses automatically
+- Protects against header injection attacks
+- Error messages in over 50 languages!
+- DKIM and S/MIME signing support
+- Compatible with PHP 5.5 and later, including PHP 8.5
+- Namespaced to prevent name clashes
+- Much more!
 
-La sección está desarrollada en PHP orientado a objetos. Las entidades, las fuentes de datos, el repositorio PDO, el controlador, la autorización y el servicio de imágenes se encuentran en `php/`. Las altas y modificaciones se guardan en MySQL.
+## Why you might need it
+Many PHP developers need to send email from their code. The only PHP function that supports this directly is [`mail()`](https://www.php.net/manual/en/function.mail.php). However, it does not provide any assistance for making use of popular features such as authentication, HTML messages, and attachments.
 
-El sitio incluye 6 categorías y 10 actividades predeterminadas. Si la conexión o la estructura de actividades todavía no están disponibles, el catálogo público usa automáticamente esos datos en modo de solo lectura, por lo que la página no queda vacía. El contenido es el mismo que se carga en MySQL mediante el archivo de actualización.
+Formatting email correctly is surprisingly difficult. There are myriad overlapping (and conflicting) standards, requiring tight adherence to horribly complicated formatting and encoding rules – the vast majority of code that you'll find online that uses the `mail()` function directly is just plain wrong, if not unsafe!
 
-El archivo `BD/00_ACTUALIZAR_BASE_EXISTENTE.sql` amplía y corrige una base ya instalada, carga las categorías necesarias y permite conectarlas con PHP y MySQL. El panel valida la sesión y exige el rol `coordinador_actividades`.
+The PHP `mail()` function usually sends via a local mail server, typically fronted by a `sendmail` binary on Linux, BSD, and macOS platforms, however, Windows usually doesn't include a local mail server; PHPMailer's integrated SMTP client allows email sending on all platforms without needing a local mail server. Be aware though, that the `mail()` function should be avoided when possible; it's both faster and [safer](https://exploitbox.io/paper/Pwning-PHP-Mail-Function-For-Fun-And-RCE.html) to use SMTP to localhost.
 
-## Cupos e inscripciones
+*Please* don't be tempted to do it yourself – if you don't use PHPMailer, there are many other excellent libraries that
+you should look at before rolling your own. Try [Symfony Mailer](https://symfony.com/doc/current/mailer.html), [Laminas/Mail](https://docs.laminas.dev/laminas-mail/), [ZetaComponents](https://github.com/zetacomponents/Mail), etc.
 
-Cada actividad tiene un cupo máximo por fecha. Para inscribirse, el cliente debe tener una estadía confirmada mediante una seña acreditada. Solo se ofrecen días compatibles con la actividad que además estén comprendidos dentro de esa estadía. El usuario decide si participa él, uno o más acompañantes hospedados, o todos juntos. Cada persona seleccionada ocupa un lugar en esa fecha. La operación se realiza dentro de una transacción para impedir que se supere el cupo si llegan varias solicitudes al mismo tiempo.
+## License
+This software is distributed under the [LGPL 2.1](https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html) license, along with the [GPL Cooperation Commitment](https://gplcc.github.io/gplcc/). Please read [LICENSE](https://github.com/PHPMailer/PHPMailer/blob/master/LICENSE) for information on the software availability and distribution.
 
-Las actividades pueden estar incluidas o ser pagas. En ambos casos se permite la inscripción; cuando es paga se muestra el precio definido por el coordinador y, antes de confirmar, se avisa que el importe se cobrará al finalizar la estadía. La página no simula una pasarela de pago.
+## Installation & loading
+PHPMailer is available on [Packagist](https://packagist.org/packages/phpmailer/phpmailer) (using semantic versioning), and installation via [Composer](https://getcomposer.org) is the recommended way to install PHPMailer. Just add this line to your `composer.json` file:
 
-El inicio de sesión conserva la actividad elegida y devuelve al usuario a su ficha para que pueda completar la inscripción. `inscripcionActividad` guarda la reserva y si participa el titular; `inscripcionActividadAcompanante` guarda las demás personas seleccionadas.
-
-Si ya tenés la base funcionando, ejecutá `BD/00_ACTUALIZAR_BASE_EXISTENTE.sql`. Ese archivo reúne las correcciones de estructura, puede volver a ejecutarse y también agrega `fechaActividad`. En una instalación nueva alcanza con importar `BD/s27_El_Molino_completa.sql`.
-
-Cuando el coordinador inicia sesión, encuentra el botón `Agregar categoría` en la sección pública de categorías y en su panel. Cada categoría también ofrece `Agregar actividad`, que abre el formulario con esa categoría ya seleccionada. Las categorías nuevas solicitan nombre, descripción e imagen.
-
-En las páginas públicas de actividades, el coordinador ve un botón destacado `Modo edición`. En la ficha individual, ese acceso abre directamente la edición de la actividad que está mirando.
-
-El panel permite eliminar categorías vacías. Si una categoría todavía contiene actividades, el botón queda deshabilitado hasta que esas actividades se eliminen o se muevan a otra categoría; así no se oculta contenido por accidente.
-
-El formulario de actividades utiliza dos desplegables `Desde` / `Hasta` con intervalos de 15 minutos. La duración y el momento del día se calculan a partir del horario y no se solicitan por separado. El precio solo aparece cuando el coordinador indica que la actividad es paga; si está incluida, se guarda automáticamente en cero. Los textos "Qué llevar" e "Información importante" son opcionales y permanecen dentro de un bloque desplegable.
-
-Después de guardar, el sistema comprueba que la actividad esté publicada y abre directamente su ficha para que el coordinador pueda verla inmediatamente. Si la base rechaza el alta, el formulario conserva los datos y muestra el problema dentro de la página.
-
-Para que el coordinador pueda agregar, editar o eliminar actividades, es obligatorio ejecutar `BD/00_ACTUALIZAR_BASE_EXISTENTE.sql`. El archivo comprueba qué columnas ya existen, por lo que puede volver a ejecutarse. Mientras esa actualización no esté instalada, el panel informa que el catálogo predeterminado es de solo lectura.
-
-Para habilitar el panel en una cuenta ya verificada, asignale el rol desde MySQL:
-
-```sql
-UPDATE usuarios SET rol = 'coordinador_actividades' WHERE email = 'correo@ejemplo.com';
+```json
+"phpmailer/phpmailer": "^7.0.0"
 ```
 
-Las categorías utilizan fotografías guardadas dentro de `imgs/`. Los autores y enlaces de las imágenes incorporadas están detallados en `imgs/CREDITOS-FOTOS.txt`.
+or run
 
-## Conexión con la aplicación Java
+```sh
+composer require phpmailer/phpmailer
+```
 
-La página PHP y la aplicación de escritorio Java trabajan sobre la misma base MySQL. No se copian actividades entre dos sistemas: categorías, actividades, cupos e inscripciones se guardan una sola vez en `CategoriaActividad`, `Actividad`, `inscripcionActividad` e `inscripcionActividadAcompanante`. Los recuentos de la app incluyen titulares y acompañantes.
+Note that the `vendor` folder and the `vendor/autoload.php` script are generated by Composer; they are not part of PHPMailer.
 
-La aplicación se configura desde `ElMolino_Aplicacion/el-molino/config.properties`. Los valores `db.host`, `db.port`, `db.name`, `db.user` y `db.password` deben identificar exactamente la misma base que utiliza `php/Conexion.php`.
+If you want to use XOAUTH2 authentication, you will also need to add a dependency on the `league/oauth2-client` and appropriate service adapters package in your `composer.json`, or take a look at
+by @decomplexity's [SendOauth2 wrapper](https://github.com/decomplexity/SendOauth2), especially if you're using Microsoft services.
 
-En la aplicación, los módulos **Categorías**, **Actividades** e **Inscripciones** se vuelven a consultar automáticamente cada 10 segundos y también al regresar a la ventana. El botón **Actualizar** permite forzar la consulta en cualquier momento. Una actividad agregada o modificada desde la página aparece en la app sin volver a cargarla manualmente ni reiniciar el programa.
+Alternatively, if you're not using Composer, you
+can [download PHPMailer as a zip file](https://github.com/PHPMailer/PHPMailer/archive/master.zip), (note that docs and examples are not included in the zip file), then copy the contents of the PHPMailer folder into one of the `include_path` directories specified in your PHP configuration and load each class file manually:
 
-La página y la aplicación reconocen tanto el rol Java `COORDINADOR` como el rol web `coordinador_actividades` para mostrar las opciones relacionadas con actividades.
+```php
+<?php
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
 
-Las cuentas nuevas usan el mismo formato de contraseña PBKDF2 en PHP y Java. Las cuentas web anteriores, protegidas con el formato de PHP, se convierten automáticamente al formato compartido la próxima vez que ingresan correctamente en la página; después de ese ingreso también pueden usarse en la app Java.
+require 'path/to/PHPMailer/src/Exception.php';
+require 'path/to/PHPMailer/src/PHPMailer.php';
+require 'path/to/PHPMailer/src/SMTP.php';
+```
 
-## Alojamientos y compras
+If you're not using the `SMTP` class explicitly (you're probably not), you don't need a `use` line for it. Even if you're not using exceptions, you do still need to load the `Exception` class as it is used internally.
 
-El catálogo público comienza con tres tipos: **Cabañas**, **Habitaciones** y **Hoteles**. Después de elegir uno, muestra una sola opción por capacidad, los servicios incluidos, el precio por noche y un formulario desplegable para seleccionar ingreso, egreso y cantidad de personas. Los números internos de las unidades no se muestran al huésped.
+## Legacy versions
+PHPMailer 5.2 (which is compatible with PHP 5.0 — 7.0) is no longer supported, even for security updates. You will find the latest version of 5.2 in the [5.2-stable branch](https://github.com/PHPMailer/PHPMailer/tree/5.2-stable). If you're using PHP 5.5 or later (which you should be), upgrade to a later release.
 
-El valor de `alojamientos.estado` se conserva en la base para que la aplicación Java lo consulte y lo actualice. No se muestra como una etiqueta al huésped. La web reconoce `Disponible`, `Reservado`, `En limpieza` y `Fuera de servicio`; las unidades que no están habilitadas se excluyen del catálogo y la disponibilidad por fechas se vuelve a validar antes de reservar.
+### Upgrading from 5.2
+The biggest changes are that source files are now in the `src/` folder, and PHPMailer now declares the namespace `PHPMailer\PHPMailer`. This has several important effects – [read the upgrade guide](https://github.com/PHPMailer/PHPMailer/tree/master/UPGRADING.md) for more details.
 
-Agregar una opción a **Mi estadía** no bloquea el alojamiento para las demás personas. El sistema busca automáticamente una unidad física disponible del tipo y capacidad elegidos. Al confirmar el pedido vuelve a buscar y asignar una unidad dentro de una transacción; si la primera dejó de estar libre, usa otra equivalente. Si no queda ninguna para esas fechas, informa que no hay disponibilidad y permite elegir otras fechas u otro tipo. De esta forma, dos personas pueden comparar la misma opción en sus carritos, pero no confirmar la misma unidad en fechas superpuestas.
+### Minimal installation
+While installing the entire package manually or with Composer is simple, convenient, and reliable, you may want to include only vital files in your project. At the very least you will need [src/PHPMailer.php](https://github.com/PHPMailer/PHPMailer/tree/master/src/PHPMailer.php). If you're using SMTP, you'll need [src/SMTP.php](https://github.com/PHPMailer/PHPMailer/tree/master/src/SMTP.php), and if you're using POP-before SMTP (*very* unlikely!), you'll need [src/POP3.php](https://github.com/PHPMailer/PHPMailer/tree/master/src/POP3.php). You can skip the [language](https://github.com/PHPMailer/PHPMailer/tree/master/language/) folder if you're not showing errors to users and can make do with English-only errors. If you're using XOAUTH2 you will need [src/OAuth.php](https://github.com/PHPMailer/PHPMailer/tree/master/src/OAuth.php) as well as the Composer dependencies for the services you wish to authenticate with. Really, it's much easier to use Composer!
 
-En una base existente, ejecutá `BD/00_ACTUALIZAR_BASE_EXISTENTE.sql` y luego `BD/actualizacion_catalogo_alojamientos.sql` si todavía no cargaste las 45 unidades. Los precios iniciales se pueden modificar desde la base o desde la aplicación. En una instalación nueva, el catálogo y las tablas necesarias ya están incluidos en `BD/s27_El_Molino_completa.sql`.
+## A Simple Example
 
-Al confirmar una estadía, el titular asigna los acompañantes registrados a cada alojamiento. Esa asociación puede modificarse desde **Mi cuenta** antes del ingreso. La solicitud queda en estado `PENDIENTE_SENA`: se calcula una seña del 30% y se informa un plazo para abonarla.
+```php
+<?php
+//Import PHPMailer classes into the global namespace
+//These must be at the top of your script, not inside a function
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\SMTP;
+use PHPMailer\PHPMailer\Exception;
 
-El cliente ve los datos bancarios, realiza la transferencia e informa el número de operación desde la confirmación o desde **Mi cuenta**. La web crea un pago `PENDIENTE`; administración comprueba el ingreso desde la aplicación Java y cambia el pago a `CONFIRMADO`. Recién entonces el pedido pasa a `SENA_PAGADA`, las reservas quedan `CONFIRMADA` y se habilitan las actividades de esa estadía.
+//Load Composer's autoloader (created by composer, not included with PHPMailer)
+require 'vendor/autoload.php';
 
-Para una instalación local, completá `php/config_pago.php` con titular, alias, CBU y CUIT. En un servidor también podés usar las variables de entorno `EL_MOLINO_PAGO_TITULAR`, `EL_MOLINO_PAGO_ALIAS`, `EL_MOLINO_PAGO_CBU` y `EL_MOLINO_PAGO_CUIT`; esas variables tienen prioridad y evitan guardar los datos reales en el repositorio.
+//Create an instance; passing `true` enables exceptions
+$mail = new PHPMailer(true);
 
-La reserva puede cancelarse desde **Mi cuenta** hasta el día anterior al ingreso. Si ya existe un pago, el pedido queda marcado como `REEMBOLSO_PENDIENTE`; si no hubo pagos, se cancela directamente. Así la aplicación Java puede ver y gestionar el caso pendiente.
+try {
+    //Server settings
+    $mail->SMTPDebug = SMTP::DEBUG_SERVER;                      //Enable verbose debug output
+    $mail->isSMTP();                                            //Send using SMTP
+    $mail->Host       = 'smtp.example.com';                     //Set the SMTP server to send through
+    $mail->SMTPAuth   = true;                                   //Enable SMTP authentication
+    $mail->Username   = 'user@example.com';                     //SMTP username
+    $mail->Password   = 'secret';                               //SMTP password
+    $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;            //Enable implicit TLS encryption
+    $mail->Port       = 465;                                    //TCP port to connect to; use 587 if you have set `SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS`
 
-## Registro e inicio de sesión
+    //Recipients
+    $mail->setFrom('from@example.com', 'Mailer');
+    $mail->addAddress('joe@example.net', 'Joe User');     //Add a recipient
+    $mail->addAddress('ellen@example.com');               //Name is optional
+    $mail->addReplyTo('info@example.com', 'Information');
+    $mail->addCC('cc@example.com');
+    $mail->addBCC('bcc@example.com');
 
-1. La base completa (`BD/s27_El_Molino_completa.sql`) ya incluye `registro_pendiente` y el soporte para acompañantes. Si la base ya estaba instalada, ejecutá `BD/00_ACTUALIZAR_BASE_EXISTENTE.sql`. Además, el código tiene compatibilidad temporal para que el alta no falle con `Unknown column 'acompanantes_json'` antes de aplicar la actualización.
-2. Completá `registro/mail_config.php` con los datos del correo emisor.
-3. Si tu MySQL no usa `root` sin contraseña, definí las variables de entorno `EL_MOLINO_DB_HOST`, `EL_MOLINO_DB_PUERTO`, `EL_MOLINO_DB_NOMBRE`, `EL_MOLINO_DB_USUARIO` y `EL_MOLINO_DB_CONTRASENA`.
+    //Attachments
+    $mail->addAttachment('/var/tmp/file.tar.gz');         //Add attachments
+    $mail->addAttachment('/tmp/image.jpg', 'new.jpg');    //Optional name
 
-El alta ocurre en tres pasos: datos personales y acompañantes, contraseña y verificación por correo. En el primer paso la persona puede registrar hasta ocho acompañantes con nombre, apellido, DNI, edad y vínculo. Al confirmar el código, se crean `cliente`, `usuarios` y todos los acompañantes dentro de una misma transacción; si algo falla no queda un alta incompleta.
+    //Content
+    $mail->isHTML(true);                                  //Set email format to HTML
+    $mail->Subject = 'Here is the subject';
+    $mail->Body    = 'This is the HTML message body <b>in bold!</b>';
+    $mail->AltBody = 'This is the body in plain text for non-HTML mail clients';
 
-Los acompañantes quedan asociados a la cuenta y aparecen automáticamente en la ficha de cada actividad. Después de registrarse, el cliente puede agregar nuevos acompañantes o quitar los existentes desde **Mi cuenta**. Al quitar uno, deja de aparecer en nuevas selecciones y se lo retira de reservas y actividades futuras, sin borrar el historial pasado. En una actividad solo se pueden elegir acompañantes asignados a la estadía confirmada correspondiente.
+    $mail->send();
+    echo 'Message has been sent';
+} catch (Exception $e) {
+    echo "Message could not be sent. Mailer Error: {$mail->ErrorInfo}";
+}
+```
 
-La página **Mi cuenta** consulta la misma base y reúne las actividades inscriptas, las personas que participan, las reservas de alojamiento, sus fechas, cantidad de huéspedes y estado. Los números internos de las unidades no se muestran al cliente. Los mensajes de confirmación y error se presentan como texto breve, sin carteles verdes o rojos.
+You'll find plenty to play with in the [examples](https://github.com/PHPMailer/PHPMailer/tree/master/examples) folder, which covers many common scenarios including sending through Gmail, building contact forms, sending to mailing lists, and more.
+
+If you are re-using the instance (e.g. when sending to a mailing list), you may need to clear the recipient list to avoid sending duplicate messages. See [the mailing list example](https://github.com/PHPMailer/PHPMailer/blob/master/examples/mailing_list.phps) for further guidance.
+
+That's it. You should now be ready to use PHPMailer!
+
+## Localization
+PHPMailer defaults to English, but in the [language](https://github.com/PHPMailer/PHPMailer/tree/master/language/) folder, you'll find many translations for PHPMailer error messages that you may encounter. Their filenames contain [ISO 639-1](https://en.wikipedia.org/wiki/ISO_639-1) language code for the translations, for example `fr` for French. To specify a language, you need to tell PHPMailer which one to use, like this:
+
+```php
+//To load the French version
+$mail->setLanguage('fr', '/optional/path/to/language/directory/');
+```
+
+We welcome corrections and new languages – if you're looking for corrections, run the [Language/TranslationCompletenessTest.php](https://github.com/PHPMailer/PHPMailer/blob/master/test/Language/TranslationCompletenessTest.php) script in the tests folder and it will show any missing translations.
+
+## Documentation
+Start reading at the [GitHub wiki](https://github.com/PHPMailer/PHPMailer/wiki). If you're having trouble, head for [the troubleshooting guide](https://github.com/PHPMailer/PHPMailer/wiki/Troubleshooting) as it's frequently updated.
+
+Examples of how to use PHPMailer for common scenarios can be found in the [examples](https://github.com/PHPMailer/PHPMailer/tree/master/examples) folder. If you're looking for a good starting point, we recommend you start with [the Gmail example](https://github.com/PHPMailer/PHPMailer/tree/master/examples/gmail.phps).
+
+To reduce PHPMailer's deployed code footprint, examples are not included if you load PHPMailer via Composer or via [GitHub's zip file download](https://github.com/PHPMailer/PHPMailer/archive/master.zip), so you'll need to either clone the git repository or use the above links to get to the examples directly.
+
+Complete generated API documentation is [available online](https://phpmailer.github.io/PHPMailer/).
+
+You can generate complete API-level documentation by running `phpdoc` in the top-level folder, and documentation will appear in the `docs` folder, though you'll need to have [PHPDocumentor](https://www.phpdoc.org) installed. You may find [the unit tests](https://github.com/PHPMailer/PHPMailer/blob/master/test/PHPMailer/PHPMailerTest.php) a good reference for how to do various operations such as encryption.
+
+If the documentation doesn't cover what you need, search the [many questions on Stack Overflow](https://stackoverflow.com/questions/tagged/phpmailer), and before you ask a question about "SMTP Error: Could not connect to SMTP host.", [read the troubleshooting guide](https://github.com/PHPMailer/PHPMailer/wiki/Troubleshooting).
+
+## Tests
+[PHPMailer tests](https://github.com/PHPMailer/PHPMailer/tree/master/test/) use PHPUnit 9, with [a polyfill](https://github.com/Yoast/PHPUnit-Polyfills) to let 9-style tests run on older PHPUnit and PHP versions.
+
+[![Test status](https://github.com/PHPMailer/PHPMailer/workflows/Tests/badge.svg)](https://github.com/PHPMailer/PHPMailer/actions)
+
+If this isn't passing, is there something you can do to help?
+
+## Security
+Please disclose any vulnerabilities found responsibly – report security issues to the maintainers privately.
+
+See [SECURITY](https://github.com/PHPMailer/PHPMailer/tree/master/SECURITY.md) and [PHPMailer's security advisories on GitHub](https://github.com/PHPMailer/PHPMailer/security). 
+
+## Contributing
+Please submit bug reports, suggestions, and pull requests to the [GitHub issue tracker](https://github.com/PHPMailer/PHPMailer/issues).
+
+We're particularly interested in fixing edge cases, expanding test coverage, and updating translations.
+
+If you found a mistake in the docs, or want to add something, go ahead and amend the wiki – anyone can edit it.
+
+If you have git clones from prior to the move to the PHPMailer GitHub organisation, you'll need to update any remote URLs referencing the old GitHub location with a command like this from within your clone:
+
+```sh
+git remote set-url upstream https://github.com/PHPMailer/PHPMailer.git
+```
+
+Please *don't* use the SourceForge or Google Code projects any more; they are obsolete and no longer maintained.
+
+## Sponsorship
+Development time and resources for PHPMailer are provided by [Smartmessages.net](https://info.smartmessages.net/), the world's only privacy-first email marketing system.
+
+<a href="https://info.smartmessages.net/"><img src="https://www.smartmessages.net/img/smartmessages-logo.svg" width="550" alt="Smartmessages.net privacy-first email marketing logo"></a>
+
+Donations are very welcome, whether in beer 🍺, T-shirts 👕, or cold, hard cash 💰. Sponsorship through GitHub is a simple and convenient way to say "thank you" to PHPMailer's maintainers and contributors – just click the "Sponsor" button [on the project page](https://github.com/PHPMailer/PHPMailer). If your company uses PHPMailer, consider taking part in Tidelift's enterprise support programme.
+
+## PHPMailer For Enterprise
+
+Available as part of the Tidelift Subscription.
+
+The maintainers of PHPMailer and thousands of other packages are working with Tidelift to deliver commercial
+support and maintenance for the open-source packages you use to build your applications. Save time, reduce risk, and
+improve code health, while paying the maintainers of the exact packages you
+use. [Learn more.](https://tidelift.com/subscription/pkg/packagist-phpmailer-phpmailer?utm_source=packagist-phpmailer-phpmailer&utm_medium=referral&utm_campaign=enterprise&utm_term=repo)
+
+## Changelog
+See [changelog](changelog.md).
+
+## History
+- PHPMailer was originally written in 2001 by Brent R. Matzelle as a [SourceForge project](https://sourceforge.net/projects/phpmailer/).
+- [Marcus Bointon](https://github.com/Synchro) (`coolbru` on SF) and Andy Prevost (`codeworxtech`) took over the project in 2004.
+- Became an Apache incubator project on Google Code in 2010, managed by Jim Jagielski.
+- Marcus created [his fork on GitHub](https://github.com/Synchro/PHPMailer) in 2008.
+- Jim and Marcus decide to join forces and use GitHub as the canonical and official repo for PHPMailer in 2013.
+- PHPMailer moves to [the PHPMailer organisation](https://github.com/PHPMailer) on GitHub in 2013.
+
+### What's changed since moving from SourceForge?
+- Official successor to the SourceForge and Google Code projects.
+- Test suite.
+- Continuous integration with GitHub Actions.
+- Composer support.
+- Public development.
+- Additional languages and language strings.
+- CRAM-MD5 authentication support.
+- Preserves full repo history of authors, commits, and branches from the original SourceForge project.
