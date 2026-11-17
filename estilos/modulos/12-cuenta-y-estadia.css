@@ -137,6 +137,26 @@
     background: var(--crema);
 }
 
+/* La estadía es una acción principal del perfil, no un enlace escondido. */
+.panel-usuario .enlace-estadia-panel {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 3px 0 5px;
+    color: var(--blanco);
+    background: var(--azul-oscuro);
+}
+
+.panel-usuario .enlace-estadia-panel::after {
+    content: '→';
+    font-size: 1rem;
+}
+
+.panel-usuario .enlace-estadia-panel:hover {
+    color: var(--blanco);
+    background: var(--verde-oscuro);
+}
+
 .seccion-accesibilidad {
     display: grid;
     gap: 8px;

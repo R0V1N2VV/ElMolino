@@ -86,6 +86,43 @@ final class Vista
             . '<p>Teléfono: <a href="tel:+541178900880">11 7890 0880</a></p></div>';
     }
 
+    /** Traduce estados internos de pedidos y pagos a frases para clientes. */
+    public static function estadoPedidoCliente(?string $estado): string
+    {
+        return match (strtoupper(trim((string) $estado))) {
+            'ESPERANDO_SENA', 'PENDIENTE_SENA' => 'Esperando la seña',
+            'CONFIRMADO', 'CONFIRMADA' => 'Confirmada',
+            'PAGADO' => 'Pago completo',
+            'CANCELADO', 'CANCELADA' => 'Cancelada',
+            'PARCIALMENTE_CANCELADO' => 'Modificada',
+            'VENCIDO' => 'Vencida',
+            'FINALIZADA' => 'Finalizada',
+            default => self::estadoLegible($estado),
+        };
+    }
+
+    /** Traduce estados internos del pago sin mostrar códigos de la base. */
+    public static function estadoPagoCliente(?string $estado): string
+    {
+        return match (strtoupper(trim((string) $estado))) {
+            'SENA_PENDIENTE', 'SENA_RESERVADA' => 'Esperando la seña',
+            'SENA_INFORMADA' => 'Transferencia en revisión',
+            'SENA_PAGADA' => 'Seña confirmada',
+            'PAGADO' => 'Pago completo',
+            'PAGO_RECHAZADO' => 'Transferencia no confirmada',
+            'REEMBOLSO_PENDIENTE' => 'Reintegro en revisión',
+            'CANCELADO', 'VENCIDO' => 'Reserva vencida o cancelada',
+            default => self::estadoLegible($estado),
+        };
+    }
+
+    /** Convierte un código eventual a texto humano sin guiones bajos ni mayúsculas técnicas. */
+    private static function estadoLegible(?string $estado): string
+    {
+        $texto = trim(str_replace(['_', '-'], ' ', (string) $estado));
+        return $texto === '' ? 'Sin información' : ucwords(strtolower($texto));
+    }
+
     /** Construye el mismo encabezado principal en todas las secciones públicas. */
     public static function encabezadoPrincipal(?array $usuario, string $prefijo = '', string $seccion = ''): string
     {
@@ -154,6 +191,9 @@ final class Vista
     {
         $destino = $usuario ? $prefijo . 'registro/cuenta.php' : $prefijo . 'registro/login.php';
         $texto = $usuario ? 'Mi cuenta' : 'Ingresar';
+        $enlaceEstadia = $usuario
+            ? '<a class="enlace-estadia-panel" href="' . self::escapar($prefijo . 'registro/estadia.php') . '">Mi estadía</a>'
+            : '';
         $enlaceCoordinacion = $usuario && class_exists('Autorizacion') && Autorizacion::esCoordinador($usuario)
             ? '<a href="' . self::escapar($prefijo . 'administrar-actividades.php') . '">Gestionar actividades</a>'
             : '';
@@ -164,6 +204,7 @@ final class Vista
             . '</button>'
             . '<div class="panel-usuario" id="panel-cuenta" hidden>'
             . '<a class="enlace-cuenta-panel" href="' . self::escapar($destino) . '">' . ($usuario ? 'Ver mi cuenta' : 'Iniciar sesión') . '</a>'
+            . $enlaceEstadia
             . $enlaceCoordinacion
             . '<div class="seccion-accesibilidad"><span>Opciones de accesibilidad</span>'
             . '<button class="interruptor-dislexia" type="button" role="switch" aria-checked="false" aria-label="Activar modo dislexia con tipografía Sarakanda">'

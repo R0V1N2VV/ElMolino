@@ -64,7 +64,11 @@ final class GestorReservasCliente
         $this->conexion->beginTransaction();
         try {
             $reserva = $this->bloquearReserva($idReserva, $idCliente);
-            if ((string) $reserva['fechaIngreso'] <= date('Y-m-d')) {
+            $esPreReserva = strtoupper((string) $reserva['estadoReserva']) === 'PENDIENTE_SENA'
+                || in_array(strtoupper((string) ($reserva['estadoPago'] ?? '')), ['SENA_PENDIENTE', 'SENA_INFORMADA'], true);
+            // Si la seña todavía no fue acreditada, el cliente puede liberar la
+            // pre-reserva incluso si la fecha de llegada coincide con hoy.
+            if ((string) $reserva['fechaIngreso'] <= date('Y-m-d') && !$esPreReserva) {
                 throw new RuntimeException('La estadía ya comenzó o comienza hoy y no se puede cancelar desde la web.');
             }
             if (in_array(strtoupper((string) $reserva['estadoReserva']), ['CANCELADA', 'CANCELADO'], true)) {
@@ -105,8 +109,11 @@ final class GestorReservasCliente
     private function bloquearReserva(int $idReserva, int $idCliente): array
     {
         $consulta = $this->conexion->prepare(
-            'SELECT idReserva, fechaIngreso, cantidadPersonas, estadoReserva
-               FROM reservas WHERE idReserva = :reserva AND idCliente = :cliente FOR UPDATE'
+            "SELECT r.idReserva, r.fechaIngreso, r.cantidadPersonas, r.estadoReserva, p.estadoPago
+               FROM reservas r
+          LEFT JOIN detalle_pedido_alojamiento d ON d.idReserva=r.idReserva
+          LEFT JOIN pedido_alojamiento p ON p.idPedido=d.idPedido
+              WHERE r.idReserva = :reserva AND r.idCliente = :cliente FOR UPDATE"
         );
         $consulta->execute(['reserva' => $idReserva, 'cliente' => $idCliente]);
         $reserva = $consulta->fetch();

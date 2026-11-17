@@ -76,7 +76,12 @@ public class VentanaGestion extends JFrame {
             botonNuevo.setText("Cobrar estadía final");
             botonNuevo.setToolTipText("Calcula y registra el saldo de alojamiento y las actividades pendientes");
         }
-        if (soloAltaInscripcion && !esSuperAdmin()) {
+        if (soloAltaInscripcion && esCoordinador()) {
+            botonEditar.setVisible(true);
+            botonEditar.setText("Registrar asistencia");
+            botonEditar.setToolTipText("Marcá si el cliente asistió; los demás datos quedan protegidos.");
+            botonEliminar.setVisible(false);
+        } else if (soloAltaInscripcion && !esSuperAdmin()) {
             botonEditar.setVisible(false);
             botonEliminar.setVisible(false);
         }
@@ -172,7 +177,12 @@ public class VentanaGestion extends JFrame {
         acciones.add(botonActualizar);
         JPanel herramientas = new JPanel(new BorderLayout());
         herramientas.add(acciones, BorderLayout.WEST);
-        herramientas.add(FiltroTabla.crear(tabla), BorderLayout.EAST);
+        String etiquetaBusqueda = "pago".equals(modulo.tabla())
+                ? "Buscar cliente, reserva o comprobante"
+                : "alojamientos".equals(modulo.tabla())
+                ? "Buscar número, tipo o estado"
+                : "Buscar";
+        herramientas.add(FiltroTabla.crear(tabla, etiquetaBusqueda), BorderLayout.EAST);
         herramientas.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
         JPanel arriba = new JPanel(new BorderLayout());
         arriba.add(new JLabel("  " + modulo.titulo()), BorderLayout.NORTH);
@@ -310,6 +320,12 @@ public class VentanaGestion extends JFrame {
         if ((esLimpieza() || esRecepcion()) && "alojamientos".equals(modulo.tabla())) {
             camposFormulario = camposFormulario.stream().filter(campo -> "estado".equals(campo.columna())).toList();
         }
+        if (esRecepcion() && "reservas".equals(modulo.tabla())) {
+            camposFormulario = camposFormulario.stream().filter(campo -> "estadoLlegada".equals(campo.columna())).toList();
+        }
+        if (esCoordinador() && "inscripcionActividad".equals(modulo.tabla()) && original != null) {
+            camposFormulario = camposFormulario.stream().filter(campo -> "asistencia".equals(campo.columna())).toList();
+        }
 
         try {
             for (Campo campo : camposFormulario) {
@@ -400,7 +416,7 @@ public class VentanaGestion extends JFrame {
         try { reservas = GestionDAO.reservasParaCobroFinal(); }
         catch (SQLException error) { mostrarError("No se pudieron cargar las estadías para cobrar", error); return; }
         if (reservas.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "No hay estadías terminadas con saldo pendiente.", "Cobro final", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this, "No hay estadías terminadas pendientes de cierre.", "Cobro final", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
         JDialog dialogo = new JDialog(this, "Cobrar estadía final", true);
@@ -428,14 +444,14 @@ public class VentanaGestion extends JFrame {
             }
         };
         reserva.addActionListener(evento -> actualizar.run());
-        formulario.add(new JLabel("Estadía terminada *")); formulario.add(reserva);
+        formulario.add(new JLabel("Pedido cuya salida se registrará *")); formulario.add(reserva);
         formulario.add(new JLabel("Cliente")); formulario.add(cliente);
         formulario.add(new JLabel("Saldo de alojamiento")); formulario.add(alojamiento);
         formulario.add(new JLabel("Actividades pendientes")); formulario.add(actividades);
         formulario.add(new JLabel("Total a cobrar")); formulario.add(total);
         formulario.add(new JLabel("Medio de pago *")); formulario.add(metodo);
         formulario.add(new JLabel("Comprobante / operación")); formulario.add(comprobante);
-        JButton cobrar = new JButton("Confirmar cobro");
+        JButton cobrar = new JButton("Cerrar estadía y registrar cobro");
         JButton cancelar = new JButton("Cancelar");
         JPanel acciones = new JPanel(); acciones.add(cobrar); acciones.add(cancelar);
         formulario.add(new JLabel("")); formulario.add(acciones);
@@ -444,7 +460,9 @@ public class VentanaGestion extends JFrame {
         cobrar.addActionListener(evento -> {
             Opcion elegida = (Opcion) reserva.getSelectedItem();
             if (elegida == null) return;
-            if (JOptionPane.showConfirmDialog(dialogo, "¿Confirmás el cobro final de esta estadía?", "Confirmar cobro", JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) return;
+            if (JOptionPane.showConfirmDialog(dialogo,
+                    "¿Confirmás el check-out? Si hay saldo se registrará el cobro; si no, solo se cerrará la estadía.",
+                    "Confirmar salida y cobro", JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) return;
             cobrar.setEnabled(false); cancelar.setEnabled(false);
             new SwingWorker<Void, Void>() {
                 @Override protected Void doInBackground() throws Exception {
@@ -763,9 +781,16 @@ public class VentanaGestion extends JFrame {
         return SesionActual.get() != null && "RECEPCION".equals(SesionActual.get().getRol());
     }
 
+    /** Indica si la sesión puede registrar la asistencia de una actividad. */
+    private boolean esCoordinador() {
+        return SesionActual.get() != null && "COORDINADOR".equals(SesionActual.get().getRol());
+    }
+
     /** Indica qué roles pueden cerrar una estadía y registrar el dinero recibido. */
     private boolean puedeCobrarSaldo() {
-        return esSuperAdmin();
+        if (SesionActual.get() == null) return false;
+        return java.util.List.of("SUPERADMIN", "ADMINISTRADOR", "ADMINISTRACION", "RECEPCION", "GERENCIA")
+                .contains(SesionActual.get().getRol());
     }
 
     /**

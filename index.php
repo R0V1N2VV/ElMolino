@@ -105,18 +105,21 @@ $cantidadCarrito = is_array($carritoSesion) ? count($carritoSesion) : 0;
 
                 <div class="grilla-alojamientos">
                     <article class="tarjeta-alojamiento">
-                        <h3>Habitaciones</h3>
+                        <img class="imagen-resumen-alojamiento" src="imgs/alojamiento-departamento.webp" alt="Edificio de departamentos y habitaciones" loading="lazy">
+                        <h3>Habitaciones y departamentos</h3>
                         <p>Opciones dobles, familiares y grupales cerca de todos los espacios.</p>
                         <p class="por-confirmar">Compará capacidades, servicios, precios y fechas.</p>
                         <a class="boton boton-secundario boton-alojamiento" href="alojamientos.php?tipo=habitaciones">Ver opciones</a>
                     </article>
                     <article class="tarjeta-alojamiento">
+                        <img class="imagen-resumen-alojamiento" src="imgs/alojamiento-cabana.webp" alt="Cabaña de madera entre árboles" loading="lazy">
                         <h3>Cabañas</h3>
                         <p>Espacios independientes para 2, 4 o 6 personas, con cocina y parrilla.</p>
                         <p class="por-confirmar">Compará capacidades, servicios, precios y fechas.</p>
                         <a class="boton boton-secundario boton-alojamiento" href="alojamientos.php?tipo=cabanas">Ver opciones</a>
                     </article>
                     <article class="tarjeta-alojamiento">
+                        <img class="imagen-resumen-alojamiento" src="imgs/alojamiento-hotel.webp" alt="Hotel dentro de un parque" loading="lazy">
                         <h3>Hoteles</h3>
                         <p>Habitaciones con desayuno, limpieza diaria y acceso a espacios comunes.</p>
                         <p class="por-confirmar">Compará capacidades, servicios, precios y fechas.</p>

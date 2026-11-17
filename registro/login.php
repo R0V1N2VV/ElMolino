@@ -84,6 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <input id="contrasena" name="contrasena" type="password" autocomplete="current-password" required>
             <button class="boton boton-principal" type="submit">Iniciar sesión</button>
         </form>
+        <p class="texto-ayuda">¿Olvidaste tu contraseña? <a href="recuperar_contrasena.php">Recuperarla</a></p>
         <p class="texto-ayuda">¿No tenés cuenta? <a href="registro.php">Registrate</a></p>
     </main>
 </body>

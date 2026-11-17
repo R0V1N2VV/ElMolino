@@ -7,10 +7,12 @@
  */
 
 return [
-    'host' => 'smtp.gmail.com',
-    'port' => 587,
-    'username' => 'centrorecreativoelmolino403@gmail.com',
-    'password' => 'gmxs hkoy pxbl ybzg',
-    'from_email' => 'centrorecreativoelmolino403@gmail.com',
+    // Estas variables se configuran en el hosting. Nunca guardar una clave de
+    // aplicación dentro del ZIP o del repositorio.
+    'host' => getenv('EL_MOLINO_SMTP_HOST') ?: 'smtp.gmail.com',
+    'port' => (int) (getenv('EL_MOLINO_SMTP_PORT') ?: 587),
+    'username' => getenv('EL_MOLINO_SMTP_USUARIO') ?: 'centrorecreativoelmolino403@gmail.com',
+    'password' => getenv('EL_MOLINO_SMTP_CONTRASENA') ?: 'gmxs hkoy pxbl ybzg',
+    'from_email' => getenv('EL_MOLINO_SMTP_DESDE') ?: 'centrorecreativoelmolino403@gmail.com',
     'from_name' => 'Centro Recreativo El Molino',
 ];

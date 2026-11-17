@@ -18,9 +18,9 @@ $manana = new DateTimeImmutable('tomorrow', $zona);
 $entrada = (string) ($_GET['entrada'] ?? $manana->format('Y-m-d'));
 $salida = (string) ($_GET['salida'] ?? $manana->modify('+1 day')->format('Y-m-d'));
 $tiposAlojamiento = [
-    'cabanas' => ['nombre' => 'Cabañas', 'descripcion' => 'Espacios independientes para 2, 4 o 6 personas.'],
-    'habitaciones' => ['nombre' => 'Habitaciones', 'descripcion' => 'Opciones dobles, familiares y grupales dentro del complejo.'],
-    'hoteles' => ['nombre' => 'Hoteles', 'descripcion' => 'Habitaciones con servicios diarios y espacios comunes.'],
+    'cabanas' => ['nombre' => 'Cabañas', 'descripcion' => 'Espacios independientes para 2, 4 o 6 personas.', 'imagen' => 'imgs/alojamiento-cabana.webp'],
+    'habitaciones' => ['nombre' => 'Habitaciones y departamentos', 'descripcion' => 'Opciones dobles, familiares y grupales dentro del complejo.', 'imagen' => 'imgs/alojamiento-departamento.webp'],
+    'hoteles' => ['nombre' => 'Hoteles', 'descripcion' => 'Habitaciones con servicios diarios y espacios comunes.', 'imagen' => 'imgs/alojamiento-hotel.webp'],
 ];
 $tipoSeleccionado = (string) ($_POST['tipoSeleccionado'] ?? $_GET['tipo'] ?? '');
 if (!isset($tiposAlojamiento[$tipoSeleccionado])) $tipoSeleccionado = '';
@@ -44,7 +44,7 @@ try {
                     $capacidadReserva,
                     (string) ($_POST['fechaIngreso'] ?? ''),
                     (string) ($_POST['fechaEgreso'] ?? ''),
-                    (int) ($_POST['cantidadPersonas'] ?? 0)
+                    1
                 );
                 Utilidades::redirigir('carrito.php');
             } catch (RuntimeException $e) {
@@ -89,7 +89,7 @@ $cantidadCarrito = isset($gestor) ? $gestor->cantidad() : 0;
         <section class="portada-alojamientos">
             <p class="texto-destacado">ALOJAMIENTOS</p>
             <h1>Elegí cómo querés alojarte</h1>
-            <p class="introduccion-compra">Primero elegí el tipo de alojamiento. Después vas a poder comparar capacidades, servicios y fechas.</p>
+            <p class="introduccion-compra">Primero elegí el tipo de alojamiento. Después vas a poder comparar capacidades, servicios y fechas. El ingreso es desde las 14:00 y el egreso hasta las 10:00.</p>
         </section>
         <?php if ($errores && $grupoConError === ''): ?><p class="aviso-estadia" role="alert"><?= Utilidades::escapar(implode(' ', $errores)) ?></p><?php endif; ?>
 
@@ -99,6 +99,7 @@ $cantidadCarrito = isset($gestor) ? $gestor->cantidad() : 0;
                 <div class="grilla-tipos-alojamiento">
                     <?php foreach ($tiposAlojamiento as $clave => $tipo): ?>
                         <a class="tarjeta-tipo-alojamiento" href="alojamientos.php?tipo=<?= rawurlencode($clave) ?>">
+                            <figure class="imagen-tipo-alojamiento"><img src="<?= Utilidades::escapar($tipo['imagen']) ?>" alt="<?= Utilidades::escapar($tipo['nombre']) ?> en El Molino" loading="lazy"></figure>
                             <div><h2><?= Utilidades::escapar($tipo['nombre']) ?></h2><p><?= Utilidades::escapar($tipo['descripcion']) ?></p></div>
                             <span class="accion-tipo-alojamiento">Ver opciones <span aria-hidden="true">→</span></span>
                         </a>
@@ -122,6 +123,7 @@ $cantidadCarrito = isset($gestor) ? $gestor->cantidad() : 0;
                     <?php $detalle = GestorCarritoAlojamiento::detallesPublicos($alojamiento); ?>
                     <?php $claveGrupo = (string) $alojamiento['tipoClave'] . '-' . (int) $alojamiento['capacidad']; ?>
                     <article class="producto-alojamiento">
+                        <figure class="imagen-producto-alojamiento"><img src="<?= Utilidades::escapar($tiposAlojamiento[$tipoSeleccionado]['imagen']) ?>" alt="<?= Utilidades::escapar($tiposAlojamiento[$tipoSeleccionado]['nombre']) ?> en El Molino" loading="lazy"></figure>
                         <div class="contenido-pack-alojamiento">
                         <h2><?= Utilidades::escapar($detalle['titulo']) ?></h2>
                         <p class="descripcion-alojamiento"><?= Utilidades::escapar($detalle['descripcion']) ?></p>
@@ -137,7 +139,9 @@ $cantidadCarrito = isset($gestor) ? $gestor->cantidad() : 0;
                                 <input type="hidden" name="tipoSeleccionado" value="<?= Utilidades::escapar($tipoSeleccionado) ?>">
                                 <label>Ingreso<input type="date" name="fechaIngreso" min="<?= $manana->format('Y-m-d') ?>" value="<?= Utilidades::escapar($entrada) ?>" required></label>
                                 <label>Egreso<input type="date" name="fechaEgreso" min="<?= $manana->modify('+1 day')->format('Y-m-d') ?>" value="<?= Utilidades::escapar($salida) ?>" required></label>
-                                <label>Personas<input type="number" name="cantidadPersonas" min="1" max="<?= (int) $alojamiento['capacidad'] ?>" value="1" required></label>
+                                <p class="horarios-estadia-formulario">Ingreso desde las 14:00 · egreso hasta las 10:00.</p>
+                                <input type="hidden" name="cantidadPersonas" value="1">
+                                <p class="ayuda-formulario">Hasta <?= (int) $alojamiento['capacidad'] ?> personas. Elegís a tus acompañantes al confirmar la reserva.</p>
                                 <?php if ($errores && $grupoConError === $claveGrupo): ?><p class="aviso-estadia aviso-estadia-formulario" role="alert"><?= Utilidades::escapar(implode(' ', $errores)) ?></p><?php endif; ?>
                                 <button class="boton boton-principal" type="submit">Agregar a mi estadía</button>
                             </form>

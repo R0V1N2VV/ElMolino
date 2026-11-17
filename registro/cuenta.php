@@ -36,8 +36,19 @@ $fechaPerfil = static function (?string $fecha): string {
     return $valor ? $valor->format('d/m/Y') : (string) $fecha;
 };
 
+// Las cuentas antiguas pueden haber quedado guardadas como usuario sin id_cliente
+// en la sesión. Se recupera el perfil por email para que no "desaparezcan" reservas.
+$conexion = Conexion::obtener();
+if ($idCliente <= 0 && !empty($usuario['email'])) {
+    $buscarCliente = $conexion->prepare('SELECT idCliente FROM cliente WHERE LOWER(email)=LOWER(:email) LIMIT 1');
+    $buscarCliente->execute(['email' => (string) $usuario['email']]);
+    $idCliente = (int) ($buscarCliente->fetchColumn() ?: 0);
+    if ($idCliente > 0) {
+        $usuario['id_cliente'] = $idCliente;
+        Sesion::iniciarUsuario($usuario);
+    }
+}
 if ($idCliente > 0) {
-    $conexion = Conexion::obtener();
     GestorEstadoFinanciero::vencerPedidosPendientes($conexion);
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!Sesion::validarCsrf($_POST['token_csrf'] ?? null)) {
@@ -126,7 +137,7 @@ if ($idCliente > 0) {
         $actividades = $consultaActividades->fetchAll();
 
         $consultaParticipantes = $conexion->prepare(
-            'SELECT iaa.idActividad, ac.nombre, ac.apellido
+            'SELECT iaa.idActividad, iaa.fechaActividad, ac.nombre, ac.apellido
                FROM inscripcionActividadAcompanante iaa
                JOIN `acompañante` ac ON ac.idAcompañante = iaa.idAcompañante
               WHERE iaa.idClienteTitular = :cliente AND iaa.activo = 1
@@ -135,10 +146,12 @@ if ($idCliente > 0) {
         $consultaParticipantes->execute(['cliente' => $idCliente]);
         $acompanantesPorActividad = [];
         foreach ($consultaParticipantes->fetchAll() as $participante) {
-            $acompanantesPorActividad[(int) $participante['idActividad']][] = $participante['nombre'] . ' ' . $participante['apellido'];
+            $claveActividad = (int) $participante['idActividad'] . '|' . (string) $participante['fechaActividad'];
+            $acompanantesPorActividad[$claveActividad][] = $participante['nombre'] . ' ' . $participante['apellido'];
         }
         foreach ($actividades as &$actividad) {
-            $actividad['acompanantes'] = $acompanantesPorActividad[(int) $actividad['idActividad']] ?? [];
+            $claveActividad = (int) $actividad['idActividad'] . '|' . (string) $actividad['fechaActividad'];
+            $actividad['acompanantes'] = $acompanantesPorActividad[$claveActividad] ?? [];
         }
         unset($actividad);
     } catch (PDOException $error) {
@@ -148,8 +161,8 @@ if ($idCliente > 0) {
 
     try {
         $consultaAlojamientos = $conexion->prepare(
-            "SELECT r.idReserva, r.fechaIngreso, r.fechaEgreso, r.cantidadPersonas,
-                    r.estadoReserva, r.precioTotal, a.tipo, a.capacidad,
+            "SELECT r.idReserva, r.fechaIngreso, r.fechaEgreso, r.checkInReal, r.checkOutReal,
+                    r.estadoReserva, r.estadoLlegada, r.cantidadPersonas, r.precioTotal, a.tipo, a.capacidad,
                     p.idPedido, p.estadoPedido, p.estadoPago, p.metodoPago,
                     p.total, p.montoSena, p.fechaLimiteSena, p.fechaLimiteRevisionSena,
                     (SELECT COALESCE(SUM(CASE WHEN pg2.estado='CONFIRMADO' AND pg2.tipoPago IN ('SENA','SALDO') THEN pg2.montoTotal ELSE 0 END),0)
@@ -262,12 +275,28 @@ if ($idCliente > 0) {
                             $mostrarPago = $idPedidoActual > 0 && !in_array($idPedidoActual, $pedidosPagoMostrados, true);
                             if ($mostrarPago) $pedidosPagoMostrados[] = $idPedidoActual;
                             $estadoPagoActual = strtoupper((string) ($alojamiento['estadoPago'] ?? ''));
-                            $esPreReserva = in_array($estadoPagoActual, ['SENA_PENDIENTE', 'SENA_INFORMADA'], true);
+                            $estadoReservaActual = strtoupper((string) ($alojamiento['estadoReserva'] ?? ''));
+                            // Se toma también el estado de la reserva para no ocultar la
+                            // cancelación si un pedido antiguo no tiene estadoPago cargado.
+                            $esPreReserva = $estadoReservaActual === 'PENDIENTE_SENA'
+                                || in_array($estadoPagoActual, ['SENA_PENDIENTE', 'SENA_INFORMADA'], true);
+                            $puedeModificarAcompanantes = (string) $alojamiento['fechaIngreso'] > date('Y-m-d');
+                            // Una pre-reserva sin seña acreditada puede liberarse de inmediato,
+                            // incluso si la fecha de llegada es hoy.
+                            $puedeCancelar = $esPreReserva || $puedeModificarAcompanantes;
+                            $situacionLlegada = strtoupper((string) ($alojamiento['estadoLlegada'] ?? 'PENDIENTE_LLEGADA'));
+                            $textoLlegada = match ($situacionLlegada) {
+                                'EN_ESTADIA' => 'Ya registraste tu llegada',
+                                'NO_SE_PRESENTO' => 'Recepción marcó que no te presentaste',
+                                'FINALIZADA' => 'Estadía finalizada',
+                                default => 'Pendiente de registrar la llegada en recepción',
+                            };
                             ?>
                             <article class="item-resumen-cuenta">
                                 <div><h3><?= Utilidades::escapar($alojamiento['tipo']) ?> para <?= (int) $alojamiento['capacidad'] ?> personas</h3><p><?= $fechaPerfil($alojamiento['fechaIngreso']) ?> al <?= $fechaPerfil($alojamiento['fechaEgreso']) ?></p></div>
-                                <p><strong><?= (int) $alojamiento['cantidadPersonas'] ?></strong> <?= (int) $alojamiento['cantidadPersonas'] === 1 ? 'huésped' : 'huéspedes' ?> · Estado: <?= Utilidades::escapar(ucfirst(strtolower(str_replace('_', ' ', (string) $alojamiento['estadoReserva'])))) ?></p>
-                                <?php if (!empty($alojamiento['montoSena'])): ?><p><strong>Seña:</strong> $<?= number_format((float) $alojamiento['montoSena'], 2, ',', '.') ?> · <?= Utilidades::escapar(str_replace('_', ' ', (string) $alojamiento['estadoPago'])) ?></p><?php endif; ?>
+                                <p><strong><?= (int) $alojamiento['cantidadPersonas'] ?></strong> <?= (int) $alojamiento['cantidadPersonas'] === 1 ? 'huésped' : 'huéspedes' ?> · Estado: <?= Utilidades::escapar(Vista::estadoPedidoCliente((string) $alojamiento['estadoReserva'])) ?></p>
+                                <p class="situacion-llegada-cuenta"><strong><?= Utilidades::escapar($textoLlegada) ?></strong></p>
+                                <?php if (!empty($alojamiento['montoSena'])): ?><p><strong>Seña:</strong> $<?= number_format((float) $alojamiento['montoSena'], 2, ',', '.') ?> · <?= Utilidades::escapar(Vista::estadoPagoCliente((string) $alojamiento['estadoPago'])) ?></p><?php endif; ?>
                                 <?php if ((float) ($alojamiento['montoPagado'] ?? 0) > 0): ?><p><strong>Pagado:</strong> $<?= number_format((float) $alojamiento['montoPagado'], 2, ',', '.') ?> · <strong>Saldo:</strong> $<?= number_format(max(0, (float) $alojamiento['total'] - (float) $alojamiento['montoPagado']), 2, ',', '.') ?></p><?php endif; ?>
                                 <?php if ((float) ($alojamiento['reintegroPendiente'] ?? 0) > 0): ?><p><strong>Reintegro pendiente:</strong> $<?= number_format((float) $alojamiento['reintegroPendiente'], 2, ',', '.') ?></p><?php endif; ?>
                                 <?php if (!empty($alojamiento['observacionPago'])): ?><p><strong>Estado del pago:</strong> <?= Utilidades::escapar((string) $alojamiento['observacionPago']) ?></p><?php endif; ?>
@@ -301,15 +330,16 @@ if ($idCliente > 0) {
                                     </details>
                                 <?php endif; ?>
                                 <?php if ($alojamiento['acompanantes']): ?><p><strong>Acompañantes:</strong> <?= Utilidades::escapar(implode(', ', array_column($alojamiento['acompanantes'], 'nombre'))) ?></p><?php endif; ?>
-                                <?php if ((string) $alojamiento['fechaIngreso'] > date('Y-m-d')): ?>
-                                    <?php if ($esPreReserva): ?>
-                                        <form method="post" onsubmit="return confirm('¿Querés cancelar esta pre-reserva? El alojamiento quedará disponible inmediatamente.')">
+                                <a class="enlace-ver-estadia" href="estadia.php?id=<?= (int) $alojamiento['idReserva'] ?>">Ver detalle de estadía</a>
+                                <?php if ($puedeCancelar && $esPreReserva): ?>
+                                    <form method="post" onsubmit="return confirm('¿Querés cancelar esta pre-reserva? El alojamiento quedará disponible inmediatamente.')">
                                             <input type="hidden" name="token_csrf" value="<?= Utilidades::escapar(Sesion::tokenCsrf()) ?>">
                                             <input type="hidden" name="accion" value="cancelar_reserva">
                                             <input type="hidden" name="id_reserva" value="<?= (int) $alojamiento['idReserva'] ?>">
                                             <button class="boton-enlace boton-cancelar-reserva" type="submit">Cancelar pre-reserva</button>
-                                        </form>
-                                    <?php endif; ?>
+                                    </form>
+                                <?php endif; ?>
+                                <?php if ($puedeModificarAcompanantes): ?>
                                     <details class="gestionar-reserva-cuenta">
                                         <summary><?= $esPreReserva ? 'Modificar acompañantes' : 'Gestionar reserva' ?></summary>
                                         <form method="post" class="formulario-acompanantes-reserva-cuenta">

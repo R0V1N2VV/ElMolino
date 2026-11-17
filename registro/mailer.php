@@ -63,6 +63,34 @@ final class Correo
         }
     }
 
+    /** Envía un código temporal para que un cliente restablezca su contraseña. */
+    public function enviarCodigoRecuperacion(string $destinatario, string $nombre, string $codigo): void
+    {
+        if (empty($this->configuracion['username']) || empty($this->configuracion['password']) || empty($this->configuracion['from_email'])) {
+            throw new RuntimeException('No está configurado el correo necesario para recuperar la contraseña.');
+        }
+        $mail = new PHPMailer(true);
+        try {
+            $mail->isSMTP();
+            $mail->Host = $this->configuracion['host'];
+            $mail->SMTPAuth = true;
+            $mail->Username = $this->configuracion['username'];
+            $mail->Password = $this->configuracion['password'];
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+            $mail->Port = $this->configuracion['port'];
+            $mail->CharSet = 'UTF-8';
+            $mail->setFrom($this->configuracion['from_email'], $this->configuracion['from_name']);
+            $mail->addAddress($destinatario, $nombre);
+            $mail->isHTML(true);
+            $mail->Subject = 'Recuperación de contraseña - El Molino';
+            $mail->Body = '<p>Hola ' . Utilidades::escapar($nombre) . ',</p><p>Tu código para crear una contraseña nueva es:</p><h2 style="letter-spacing:4px;">' . Utilidades::escapar($codigo) . '</h2><p>Vence en 15 minutos. Si no lo solicitaste, ignorá este correo.</p>';
+            $mail->AltBody = "Hola {$nombre},\n\nTu código para crear una contraseña nueva es: {$codigo}\n\nVence en 15 minutos. Si no lo solicitaste, ignorá este correo.";
+            $mail->send();
+        } catch (Exception) {
+            throw new RuntimeException('No se pudo enviar el código de recuperación: ' . $mail->ErrorInfo);
+        }
+    }
+
     /**
      * Envía resumen compra al destinatario correspondiente.
      *

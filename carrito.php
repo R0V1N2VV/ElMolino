@@ -51,14 +51,14 @@ $usuario = Sesion::usuario();
         <h1>Tu estadía</h1>
         <?php if ($errores): ?><p class="aviso-estadia" role="alert"><?= Utilidades::escapar(implode(' ', $errores)) ?></p><?php endif; ?>
         <?php if (!$elementos): ?>
-            <section class="estado-vacio-compra estado-vacio-estadia"><div><h2>Empezá eligiendo un alojamiento</h2><p>Podés consultar las opciones, elegir las fechas y definir cuántas personas se van a hospedar.</p></div><a class="boton boton-principal" href="alojamientos.php">Elegir alojamiento</a></section>
+            <section class="estado-vacio-compra estado-vacio-estadia"><div><h2>Empezá eligiendo un alojamiento</h2><p>Podés consultar las opciones y elegir las fechas. Los acompañantes se definen al confirmar la reserva.</p></div><a class="boton boton-principal" href="alojamientos.php">Elegir alojamiento</a></section>
         <?php else: ?>
             <div class="lista-carrito-alojamiento">
                 <?php foreach ($elementos as $elemento): ?>
                     <article class="linea-carrito-alojamiento <?= !empty($elemento['error']) ? 'linea-con-error' : '' ?>">
                         <div><h2><?= Utilidades::escapar($elemento['tipo'] ?? 'Alojamiento') ?><?= isset($elemento['numero']) ? ' · ' . Utilidades::escapar($elemento['numero']) : '' ?></h2>
                             <?php if (empty($elemento['error'])): ?>
-                                <p><?= Utilidades::escapar($elemento['fechaIngreso']) ?> al <?= Utilidades::escapar($elemento['fechaEgreso']) ?> · <?= (int) $elemento['noches'] ?> <?= (int) $elemento['noches'] === 1 ? 'noche' : 'noches' ?> · <?= (int) $elemento['personas'] ?> personas</p>
+                                <p><?= Utilidades::escapar($elemento['fechaIngreso']) ?> al <?= Utilidades::escapar($elemento['fechaEgreso']) ?> · <?= (int) $elemento['noches'] ?> <?= (int) $elemento['noches'] === 1 ? 'noche' : 'noches' ?> · Titular incluido</p>
                                 <p>$<?= number_format((float) $elemento['precioPorNoche'], 2, ',', '.') ?> por noche</p>
                                 <strong>Subtotal: $<?= number_format((float) $elemento['subtotal'], 2, ',', '.') ?></strong>
                             <?php else: ?><p class="mensaje-linea-carrito"><?= Utilidades::escapar($elemento['error']) ?></p><?php endif; ?>

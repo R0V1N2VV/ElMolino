@@ -119,7 +119,7 @@ public class VentanaInformes extends JFrame {
                 + "+ COUNT(iaa.idInscripcionAcompanante)), 0) AS Disponibles "
                 + "FROM Actividad a LEFT JOIN inscripcionActividad i ON i.idActividad = a.idActividad AND UPPER(i.estado)='ACTIVA' "
                 + "LEFT JOIN inscripcionActividadAcompanante iaa ON iaa.idClienteTitular=i.idCliente "
-                + "AND iaa.idActividad=i.idActividad AND iaa.activo=1 "
+                + "AND iaa.idActividad=i.idActividad AND iaa.fechaActividad=i.fechaActividad AND iaa.activo=1 "
                 + "GROUP BY a.idActividad, i.fechaActividad ORDER BY a.nombre, i.fechaActividad");
         cargar(cargosActividades, "SELECT ca.idCargoActividad AS ID, ca.idPedido AS Pedido, "
                 + "CONCAT(c.apellido, ', ', c.nombre) AS Cliente, a.nombre AS Actividad, "
@@ -170,6 +170,8 @@ public class VentanaInformes extends JFrame {
             @Override protected void done() {
                 try {
                     tabla.setModel(get());
+                    // Al reemplazar el modelo se vuelve a asociar el ordenamiento a los datos nuevos.
+                    FiltroTabla.habilitarOrdenamiento(tabla);
                     estado.setText("Informes actualizados");
                 } catch (Exception excepcion) {
                     Throwable causa = excepcion.getCause() == null ? excepcion : excepcion.getCause();

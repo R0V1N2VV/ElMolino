@@ -92,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <h1>Recibimos tu solicitud de reserva</h1>
         <?php if ($errores): ?><p class="aviso-estadia" role="alert"><?= Utilidades::escapar(implode(' ', $errores)) ?></p><?php endif; ?>
         <p class="estado-pedido-correo" role="status"><?= Utilidades::escapar($mensaje) ?></p>
-        <p>Estado del pedido: <strong><?= Utilidades::escapar($pedido['estadoPedido']) ?></strong> · Estado del pago: <strong><?= Utilidades::escapar($pedido['estadoPago']) ?></strong></p>
+        <p>Reserva: <strong><?= Utilidades::escapar(Vista::estadoPedidoCliente($pedido['estadoPedido'])) ?></strong> · Pago: <strong><?= Utilidades::escapar(Vista::estadoPagoCliente($pedido['estadoPago'])) ?></strong></p>
         <?php if ((float) ($pedido['montoPagado'] ?? 0) > 0): ?><p>Pagado: <strong>$<?= number_format((float) $pedido['montoPagado'], 2, ',', '.') ?></strong> · Saldo pendiente: <strong>$<?= number_format(max(0, (float) $pedido['total'] - (float) $pedido['montoPagado']), 2, ',', '.') ?></strong></p><?php endif; ?>
         <p>Forma elegida para la seña: <strong><?= Utilidades::escapar($pedido['metodoPago']) ?></strong>. La reserva se confirma cuando se acredita el pago.</p>
         <section class="resumen-sena resumen-sena-confirmada">

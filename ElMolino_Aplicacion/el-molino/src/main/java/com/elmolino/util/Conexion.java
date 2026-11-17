@@ -27,7 +27,9 @@ public final class Conexion {
         String nombreBase = Config.get("db.name").replace(" ", "%20");
 
         String direccion = "jdbc:mysql://" + servidor + ":" + puerto + "/" + nombreBase
-                + "?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC";
+                // Evita que una dirección de base caída deje la aplicación esperando indefinidamente.
+                + "?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC"
+                + "&connectTimeout=5000&socketTimeout=15000&tcpKeepAlive=true";
 
         return DriverManager.getConnection(direccion, Config.get("db.user"), Config.get("db.password"));
     }

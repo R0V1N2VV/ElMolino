@@ -117,7 +117,7 @@ final class GestorCarritoAlojamiento
         $estado = self::normalizarTexto((string) ($alojamiento['estado'] ?? ''));
         $reservadoEnFechas = (int) ($alojamiento['reservadoEnFechas'] ?? 0) === 1;
 
-        if (in_array($estado, ['fuera de servicio', 'fuera servicio', 'mantenimiento'], true)) {
+        if (in_array($estado, ['fuera de servicio', 'fuera servicio', 'mantenimiento', 'en mantenimiento'], true)) {
             return [
                 'clave' => 'fuera-servicio',
                 'etiqueta' => 'Fuera de servicio',
@@ -459,14 +459,16 @@ final class GestorCarritoAlojamiento
                     (string) ($item['fechaIngreso'] ?? ''),
                     (string) ($item['fechaEgreso'] ?? '')
                 );
-                $personas = (int) ($item['cantidadPersonas'] ?? 0);
                 $idsAcompanantes = is_array($acompanantesPorItem[$claveItem] ?? null)
                     ? $acompanantesPorItem[$claveItem]
                     : [];
-                $idsAcompanantes = $this->validarAcompanantesReserva($idCliente, $idsAcompanantes, max(0, $personas - 1));
                 $alojamientoAnterior = $this->buscarAlojamiento((int) ($item['idAlojamiento'] ?? 0));
                 $tipoClave = (string) ($item['tipoGrupo'] ?? ($alojamientoAnterior ? self::claveTipo((string) $alojamientoAnterior['tipo']) : ''));
                 $capacidad = (int) ($item['capacidadGrupo'] ?? ($alojamientoAnterior['capacidad'] ?? 0));
+                $idsAcompanantes = $this->validarAcompanantesReserva($idCliente, $idsAcompanantes, max(0, $capacidad - 1));
+                // El titular siempre ocupa un lugar. La cantidad se calcula a
+                // partir de los acompañantes elegidos, no en el catálogo.
+                $personas = 1 + count($idsAcompanantes);
                 $alojamiento = $this->buscarDisponiblePorGrupo(
                     $tipoClave,
                     $capacidad,
@@ -862,7 +864,7 @@ final class GestorCarritoAlojamiento
     {
         $texto = strtolower(trim($texto));
         $texto = strtr($texto, [
-            'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u',
+            'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u', 'ñ' => 'n',
             '_' => ' ', '-' => ' ',
         ]);
         return preg_replace('/\s+/', ' ', $texto) ?: '';

@@ -109,7 +109,7 @@ Sesion::tomarMensaje();
             <?php foreach ($elementos as $elemento): ?>
                 <article class="linea-resumen-compra <?= !empty($elemento['error']) ? 'linea-con-error' : '' ?>">
                     <div><h2><?= Utilidades::escapar($elemento['tipo'] ?? 'Alojamiento') ?><?= isset($elemento['numero']) ? ' · ' . Utilidades::escapar($elemento['numero']) : '' ?></h2>
-                        <?php if (empty($elemento['error'])): ?><p><?= Utilidades::escapar($elemento['fechaIngreso']) ?> al <?= Utilidades::escapar($elemento['fechaEgreso']) ?> · <?= (int) $elemento['noches'] ?> noches · <?= (int) $elemento['personas'] ?> personas</p><strong>$<?= number_format((float) $elemento['subtotal'], 2, ',', '.') ?></strong>
+                        <?php if (empty($elemento['error'])): ?><p><?= Utilidades::escapar($elemento['fechaIngreso']) ?> al <?= Utilidades::escapar($elemento['fechaEgreso']) ?> · <?= (int) $elemento['noches'] ?> noches · Titular incluido</p><strong>$<?= number_format((float) $elemento['subtotal'], 2, ',', '.') ?></strong>
                         <?php else: ?><p><?= Utilidades::escapar($elemento['error']) ?></p><?php endif; ?>
                     </div>
                 </article>
@@ -124,11 +124,11 @@ Sesion::tomarMensaje();
                     <p>Asigná los acompañantes ahora. Después vas a poder agregarlos o quitarlos desde Mi cuenta.</p>
                     <?php foreach ($elementos as $elemento): ?>
                         <?php if (!empty($elemento['error'])) continue; ?>
-                        <?php $maximoAcompanantes = max(0, (int) $elemento['personas'] - 1); ?>
+                        <?php $maximoAcompanantes = max(0, (int) $elemento['capacidad'] - 1); ?>
                         <fieldset>
                             <legend><?= Utilidades::escapar($elemento['tipo']) ?> · hasta <?= $maximoAcompanantes ?> acompañantes</legend>
                             <?php if ($maximoAcompanantes === 0): ?>
-                                <p class="ayuda-formulario">Esta reserva fue indicada para una sola persona.</p>
+                                <p class="ayuda-formulario">Este alojamiento es para una sola persona.</p>
                             <?php elseif (!$acompanantesCliente): ?>
                                 <p class="ayuda-formulario">No tenés acompañantes registrados. La reserva se guardará a nombre del titular.</p>
                             <?php else: ?>

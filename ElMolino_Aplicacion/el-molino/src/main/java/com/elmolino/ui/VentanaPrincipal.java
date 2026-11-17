@@ -41,6 +41,7 @@ public class VentanaPrincipal extends JFrame {
     private static final Color VERDE_MEDIO = new Color(0x4F7358);
     private static final Color NARANJA = new Color(0xC97B3D);
     private final float escala;
+    private final Usuario usuario;
     private int seniasPorConfirmar;
 
     /**
@@ -48,27 +49,56 @@ public class VentanaPrincipal extends JFrame {
      */
     public VentanaPrincipal() {
         super("El Molino | Gestión");
-        try { GestionDAO.vencerPedidosPendientes(); } catch (SQLException error) {
-            System.err.println("No se pudieron revisar las señas vencidas: " + error.getMessage());
-        }
-        try { seniasPorConfirmar = GestionDAO.contarSeniasPorConfirmar(); } catch (SQLException error) {
-            seniasPorConfirmar = 0;
-        }
+        // El menú se muestra de inmediato. Las consultas que revisan pagos se hacen
+        // después, fuera del hilo gráfico, para que una base lenta no congele la app.
+        usuario = SesionActual.get();
         escala = calcularEscala();
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setSize(940, 720);
         setMinimumSize(new Dimension(700, 560));
         setLocationRelativeTo(null);
 
-        // Arma las tarjetas a partir de la cuenta conectada y abre la ventana maximizada.
-        Usuario usuario = SesionActual.get();
-        List<Acceso> accesos = armarAccesos(usuario.getRol());
         getContentPane().setBackground(FONDO);
         setLayout(new BorderLayout());
-
-        add(crearEncabezado(usuario), BorderLayout.NORTH);
-        add(crearContenido(accesos), BorderLayout.CENTER);
+        reconstruirPantalla();
         setExtendedState(JFrame.MAXIMIZED_BOTH);
+        cargarIndicadoresEnSegundoPlano();
+    }
+
+    /** Arma o actualiza el menú sin consultar la base de datos en el hilo gráfico. */
+    private void reconstruirPantalla() {
+        getContentPane().removeAll();
+        add(crearEncabezado(usuario), BorderLayout.NORTH);
+        add(crearContenido(armarAccesos(usuario.getRol())), BorderLayout.CENTER);
+        revalidate();
+        repaint();
+    }
+
+    /** Revisa vencimientos y señas pendientes sin demorar la apertura del menú. */
+    private void cargarIndicadoresEnSegundoPlano() {
+        new javax.swing.SwingWorker<Integer, Void>() {
+            @Override protected Integer doInBackground() {
+                try {
+                    GestionDAO.vencerPedidosPendientes();
+                    return GestionDAO.contarSeniasPorConfirmar();
+                } catch (SQLException error) {
+                    // La pantalla sigue siendo utilizable si la red o la base tardan en responder.
+                    return 0;
+                }
+            }
+
+            @Override protected void done() {
+                try {
+                    int nuevoTotal = get();
+                    if (nuevoTotal != seniasPorConfirmar) {
+                        seniasPorConfirmar = nuevoTotal;
+                        reconstruirPantalla();
+                    }
+                } catch (Exception ignored) {
+                    // El indicador es complementario: no interrumpe el uso del menú.
+                }
+            }
+        }.execute();
     }
 
     /**
@@ -247,9 +277,9 @@ public class VentanaPrincipal extends JFrame {
             }
             case "RECEPCION" -> {
                 accesos.add(modulo("Clientes", "Consultar y editar datos de clientes", null));
+                accesos.add(modulo("Llegadas y estadías", "Registrar llegada, no presentación o salida de huéspedes", GestionDAO.RESERVAS));
                 accesos.add(modulo("Alojamientos", "Consultar y actualizar alojamientos", GestionDAO.ALOJAMIENTOS));
                 accesos.add(modulo("Pagos", "Consultar pagos registrados", GestionDAO.PAGOS));
-                accesos.add(modulo("Reintegros", "Consultar devoluciones pendientes", GestionDAO.REEMBOLSOS));
             }
             case "ADMINISTRACION" -> {
                 accesos.add(modulo("Clientes", "Consultar y editar datos de clientes", null));

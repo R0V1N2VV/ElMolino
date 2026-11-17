@@ -56,4 +56,12 @@ public final class Config {
         }
         return valor.trim();
     }
+
+    /**
+     * Devuelve una configuración opcional sin obligar a declararla en el archivo.
+     * Sirve para ajustes locales, por ejemplo la fecha de demostración.
+     */
+    public static String getOrDefault(String clave, String valorPredeterminado) {
+        return cargar().getProperty(clave, valorPredeterminado).trim();
+    }
 }

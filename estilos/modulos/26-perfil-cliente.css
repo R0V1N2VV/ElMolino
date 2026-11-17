@@ -417,13 +417,14 @@
     align-items: center;
     padding: clamp(25px, 4vw, 46px);
     border-radius: 18px;
-    background: #163f38;
-    color: #fff;
+    border: 1px solid #bed3c4;
+    background: #e8f1ea;
+    color: var(--azul-oscuro);
 }
 
 .cabecera-estadia .texto-destacado,
 .cabecera-estadia .rango-estadia {
-    color: rgba(255, 255, 255, .76);
+    color: #486258;
 }
 
 .cabecera-estadia h1 {
@@ -440,13 +441,13 @@
     display: grid;
     gap: 7px;
     padding: 20px;
-    border: 1px solid rgba(255, 255, 255, .22);
+    border: 1px solid #b4cdbb;
     border-radius: 12px;
-    background: rgba(255, 255, 255, .1);
+    background: #fffdf8;
 }
 
 .estado-estadia-pill strong { font-size: 1.1rem; }
-.estado-estadia-pill span { color: rgba(255, 255, 255, .76); font-size: .9rem; line-height: 1.45; }
+.estado-estadia-pill span { color: #486258; font-size: .9rem; line-height: 1.45; }
 
 .metricas-estadia {
     display: grid;
