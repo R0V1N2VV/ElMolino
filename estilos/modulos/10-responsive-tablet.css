@@ -1,0 +1,46 @@
+/* ==========================================================================
+   Adaptación inicial para tablet
+   Procedencia: líneas 905-945 del CSS original.
+   No cambiar el orden de carga: las reglas posteriores completan o ajustan estas.
+   ========================================================================== */
+
+/* =========================================================
+   10. Adaptación para tablet
+   ========================================================= */
+@media (max-width: 1020px) {
+    .boton-encabezado {
+        display: none;
+    }
+
+    .texto-portada {
+        max-width: 760px;
+    }
+
+    .imagen-portada {
+        height: 260px;
+    }
+
+    .two-columns,
+    .estructura-nosotros,
+    .grilla-visita {
+        grid-template-columns: 1fr;
+        gap: 42px;
+    }
+
+    .texto-nosotros {
+        max-width: 760px;
+        margin-inline: auto;
+    }
+
+    .introduccion-seccion {
+        max-width: 720px;
+    }
+
+    .foto-nosotros img {
+        height: 360px;
+    }
+
+    .grilla-espacios {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}

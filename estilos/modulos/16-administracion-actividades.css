@@ -1,0 +1,721 @@
+/* ==========================================================================
+   Gestión de actividades y formularios
+   Procedencia: líneas 3505-4220 del CSS original.
+   No cambiar el orden de carga: las reglas posteriores completan o ajustan estas.
+   ========================================================================== */
+
+/* =========================================================
+   15. Administración de actividades
+   ========================================================= */
+.pagina-administracion {
+    min-height: calc(100vh - 82px);
+    background: var(--blanco-calido);
+}
+
+.cabecera-administracion {
+    padding-block: 58px;
+    background: linear-gradient(180deg, var(--crema), var(--verde-claro));
+}
+
+.encabezado-admin {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 36px;
+}
+
+.encabezado-admin h1 {
+    font-size: clamp(2.6rem, 5vw, 4.2rem);
+}
+
+.encabezado-admin > div > p:last-child {
+    margin-top: 12px;
+    color: var(--verde-medio);
+}
+
+.acciones-cabecera-admin {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.aviso-administracion {
+    width: min(100% - 40px, 1180px);
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 24px auto 0;
+    padding: 15px 18px;
+    color: var(--verde-oscuro);
+    background: #eef7ef;
+    border: 1px solid #b8d9bc;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(7, 58, 47, 0.06);
+    line-height: 1.45;
+    scroll-margin-top: 96px;
+}
+
+.aviso-administracion strong {
+    flex: 0 0 auto;
+}
+
+.aviso-administracion.mensaje-error {
+    color: #7b2520;
+    background: #fff3f1;
+    border-color: #e5b8b2;
+}
+
+.panel-formulario-actividad {
+    padding-block: 64px;
+    background: var(--crema);
+}
+
+.encabezado-formulario-admin {
+    display: flex;
+    align-items: start;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 32px;
+}
+
+.encabezado-formulario-admin h2 {
+    font-size: clamp(2rem, 4vw, 3rem);
+}
+
+.boton-cerrar-panel {
+    width: 44px;
+    height: 44px;
+    color: var(--azul-oscuro);
+    background: var(--blanco-calido);
+    border: 1px solid var(--beige);
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1.8rem;
+    line-height: 1;
+}
+
+.formulario-actividad {
+    display: grid;
+    gap: 22px;
+}
+
+.formulario-actividad-redisenado {
+    max-width: 1000px;
+    margin-inline: auto;
+    gap: 26px;
+}
+
+.bloque-formulario-admin {
+    padding: 28px;
+    background: var(--blanco-calido);
+    border: 1px solid var(--beige);
+    border-radius: 16px;
+}
+
+.bloque-formulario-admin h3 {
+    margin-bottom: 22px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--beige);
+}
+
+.formulario-actividad-redisenado .bloque-formulario-admin {
+    padding: 32px;
+    border-radius: 20px;
+    box-shadow: 0 14px 34px rgba(7, 58, 47, 0.06);
+}
+
+.titulo-bloque-formulario {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 26px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--beige);
+}
+
+.titulo-bloque-formulario > span {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+    display: grid;
+    place-items: center;
+    color: var(--blanco);
+    background: var(--verde-oscuro);
+    border-radius: 50%;
+    font-weight: 800;
+}
+
+.titulo-bloque-formulario h3 {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    font-size: 1.25rem;
+}
+
+.titulo-bloque-formulario p {
+    margin-top: 5px;
+    color: var(--verde-medio);
+    font-size: 0.88rem;
+    line-height: 1.45;
+}
+
+.grilla-campos-admin {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+}
+
+.formulario-actividad label {
+    display: block;
+}
+
+.formulario-actividad label > small {
+    display: block;
+    margin-top: 7px;
+    color: var(--verde-medio);
+    font-size: 0.76rem;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+.formulario-actividad textarea {
+    min-height: 110px;
+    resize: vertical;
+}
+
+.campo-doble {
+    grid-column: 1 / -1;
+}
+
+.grupo-horario-admin {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: end;
+    gap: 16px;
+    padding: 20px;
+    background: var(--verde-claro);
+    border: 1px solid rgba(46, 125, 50, 0.18);
+    border-radius: 14px;
+}
+
+.grupo-horario-admin > span {
+    padding-bottom: 14px;
+    color: var(--verde-medio);
+    font-size: 0.86rem;
+    font-weight: 750;
+}
+
+.grupo-horario-admin select {
+    min-height: 54px;
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+[data-campo-precio][hidden] {
+    display: none;
+}
+
+.bloque-opcional-admin {
+    background: rgba(255, 255, 255, 0.72);
+}
+
+.bloque-opcional-admin summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    color: var(--verde-oscuro);
+    cursor: pointer;
+    font-weight: 800;
+    list-style: none;
+}
+
+.bloque-opcional-admin summary::-webkit-details-marker {
+    display: none;
+}
+
+.bloque-opcional-admin summary::after {
+    content: "+";
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    display: grid;
+    place-items: center;
+    color: var(--blanco);
+    background: var(--verde-oscuro);
+    border-radius: 50%;
+    font-size: 1.3rem;
+}
+
+.bloque-opcional-admin[open] summary::after {
+    content: "−";
+}
+
+.bloque-opcional-admin summary small {
+    margin-left: auto;
+    color: var(--verde-medio);
+    font-size: 0.78rem;
+    font-weight: 550;
+}
+
+.bloque-opcional-admin[open] summary {
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--beige);
+}
+
+.vista-imagen {
+    min-height: 112px;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    color: var(--verde-medio);
+    background: var(--crema);
+    border: 1px dashed var(--verde-suave);
+    border-radius: 12px;
+    font-size: 0.82rem;
+    text-align: center;
+}
+
+.vista-imagen img {
+    width: 100%;
+    height: 150px;
+    object-fit: cover;
+}
+
+.opcion-tendencia {
+    display: flex !important;
+    align-items: center;
+    gap: 12px;
+    padding: 14px;
+    background: var(--verde-claro);
+    border-radius: 10px;
+}
+
+.opcion-tendencia input {
+    width: 20px;
+    height: 20px;
+    margin: 0;
+}
+
+.acciones-formulario-admin {
+    display: flex;
+    gap: 14px;
+}
+
+.acciones-formulario-fijas {
+    position: sticky;
+    bottom: 16px;
+    z-index: 20;
+    justify-content: flex-end;
+    padding: 16px;
+    background: rgba(250, 249, 245, 0.94);
+    border: 1px solid var(--beige);
+    border-radius: 16px;
+    box-shadow: var(--sombra);
+    backdrop-filter: blur(10px);
+}
+
+.boton-agregar-en-categoria {
+    display: inline-flex;
+    margin-top: 24px;
+}
+
+.categorias-administracion {
+    padding-block: 72px;
+    background: #edf4ec;
+}
+
+.grilla-categorias-admin {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.tarjeta-categoria-admin {
+    display: grid;
+    grid-template-columns: 112px minmax(0, 1fr);
+    gap: 20px;
+    padding: 18px;
+    background: var(--blanco-calido);
+    border: 1px solid var(--beige);
+    border-radius: 14px;
+}
+
+.tarjeta-categoria-admin > img {
+    width: 112px;
+    height: 112px;
+    object-fit: cover;
+    border-radius: 10px;
+}
+
+.tarjeta-categoria-admin strong,
+.tarjeta-categoria-admin small,
+.tarjeta-categoria-admin span {
+    display: block;
+}
+
+.tarjeta-categoria-admin strong {
+    color: var(--verde-oscuro);
+    font-size: 1.25rem;
+}
+
+.tarjeta-categoria-admin small {
+    margin-top: 5px;
+    color: var(--verde-medio);
+    line-height: 1.4;
+}
+
+.tarjeta-categoria-admin span {
+    margin-top: 8px;
+    color: var(--azul-medio);
+    font-size: 0.78rem;
+    font-weight: 750;
+    text-transform: uppercase;
+}
+
+.acciones-categoria-admin {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--beige);
+}
+
+.acciones-categoria-admin > a:first-child {
+    color: var(--verde-oscuro);
+    font-weight: 750;
+}
+
+.acciones-categoria-admin .boton {
+    padding: 10px 16px;
+    font-size: 0.86rem;
+}
+
+.acciones-categoria-admin form {
+    margin: 0;
+}
+
+.boton-eliminar-categoria {
+    min-height: 38px;
+    padding: 9px 14px;
+    color: #8a2c20;
+    background: #fff1ee;
+    border: 1px solid #f0c2ba;
+    border-radius: 8px;
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 750;
+}
+
+.boton-eliminar-categoria:disabled {
+    color: #8b817e;
+    background: #f4f0ed;
+    border-color: #ddd6d1;
+    cursor: not-allowed;
+}
+
+.boton-neutral {
+    color: var(--azul-oscuro);
+    background: var(--blanco);
+    border: 1px solid var(--beige);
+    cursor: pointer;
+}
+
+.listado-administracion {
+    padding-block: 72px 96px;
+}
+
+.lista-administracion {
+    display: grid;
+    gap: 10px;
+}
+
+.fila-actividad-admin {
+    display: grid;
+    grid-template-columns: 54px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 18px;
+    background: var(--blanco);
+    border: 1px solid var(--beige);
+    border-radius: 12px;
+}
+
+.miniatura-admin {
+    width: 48px;
+    height: 48px;
+    display: grid;
+    place-items: center;
+    background: var(--verde-claro);
+    border-radius: 10px;
+    font-size: 1.5rem;
+}
+
+.fila-actividad-admin strong,
+.fila-actividad-admin small {
+    display: block;
+}
+
+.fila-actividad-admin strong {
+    color: var(--azul-oscuro);
+}
+
+.fila-actividad-admin small {
+    margin-top: 3px;
+    color: var(--verde-medio);
+}
+
+.acciones-admin {
+    display: flex;
+    gap: 8px;
+}
+
+.acciones-admin button {
+    min-height: 38px;
+    padding: 8px 13px;
+    color: var(--azul-oscuro);
+    background: var(--crema);
+    border: 1px solid var(--beige);
+    border-radius: 8px;
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 750;
+}
+
+.acciones-admin .boton-eliminar {
+    color: #8a2c20;
+    background: #fff1ee;
+    border-color: #f0c2ba;
+}
+
+.boton-modo-edicion {
+    color: var(--blanco);
+    background: var(--azul-medio);
+    border-color: var(--azul-medio);
+    white-space: nowrap;
+}
+
+@media (max-width: 1020px) {
+    .grilla-categorias-admin {
+        grid-template-columns: 1fr;
+    }
+
+    .grilla-tendencias {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .grilla-tendencias .tarjeta-actividad:last-child {
+        grid-column: 1 / -1;
+    }
+
+    .grilla-tendencias .tarjeta-actividad:last-child {
+        display: grid;
+        grid-template-columns: 0.9fr 1.1fr;
+    }
+
+    .grilla-tendencias .tarjeta-actividad:last-child .visual-actividad {
+        height: 100%;
+        min-height: 260px;
+    }
+
+    .grilla-detalle-actividad {
+        grid-template-columns: minmax(0, 1fr) 310px;
+        gap: 28px;
+    }
+}
+
+@media (max-width: 760px) {
+    .navegacion-principal .enlace-activo {
+        text-decoration: none;
+        border-left: 4px solid var(--verde-suave);
+        padding-left: 12px;
+    }
+
+    .portada-actividades {
+        padding-block: 46px 56px;
+    }
+
+    .cabecera-categoria-actividades {
+        padding-block: 32px 44px;
+    }
+
+    .titulo-categoria-actividades {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 18px;
+    }
+
+    .icono-categoria-grande {
+        width: 82px;
+        height: 82px;
+        flex-basis: 82px;
+        font-size: 2.35rem;
+    }
+
+    .titulo-portada-actividades,
+    .encabezado-con-accion,
+    .encabezado-admin,
+    .encabezado-listado,
+    .encabezado-listado-admin {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .acciones-portada-actividades,
+    .acciones-categoria-coordinador,
+    .barra-detalle-acciones {
+        width: 100%;
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .acciones-portada-actividades .boton,
+    .acciones-categoria-coordinador .boton,
+    .barra-detalle-acciones .boton {
+        text-align: center;
+    }
+
+    .acciones-cabecera-admin {
+        width: 100%;
+        align-items: stretch;
+        justify-content: flex-start;
+    }
+
+    .acciones-cabecera-admin .boton {
+        text-align: center;
+    }
+
+    .titulo-portada-actividades h1 {
+        font-size: clamp(2.25rem, 11vw, 3.15rem);
+    }
+
+    .carrusel-categorias {
+        grid-template-columns: minmax(0, 1fr);
+        margin-top: 38px;
+    }
+
+    .control-carrusel {
+        display: none;
+    }
+
+    .pista-carrusel {
+        grid-auto-columns: 78%;
+    }
+
+    .grilla-tendencias,
+    .grilla-categorias,
+    .resultados-actividades,
+    .grilla-campos-admin {
+        grid-template-columns: 1fr;
+    }
+
+    .grilla-tendencias .tarjeta-actividad:last-child {
+        grid-column: auto;
+        display: block;
+    }
+
+    .grilla-tendencias .tarjeta-actividad:last-child .visual-actividad {
+        height: 205px;
+        min-height: auto;
+    }
+
+    .estructura-listado-actividades {
+        grid-template-columns: 1fr;
+    }
+
+    .tarjeta-categoria-admin {
+        grid-template-columns: 88px minmax(0, 1fr);
+    }
+
+    .tarjeta-categoria-admin > img {
+        width: 88px;
+        height: 88px;
+    }
+
+    .acciones-categoria-admin {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .acciones-categoria-admin .boton {
+        text-align: center;
+    }
+
+    .panel-filtros,
+    .panel-informacion-actividad {
+        position: static;
+    }
+
+    .grilla-detalle-actividad {
+        grid-template-columns: 1fr;
+    }
+
+    .panel-informacion-actividad {
+        grid-row: 1;
+    }
+
+    .visual-detalle-actividad {
+        height: 250px;
+    }
+
+    .pagina-detalle-actividad {
+        padding-block: 34px 72px;
+    }
+
+    .campo-doble {
+        grid-column: auto;
+    }
+
+    .fila-actividad-admin {
+        grid-template-columns: 48px minmax(0, 1fr);
+    }
+
+    .acciones-admin {
+        grid-column: 1 / -1;
+        justify-content: flex-end;
+    }
+}
+
+@media (max-width: 480px) {
+    .tarjeta-categoria {
+        grid-template-columns: 54px minmax(0, 1fr);
+        padding: 18px;
+    }
+
+    .tarjeta-categoria .icono-categoria {
+        width: 50px;
+        height: 50px;
+        font-size: 1.45rem;
+    }
+
+    .flecha-categoria {
+        display: none;
+    }
+
+    .contenido-tarjeta-actividad,
+    .panel-informacion-actividad,
+    .bloque-formulario-admin {
+        padding: 22px;
+    }
+
+    .acciones-formulario-admin {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .acciones-formulario-fijas {
+        position: static;
+    }
+
+    .fila-actividad-admin {
+        padding: 14px;
+    }
+}

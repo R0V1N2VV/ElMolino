@@ -1,0 +1,155 @@
+/* ==========================================================================
+   Cabecera y navegación principal
+   Procedencia: líneas 222-371 del CSS original.
+   No cambiar el orden de carga: las reglas posteriores completan o ajustan estas.
+   ========================================================================== */
+
+/* =========================================================
+   2. Encabezado y navegación
+   ========================================================= */
+.encabezado {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(247, 252, 251, 0.92);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--beige);
+}
+
+.barra-navegacion {
+    min-height: 82px;
+    display: flex;
+    align-items: center;
+    gap: 32px;
+}
+
+.marca {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+.simbolo-marca {
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    color: var(--blanco);
+    background: var(--azul-oscuro);
+    border-radius: 50%;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+}
+
+.nombre-marca {
+    color: var(--azul-oscuro);
+    font-size: 1.35rem;
+    font-weight: 800;
+    line-height: 1.05;
+}
+
+.nombre-marca small {
+    display: block;
+    margin-top: 5px;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.navegacion-principal {
+    display: flex;
+    align-items: center;
+    gap: 26px;
+    margin-left: auto;
+}
+
+.navegacion-principal a {
+    color: var(--azul-oscuro);
+    font-size: 0.9rem;
+    font-weight: 650;
+}
+
+.navegacion-principal a:hover {
+    color: var(--naranja-oscuro);
+}
+
+.navegacion-principal .enlace-activo {
+    color: var(--verde-oscuro);
+    text-decoration: underline;
+    text-decoration-color: var(--verde-suave);
+    text-decoration-thickness: 3px;
+    text-underline-offset: 8px;
+}
+
+.interruptor-dislexia {
+    display: inline-flex;
+    min-height: 40px;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    padding: 7px 10px 7px 13px;
+    color: var(--verde-oscuro);
+    background: var(--crema);
+    border: 1px solid var(--beige);
+    border-radius: 999px;
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.pista-interruptor {
+    position: relative;
+    width: 38px;
+    height: 22px;
+    flex: 0 0 38px;
+    background: var(--beige);
+    border-radius: 999px;
+}
+
+.circulo-interruptor {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 16px;
+    height: 16px;
+    background: var(--azul-oscuro);
+    border-radius: 50%;
+    transition: transform 180ms ease;
+}
+
+.interruptor-dislexia[aria-checked="true"] .pista-interruptor {
+    background: var(--verde-medio);
+}
+
+.interruptor-dislexia[aria-checked="true"] .circulo-interruptor {
+    background: var(--blanco-calido);
+    transform: translateX(16px);
+}
+
+.boton-menu {
+    display: none;
+    width: 44px;
+    height: 44px;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 5px;
+    margin-left: auto;
+    color: var(--azul-oscuro);
+    background: transparent;
+    border: 1px solid var(--beige);
+    border-radius: 99px;
+    cursor: pointer;
+}
+
+.boton-menu > span:not(.solo-lector) {
+    width: 20px;
+    height: 2px;
+    background: currentColor;
+    transition: transform 180ms ease, opacity 180ms ease;
+}

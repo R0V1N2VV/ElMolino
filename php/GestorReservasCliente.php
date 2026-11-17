@@ -1,0 +1,146 @@
+<?php
+declare(strict_types=1);
+
+require_once __DIR__ . '/GestorCoherenciaActividades.php';
+require_once __DIR__ . '/GestorEstadoFinanciero.php';
+
+/**
+ * Gestiona cambios que el cliente puede hacer sobre una reserva ya creada.
+ * Todas las consultas verifican que la reserva pertenezca al usuario actual.
+ */
+final class GestorReservasCliente
+{
+    /** Inicializa el gestor con la conexión compartida a MySQL. */
+    public function __construct(private PDO $conexion) {}
+
+    /**
+     * Reemplaza los acompañantes asociados a una reserva futura.
+     *
+     * @param int[] $idsAcompanantes
+     */
+    public function actualizarAcompanantes(int $idReserva, int $idCliente, array $idsAcompanantes): void
+    {
+        $this->conexion->beginTransaction();
+        try {
+            $reserva = $this->bloquearReserva($idReserva, $idCliente);
+            if ((string) $reserva['fechaIngreso'] <= date('Y-m-d')) {
+                throw new RuntimeException('Los acompañantes solo se pueden modificar antes del inicio de la estadía.');
+            }
+            if (in_array(strtoupper((string) $reserva['estadoReserva']), ['CANCELADA', 'CANCELADO', 'FINALIZADA'], true)) {
+                throw new RuntimeException('Esta reserva ya no admite cambios.');
+            }
+
+            $idsValidos = $this->validarAcompanantes(
+                $idCliente,
+                $idsAcompanantes,
+                max(0, (int) $reserva['cantidadPersonas'] - 1)
+            );
+            $borrar = $this->conexion->prepare('DELETE FROM `reservaAcompañante` WHERE idReserva = :reserva');
+            $borrar->execute(['reserva' => $idReserva]);
+            $agregar = $this->conexion->prepare(
+                'INSERT INTO `reservaAcompañante` (idReserva, idAcompañante) VALUES (:reserva, :acompanante)'
+            );
+            foreach ($idsValidos as $idAcompanante) {
+                $agregar->execute(['reserva' => $idReserva, 'acompanante' => $idAcompanante]);
+            }
+            GestorCoherenciaActividades::sincronizarCliente(
+                $this->conexion,
+                $idCliente,
+                'ACOMPAÑANTE_QUITADO_DE_LA_ESTADIA'
+            );
+            $this->conexion->commit();
+        } catch (Throwable $error) {
+            if ($this->conexion->inTransaction()) $this->conexion->rollBack();
+            throw $error;
+        }
+    }
+
+    /**
+     * Cancela una reserva antes de la fecha de ingreso. Si ya hubo pagos deja
+     * el pedido marcado para que administración gestione el reintegro.
+     */
+    public function cancelar(int $idReserva, int $idCliente): void
+    {
+        $this->conexion->beginTransaction();
+        try {
+            $reserva = $this->bloquearReserva($idReserva, $idCliente);
+            $esPreReserva = strtoupper((string) $reserva['estadoReserva']) === 'PENDIENTE_SENA'
+                || in_array(strtoupper((string) ($reserva['estadoPago'] ?? '')), ['SENA_PENDIENTE', 'SENA_INFORMADA'], true);
+            // Si la seña todavía no fue acreditada, el cliente puede liberar la
+            // pre-reserva incluso si la fecha de llegada coincide con hoy.
+            if ((string) $reserva['fechaIngreso'] <= date('Y-m-d') && !$esPreReserva) {
+                throw new RuntimeException('La estadía ya comenzó o comienza hoy y no se puede cancelar desde la web.');
+            }
+            if (in_array(strtoupper((string) $reserva['estadoReserva']), ['CANCELADA', 'CANCELADO'], true)) {
+                throw new RuntimeException('La reserva ya estaba cancelada.');
+            }
+
+            $actualizar = $this->conexion->prepare(
+                "UPDATE reservas SET estadoReserva = 'CANCELADA' WHERE idReserva = :reserva AND idCliente = :cliente"
+            );
+            $actualizar->execute(['reserva' => $idReserva, 'cliente' => $idCliente]);
+
+            GestorCoherenciaActividades::sincronizarCliente(
+                $this->conexion,
+                $idCliente,
+                'ESTADIA_CANCELADA'
+            );
+
+            $pedido = $this->conexion->prepare('SELECT idPedido FROM detalle_pedido_alojamiento WHERE idReserva=:reserva LIMIT 1 FOR UPDATE');
+            $pedido->execute(['reserva' => $idReserva]);
+            $idPedido = (int) ($pedido->fetchColumn() ?: 0);
+            if ($idPedido > 0) {
+                // Un comprobante aún no confirmado deja de ser revisable al cancelar la pre-reserva.
+                $this->conexion->prepare(
+                    "UPDATE pago p JOIN detalle_pedido_alojamiento d ON d.idReserva=p.idReserva
+                        SET p.estado='ANULADO', p.observacion='La pre-reserva fue cancelada por el cliente antes de confirmar el pago.'
+                      WHERE d.idPedido=:pedido AND UPPER(p.estado)='PENDIENTE'"
+                )->execute(['pedido' => $idPedido]);
+                GestorEstadoFinanciero::solicitarReembolsoCancelacion($this->conexion, $idPedido);
+            }
+            $this->conexion->commit();
+        } catch (Throwable $error) {
+            if ($this->conexion->inTransaction()) $this->conexion->rollBack();
+            throw $error;
+        }
+    }
+
+    /** Devuelve y bloquea una reserva del cliente para evitar cambios simultáneos. */
+    private function bloquearReserva(int $idReserva, int $idCliente): array
+    {
+        $consulta = $this->conexion->prepare(
+            "SELECT r.idReserva, r.fechaIngreso, r.cantidadPersonas, r.estadoReserva, p.estadoPago
+               FROM reservas r
+          LEFT JOIN detalle_pedido_alojamiento d ON d.idReserva=r.idReserva
+          LEFT JOIN pedido_alojamiento p ON p.idPedido=d.idPedido
+              WHERE r.idReserva = :reserva AND r.idCliente = :cliente FOR UPDATE"
+        );
+        $consulta->execute(['reserva' => $idReserva, 'cliente' => $idCliente]);
+        $reserva = $consulta->fetch();
+        if (!$reserva) throw new RuntimeException('No encontramos esa reserva en tu cuenta.');
+        return $reserva;
+    }
+
+    /**
+     * Comprueba propiedad, duplicados y límite de huéspedes.
+     *
+     * @return int[]
+     */
+    private function validarAcompanantes(int $idCliente, array $ids, int $maximo): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static fn(int $id): bool => $id > 0)));
+        if (count($ids) > $maximo) throw new RuntimeException('La selección supera la cantidad de huéspedes de la reserva.');
+        if (!$ids) return [];
+        $marcadores = implode(',', array_fill(0, count($ids), '?'));
+        $consulta = $this->conexion->prepare(
+            "SELECT idAcompañante FROM `acompañante`
+              WHERE idCliente = ? AND activo = 1 AND idAcompañante IN ($marcadores)"
+        );
+        $consulta->execute([$idCliente, ...$ids]);
+        $validos = array_map('intval', $consulta->fetchAll(PDO::FETCH_COLUMN));
+        sort($ids);
+        sort($validos);
+        if ($ids !== $validos) throw new RuntimeException('Uno de los acompañantes no pertenece a tu cuenta.');
+        return $validos;
+    }
+}

@@ -1,0 +1,37 @@
+/* ==========================================================================
+   Pequeños ajustes visuales visibles
+   Procedencia: líneas 5145-5176 del CSS original.
+   No cambiar el orden de carga: las reglas posteriores completan o ajustan estas.
+   ========================================================================== */
+
+/* Prioridad final para los retoques visibles */
+.pagina-inicio-sesion .formulario-inicio-sesion button,
+.pagina-registro .tarjeta-registro > form > button {
+    border-radius: 10px;
+}
+
+.lista-administracion .acciones-admin {
+    align-items: center;
+}
+
+.lista-administracion .boton-accion-admin {
+    min-height: 38px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 13px;
+    border-radius: 8px;
+    box-shadow: none;
+}
+
+.lista-administracion .boton-modificar {
+    color: var(--azul-oscuro);
+    background: var(--crema);
+    border: 1px solid var(--beige);
+}
+
+.lista-administracion .boton-eliminar {
+    color: #8a2c20;
+    background: #fff1ee;
+    border: 1px solid #f0c2ba;
+}
