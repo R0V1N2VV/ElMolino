@@ -1,4 +1,0 @@
-Sarakanda.ttf se obtuvo del paquete ADAPRO.
-Fuente: https://sourceforge.net/projects/adapro/files/
-ADAPRO identifica Sarakanda como una tipografía para dislexia.
-La licencia incluida se encuentra en LICENCIA-ADAPRO.txt.
