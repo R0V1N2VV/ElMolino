@@ -1,0 +1,36 @@
+package com.elmolino.util;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+
+/**
+ * Centraliza la apertura de conexiones con la base.
+ * Cada DAO usa y cierra la conexion con try-with-resources.
+ */
+public final class Conexion {
+
+    /**
+     * Construye el objeto, guarda sus datos iniciales y deja sus componentes preparados para usarse.
+     */
+    private Conexion() {
+    }
+
+    /**
+     * Devuelve el dato solicitado; si corresponde, lo recupera primero de su origen persistente.
+     */
+    public static Connection obtener() throws SQLException {
+        // Lee los parametros locales sin guardar credenciales dentro del codigo.
+        String servidor = Config.get("db.host");
+        String puerto = Config.get("db.port");
+        // Codifica los espacios del nombre para formar una URL JDBC valida.
+        String nombreBase = Config.get("db.name").replace(" ", "%20");
+
+        String direccion = "jdbc:mysql://" + servidor + ":" + puerto + "/" + nombreBase
+                // Evita que una dirección de base caída deje la aplicación esperando indefinidamente.
+                + "?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC"
+                + "&connectTimeout=5000&socketTimeout=15000&tcpKeepAlive=true";
+
+        return DriverManager.getConnection(direccion, Config.get("db.user"), Config.get("db.password"));
+    }
+}
