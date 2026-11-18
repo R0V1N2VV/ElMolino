@@ -10,6 +10,24 @@ declare(strict_types=1);
 
 final class Actividad
 {
+    /** Referencia opcional usada solamente durante una demostración. */
+    private static ?DateTimeImmutable $fechaReferencia = null;
+
+    /**
+     * Permite que la web use el mismo día de prueba que la aplicación Java.
+     * Con null, cada solicitud vuelve a usar la fecha real.
+     */
+    public static function establecerFechaReferencia(?DateTimeImmutable $fecha): void
+    {
+        self::$fechaReferencia = $fecha?->setTime(0, 0);
+    }
+
+    /** Obtiene el inicio del día real o el configurado para la demostración. */
+    private static function hoy(): DateTimeImmutable
+    {
+        return self::$fechaReferencia ?? new DateTimeImmutable('today', new DateTimeZone('America/Argentina/Buenos_Aires'));
+    }
+
     /**
      * Inicializa el objeto y deja preparadas las dependencias que utilizarán sus demás métodos.
      *
@@ -87,7 +105,7 @@ final class Actividad
     {
         $seleccionada = DateTimeImmutable::createFromFormat('!Y-m-d', $fecha);
         if (!$seleccionada || $seleccionada->format('Y-m-d') !== $fecha) return false;
-        $hoy = new DateTimeImmutable('today');
+        $hoy = self::hoy();
         if ($seleccionada < $hoy || $seleccionada > $hoy->modify('+90 days')) return false;
 
         $diasNormalizados = strtolower(strtr($this->dias, [
@@ -107,7 +125,7 @@ final class Actividad
     public function fechasDisponibles(int $limite = 60): array
     {
         $fechas = [];
-        $cursor = new DateTimeImmutable('today');
+        $cursor = self::hoy();
         for ($i = 0; $i <= 90 && count($fechas) < $limite; $i++, $cursor = $cursor->modify('+1 day')) {
             $valor = $cursor->format('Y-m-d');
             if (!$this->admiteFecha($valor)) continue;

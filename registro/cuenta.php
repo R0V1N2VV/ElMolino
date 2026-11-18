@@ -15,6 +15,9 @@ require_once __DIR__ . '/../php/GestorPagosSena.php';
 require_once __DIR__ . '/../php/GestorAcompanantesCliente.php';
 require_once __DIR__ . '/../php/ConfiguracionPagos.php';
 require_once __DIR__ . '/../php/GestorEstadoFinanciero.php';
+require_once __DIR__ . '/../php/RepositorioInscripciones.php';
+require_once __DIR__ . '/../php/GestorAvisosCliente.php';
+require_once __DIR__ . '/../php/RelojDemostracion.php';
 
 Sesion::iniciar();
 $usuario = Sesion::usuario();
@@ -26,6 +29,8 @@ if (!$usuario) {
 $mensaje = Sesion::tomarMensaje();
 $acompanantes = [];
 $actividades = [];
+$listaEspera = [];
+$avisos = [];
 $alojamientos = [];
 $errores = [];
 $idCliente = (int) ($usuario['id_cliente'] ?? 0);
@@ -39,6 +44,7 @@ $fechaPerfil = static function (?string $fecha): string {
 // Las cuentas antiguas pueden haber quedado guardadas como usuario sin id_cliente
 // en la sesión. Se recupera el perfil por email para que no "desaparezcan" reservas.
 $conexion = Conexion::obtener();
+$fechaOperativa = RelojDemostracion::fecha($conexion);
 if ($idCliente <= 0 && !empty($usuario['email'])) {
     $buscarCliente = $conexion->prepare('SELECT idCliente FROM cliente WHERE LOWER(email)=LOWER(:email) LIMIT 1');
     $buscarCliente->execute(['email' => (string) $usuario['email']]);
@@ -49,7 +55,15 @@ if ($idCliente <= 0 && !empty($usuario['email'])) {
     }
 }
 if ($idCliente > 0) {
-    GestorEstadoFinanciero::vencerPedidosPendientes($conexion);
+    // El vencimiento es una tarea de mantenimiento. Si por algún motivo no
+    // puede ejecutarse, la persona puede seguir viendo su cuenta y el detalle
+    // queda anotado en el registro del servidor.
+    try {
+        GestorEstadoFinanciero::vencerPedidosPendientes($conexion);
+    } catch (Throwable $error) {
+        error_log('No se pudo actualizar el estado financiero al abrir Mi cuenta: ' . $error->getMessage());
+        $errores[] = 'No pudimos actualizar algunos estados automáticos. Volvé a cargar la página en unos minutos.';
+    }
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!Sesion::validarCsrf($_POST['token_csrf'] ?? null)) {
             $errores[] = 'La sesión del formulario venció. Volvé a intentarlo.';
@@ -96,10 +110,23 @@ if ($idCliente > 0) {
                     Sesion::guardarMensaje('exito', 'La reserva fue cancelada. Si había pagos, administración gestionará el reintegro.');
                     Utilidades::redirigir('cuenta.php');
                 }
+                if ($accion === 'cancelar_lista_espera') {
+                    (new RepositorioInscripciones($conexion))->cancelarEspera(
+                        (int) ($_POST['id_actividad'] ?? 0),
+                        $idCliente,
+                        (string) ($_POST['fecha_actividad'] ?? '')
+                    );
+                    Sesion::guardarMensaje('exito', 'Quitamos tu solicitud de la lista de espera.');
+                    Utilidades::redirigir('cuenta.php');
+                }
+                if ($accion === 'marcar_aviso_leido') {
+                    (new GestorAvisosCliente($conexion))->marcarLeido((int) ($_POST['id_aviso'] ?? 0), $idCliente);
+                    Utilidades::redirigir('cuenta.php');
+                }
                 throw new RuntimeException('La acción solicitada no es válida.');
             } catch (PDOException $error) {
                 error_log('No se pudo modificar la reserva: ' . $error->getMessage());
-                $errores[] = 'No se pudo modificar la reserva. Ejecutá la actualización SQL de reservas y pagos.';
+                $errores[] = 'No pudimos modificar la reserva en este momento. Volvé a intentarlo.';
             } catch (InvalidArgumentException|RuntimeException $error) {
                 $errores[] = $error->getMessage();
             }
@@ -159,6 +186,36 @@ if ($idCliente > 0) {
         $actividades = [];
     }
 
+    // La lista de espera es opcional mientras se instala la actualización 12.
+    // Si la tabla todavía no existe, la cuenta sigue funcionando normalmente.
+    try {
+        $consultaEspera = $conexion->prepare(
+            "SELECT le.idActividad, le.fechaActividad, le.cantidadPersonas, a.nombre, a.slug, a.horario
+               FROM listaEsperaActividad le
+               JOIN Actividad a ON a.idActividad=le.idActividad
+              WHERE le.idCliente=:cliente AND le.estado='PENDIENTE'
+              ORDER BY le.fechaActividad, le.creadoEn"
+        );
+        $consultaEspera->execute(['cliente' => $idCliente]);
+        $listaEspera = $consultaEspera->fetchAll();
+    } catch (PDOException $error) {
+        // No se muestra un error técnico al cliente si aún no se importó la mejora.
+        error_log('No se pudo cargar la lista de espera: ' . $error->getMessage());
+    }
+
+    try {
+        $consultaAvisos = $conexion->prepare(
+            "SELECT idNotificacion,titulo,mensaje,creadoEn
+               FROM notificacionCliente
+              WHERE idCliente=:cliente AND leidoEn IS NULL
+              ORDER BY creadoEn DESC LIMIT 8"
+        );
+        $consultaAvisos->execute(['cliente' => $idCliente]);
+        $avisos = $consultaAvisos->fetchAll();
+    } catch (PDOException $error) {
+        error_log('No se pudieron cargar los avisos: ' . $error->getMessage());
+    }
+
     try {
         $consultaAlojamientos = $conexion->prepare(
             "SELECT r.idReserva, r.fechaIngreso, r.fechaEgreso, r.checkInReal, r.checkOutReal,
@@ -181,10 +238,23 @@ if ($idCliente > 0) {
               WHERE r.idCliente = :cliente
                 AND (UPPER(TRIM(r.estadoReserva)) NOT IN ('CANCELADA', 'CANCELADO')
                      OR UPPER(COALESCE(p.estadoPago, '')) = 'PAGO_RECHAZADO')
-              ORDER BY (r.fechaEgreso >= CURRENT_DATE) DESC, r.fechaIngreso ASC
+              ORDER BY CASE
+                    WHEN UPPER(COALESCE(r.estadoLlegada,''))='EN_ESTADIA' THEN 0
+                    WHEN UPPER(COALESCE(r.estadoReserva,'')) NOT IN ('CANCELADA','CANCELADO','FINALIZADA')
+                         AND r.fechaIngreso<=:fechaActualIngreso AND r.fechaEgreso>:fechaActualEgreso THEN 1
+                    WHEN UPPER(COALESCE(r.estadoReserva,'')) NOT IN ('CANCELADA','CANCELADO','FINALIZADA')
+                         AND r.fechaIngreso>=:fechaProxima THEN 2
+                    WHEN UPPER(COALESCE(r.estadoReserva,'')) NOT IN ('CANCELADA','CANCELADO','FINALIZADA') THEN 3
+                    ELSE 4
+                  END, r.fechaIngreso ASC, r.idReserva DESC
               LIMIT 6"
         );
-        $consultaAlojamientos->execute(['cliente' => $idCliente]);
+        $consultaAlojamientos->execute([
+            'cliente' => $idCliente,
+            'fechaActualIngreso' => $fechaOperativa,
+            'fechaActualEgreso' => $fechaOperativa,
+            'fechaProxima' => $fechaOperativa,
+        ]);
         $alojamientos = $consultaAlojamientos->fetchAll();
         $consultaHuespedes = $conexion->prepare(
             'SELECT ra.idReserva, ra.idAcompañante, ac.nombre, ac.apellido
@@ -264,6 +334,30 @@ if ($idCliente > 0) {
                 <?php endif; ?>
             </section>
 
+            <section class="panel-resumen-cuenta" aria-labelledby="titulo-espera-cuenta">
+                <div class="encabezado-panel-cuenta"><div><p class="texto-destacado">ACTIVIDADES</p><h2 id="titulo-espera-cuenta">Lista de espera</h2></div><span><?= count($listaEspera) ?></span></div>
+                <?php if ($listaEspera): ?>
+                    <div class="lista-resumen-cuenta">
+                        <?php foreach ($listaEspera as $espera): ?>
+                            <article class="item-resumen-cuenta">
+                                <div><h3><?= Utilidades::escapar($espera['nombre']) ?></h3><p><?= $fechaPerfil($espera['fechaActividad']) ?> · <?= Utilidades::escapar((string) $espera['horario']) ?></p></div>
+                                <p>Solicitud pendiente para <?= (int) $espera['cantidadPersonas'] ?> <?= (int) $espera['cantidadPersonas'] === 1 ? 'persona' : 'personas' ?>.</p>
+                                <p class="ayuda-cuenta">Recepción se comunicará si se libera el cupo necesario.</p>
+                                <form method="post" onsubmit="return confirm('¿Querés salir de la lista de espera?')">
+                                    <input type="hidden" name="token_csrf" value="<?= Utilidades::escapar(Sesion::tokenCsrf()) ?>">
+                                    <input type="hidden" name="accion" value="cancelar_lista_espera">
+                                    <input type="hidden" name="id_actividad" value="<?= (int) $espera['idActividad'] ?>">
+                                    <input type="hidden" name="fecha_actividad" value="<?= Utilidades::escapar((string) $espera['fechaActividad']) ?>">
+                                    <button class="boton-enlace boton-cancelar-reserva" type="submit">Salir de la lista</button>
+                                </form>
+                            </article>
+                        <?php endforeach; ?>
+                    </div>
+                <?php else: ?>
+                    <div class="estado-vacio-cuenta"><p>No tenés solicitudes pendientes.</p><a href="../actividades.php">Explorar actividades</a></div>
+                <?php endif; ?>
+            </section>
+
             <section class="panel-resumen-cuenta" aria-labelledby="titulo-alojamientos-cuenta">
                 <div class="encabezado-panel-cuenta"><div><p class="texto-destacado">ESTADÍA</p><h2 id="titulo-alojamientos-cuenta">Tus alojamientos</h2></div><span><?= count($alojamientos) ?></span></div>
                 <?php if ($alojamientos): ?>
@@ -280,7 +374,7 @@ if ($idCliente > 0) {
                             // cancelación si un pedido antiguo no tiene estadoPago cargado.
                             $esPreReserva = $estadoReservaActual === 'PENDIENTE_SENA'
                                 || in_array($estadoPagoActual, ['SENA_PENDIENTE', 'SENA_INFORMADA'], true);
-                            $puedeModificarAcompanantes = (string) $alojamiento['fechaIngreso'] > date('Y-m-d');
+                            $puedeModificarAcompanantes = (string) $alojamiento['fechaIngreso'] > $fechaOperativa;
                             // Una pre-reserva sin seña acreditada puede liberarse de inmediato,
                             // incluso si la fecha de llegada es hoy.
                             $puedeCancelar = $esPreReserva || $puedeModificarAcompanantes;
@@ -372,6 +466,21 @@ if ($idCliente > 0) {
                 <?php endif; ?>
             </section>
         </div>
+
+        <?php if ($avisos): ?>
+            <section class="seccion-cuenta-secundaria" aria-labelledby="titulo-avisos-cuenta">
+                <div class="encabezado-panel-cuenta"><div><p class="texto-destacado">AVISOS</p><h2 id="titulo-avisos-cuenta">Novedades de tus actividades</h2></div><span><?= count($avisos) ?></span></div>
+                <div class="lista-resumen-cuenta">
+                    <?php foreach ($avisos as $aviso): ?>
+                        <article class="item-resumen-cuenta">
+                            <div><h3><?= Utilidades::escapar($aviso['titulo']) ?></h3><p><?= Utilidades::escapar((new DateTimeImmutable((string) $aviso['creadoEn']))->format('d/m/Y H:i')) ?></p></div>
+                            <p><?= Utilidades::escapar($aviso['mensaje']) ?></p>
+                            <form method="post"><input type="hidden" name="token_csrf" value="<?= Utilidades::escapar(Sesion::tokenCsrf()) ?>"><input type="hidden" name="accion" value="marcar_aviso_leido"><input type="hidden" name="id_aviso" value="<?= (int) $aviso['idNotificacion'] ?>"><button class="boton-enlace" type="submit">Marcar como leído</button></form>
+                        </article>
+                    <?php endforeach; ?>
+                </div>
+            </section>
+        <?php endif; ?>
 
         <section class="seccion-cuenta-secundaria" aria-labelledby="titulo-acompanantes-cuenta">
             <div class="encabezado-panel-cuenta"><div><p class="texto-destacado">GRUPO</p><h2 id="titulo-acompanantes-cuenta">Tus acompañantes</h2></div><span><?= count($acompanantes) ?></span></div>

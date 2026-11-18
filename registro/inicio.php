@@ -14,6 +14,9 @@ require_once __DIR__ . '/../php/Sesion.php';
 require_once __DIR__ . '/../php/Utilidades.php';
 require_once __DIR__ . '/../php/SeguridadPassword.php';
 require_once __DIR__ . '/../php/Autenticacion.php';
+require_once __DIR__ . '/../php/LimiteIntentosLogin.php';
 require_once __DIR__ . '/../php/Autorizacion.php';
 require_once __DIR__ . '/mailer.php';
 require_once __DIR__ . '/gestor_registro.php';
+
+Utilidades::instalarManejadorErrores();

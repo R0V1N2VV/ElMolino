@@ -30,6 +30,7 @@ public class VentanaInformes extends JFrame {
     private final JTable actividades = tabla();
     private final JTable cargosActividades = tabla();
     private final JTable pagos = tabla();
+    private final JTable listaEspera = tabla();
 
     /**
      * Construye el objeto, guarda sus datos iniciales y deja sus componentes preparados para usarse.
@@ -62,6 +63,7 @@ public class VentanaInformes extends JFrame {
         pestañas.addTab("Alojamientos", panelTabla(alojamientos));
         pestañas.addTab("Actividades", panelTabla(actividades));
         pestañas.addTab("Cargos de actividades", panelTabla(cargosActividades));
+        pestañas.addTab("Lista de espera", panelTabla(listaEspera));
         pestañas.addTab("Pagos", panelTabla(pagos));
         add(barra, BorderLayout.NORTH);
         add(pestañas, BorderLayout.CENTER);
@@ -129,6 +131,12 @@ public class VentanaInformes extends JFrame {
                 + "JOIN cliente c ON c.idCliente=ca.idCliente "
                 + "JOIN Actividad a ON a.idActividad=ca.idActividad "
                 + "ORDER BY ca.fechaActividad DESC, ca.idCargoActividad DESC");
+        cargarOpcional(listaEspera, "SELECT le.idListaEspera AS ID, a.nombre AS Actividad, "
+                + "le.fechaActividad AS Día, CONCAT(c.apellido, ', ', c.nombre) AS Cliente, "
+                + "le.cantidadPersonas AS Personas, le.estado AS Estado, le.creadoEn AS Solicitada "
+                + "FROM listaEsperaActividad le JOIN Actividad a ON a.idActividad=le.idActividad "
+                + "JOIN cliente c ON c.idCliente=le.idCliente "
+                + "WHERE le.estado='PENDIENTE' ORDER BY le.fechaActividad, le.creadoEn");
         cargar(pagos, "SELECT DATE_FORMAT(fechaPago, '%Y-%m') AS Mes, metodoPago AS `Medio de pago`, "
                 + "COUNT(*) AS Operaciones, SUM(CASE WHEN tipoPago='REEMBOLSO' THEN -montoTotal ELSE montoTotal END) AS Total FROM pago "
                 + "WHERE UPPER(estado)='CONFIRMADO' "
@@ -179,6 +187,44 @@ public class VentanaInformes extends JFrame {
                     JOptionPane.showMessageDialog(VentanaInformes.this,
                             "Error al consultar los informes:\n" + causa.getMessage(),
                             "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        }.execute();
+    }
+
+    /** Carga una mejora opcional sin bloquear los demás informes si todavía no se importó su SQL. */
+    private void cargarOpcional(JTable tabla, String consultaSql) {
+        new SwingWorker<DefaultTableModel, Void>() {
+            @Override protected DefaultTableModel doInBackground() throws Exception {
+                try (Connection conexion = Conexion.obtener();
+                     PreparedStatement sentencia = conexion.prepareStatement(consultaSql);
+                     ResultSet resultados = sentencia.executeQuery()) {
+                    DefaultTableModel modelo = new DefaultTableModel() {
+                        @Override public boolean isCellEditable(int fila, int columna) { return false; }
+                    };
+                    ResultSetMetaData metadatos = resultados.getMetaData();
+                    for (int indice = 1; indice <= metadatos.getColumnCount(); indice++) modelo.addColumn(metadatos.getColumnLabel(indice));
+                    while (resultados.next()) {
+                        Object[] fila = new Object[metadatos.getColumnCount()];
+                        for (int indice = 0; indice < fila.length; indice++) fila[indice] = resultados.getObject(indice + 1);
+                        modelo.addRow(fila);
+                    }
+                    return modelo;
+                } catch (java.sql.SQLException error) {
+                    DefaultTableModel modelo = new DefaultTableModel(new String[]{"Lista de espera"}, 0) {
+                        @Override public boolean isCellEditable(int fila, int columna) { return false; }
+                    };
+                    modelo.addRow(new Object[]{"Importá BD/12_MEJORAS_OPERATIVAS.sql para habilitar este informe."});
+                    return modelo;
+                }
+            }
+
+            @Override protected void done() {
+                try {
+                    tabla.setModel(get());
+                    FiltroTabla.habilitarOrdenamiento(tabla);
+                } catch (Exception error) {
+                    estado.setText("No se pudo cargar la lista de espera");
                 }
             }
         }.execute();

@@ -126,8 +126,16 @@ final class Vista
     /** Construye el mismo encabezado principal en todas las secciones públicas. */
     public static function encabezadoPrincipal(?array $usuario, string $prefijo = '', string $seccion = ''): string
     {
-        $inicio = $prefijo === '' ? '#inicio' : $prefijo . 'index.php';
-        $ancla = static fn(string $nombre): string => $prefijo === '' ? '#' . $nombre : $prefijo . 'index.php#' . $nombre;
+        // En Inicio los enlaces son anclas locales. En las demás páginas deben
+        // volver primero a index.php; de otro modo intentarían buscar, por
+        // ejemplo, «#nosotros» dentro de una ficha de actividad.
+        $esInicio = $seccion === 'inicio';
+        $inicio = $prefijo === ''
+            ? ($esInicio ? '#inicio' : 'index.php#inicio')
+            : $prefijo . 'index.php#inicio';
+        $ancla = static fn(string $nombre): string => $prefijo === ''
+            ? ($esInicio ? '#' . $nombre : 'index.php#' . $nombre)
+            : $prefijo . 'index.php#' . $nombre;
         $activo = static fn(string $nombre): string => $seccion === $nombre ? ' class="enlace-activo" aria-current="page"' : '';
         $carrito = class_exists('Sesion') ? Sesion::obtener('carrito_alojamiento', []) : [];
         $cantidad = is_array($carrito) ? count($carrito) : 0;
@@ -197,6 +205,15 @@ final class Vista
         $enlaceCoordinacion = $usuario && class_exists('Autorizacion') && Autorizacion::esCoordinador($usuario)
             ? '<a href="' . self::escapar($prefijo . 'administrar-actividades.php') . '">Gestionar actividades</a>'
             : '';
+        $enlaceDemostracion = $usuario && class_exists('Autorizacion') && Autorizacion::esSuperAdmin($usuario)
+            ? '<a href="' . self::escapar($prefijo . 'modo_demostracion.php') . '">Preparar demostración</a>'
+            : '';
+        $cerrarSesion = $usuario && class_exists('Sesion')
+            ? '<form class="formulario-cerrar-sesion-panel" method="post" action="'
+                . self::escapar($prefijo . 'registro/cerrar_sesion.php') . '">'
+                . '<input type="hidden" name="token_csrf" value="' . self::escapar(Sesion::tokenCsrf()) . '">'
+                . '<button type="submit">Cerrar sesión</button></form>'
+            : '';
 
         return '<div class="menu-usuario">'
             . '<button class="boton-usuario" type="button" aria-expanded="false" aria-controls="panel-cuenta">'
@@ -206,6 +223,7 @@ final class Vista
             . '<a class="enlace-cuenta-panel" href="' . self::escapar($destino) . '">' . ($usuario ? 'Ver mi cuenta' : 'Iniciar sesión') . '</a>'
             . $enlaceEstadia
             . $enlaceCoordinacion
+            . $enlaceDemostracion
             . '<div class="seccion-accesibilidad"><span>Opciones de accesibilidad</span>'
             . '<button class="interruptor-dislexia" type="button" role="switch" aria-checked="false" aria-label="Activar modo dislexia con tipografía Sarakanda">'
             . '<span>Modo dislexia</span><span class="pista-interruptor" aria-hidden="true"><span class="circulo-interruptor"></span></span>'
@@ -213,7 +231,9 @@ final class Vista
             . '<div class="control-idioma"><span>Idioma</span><div class="opciones-idioma" role="group" aria-label="Seleccionar idioma">'
             . '<button type="button" data-idioma="es" aria-pressed="true">ES</button>'
             . '<button type="button" data-idioma="en" aria-pressed="false">EN</button>'
-            . '</div></div></div></div></div>';
+            . '</div></div></div>'
+            . $cerrarSesion
+            . '</div></div>';
     }
 
     /**

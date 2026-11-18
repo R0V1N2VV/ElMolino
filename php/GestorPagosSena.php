@@ -8,6 +8,7 @@
  */
 declare(strict_types=1);
 require_once __DIR__ . '/GestorComprobantePago.php';
+require_once __DIR__ . '/RelojDemostracion.php';
 
 final class GestorPagosSena
 {
@@ -60,7 +61,7 @@ final class GestorPagosSena
             if (!empty($pedido['fechaLimiteSena'])) {
                 $zona = new DateTimeZone('America/Argentina/Buenos_Aires');
                 $vencimiento = new DateTimeImmutable((string) $pedido['fechaLimiteSena'], $zona);
-                if ($vencimiento < new DateTimeImmutable('now', $zona)) {
+                if ($vencimiento < RelojDemostracion::ahora($this->conexion)) {
                     throw new RuntimeException('Venció el plazo de la seña. Contactá a recepción antes de transferir.');
                 }
             }
@@ -89,13 +90,14 @@ final class GestorPagosSena
                 'monto' => number_format($monto, 2, '.', ''),
                 'comprobante' => $referencia,
                 'archivo' => $archivoGuardado,
+                'fechaPago' => RelojDemostracion::fecha($this->conexion),
             ];
             if ($idPago > 0) {
                 $datosPago['pago'] = $idPago;
                 $this->conexion->prepare(
                     "UPDATE pago
                         SET idReserva = :reserva, montoTotal = :monto,
-                            metodoPago = 'Transferencia', fechaPago = CURRENT_DATE,
+                            metodoPago = 'Transferencia', fechaPago = :fechaPago,
                             comprobante = :comprobante, archivoComprobante = :archivo, observacion = NULL
                       WHERE idPago = :pago"
                 )->execute($datosPago);
@@ -103,15 +105,15 @@ final class GestorPagosSena
                 $this->conexion->prepare(
                     "INSERT INTO pago
                         (idReserva, montoTotal, metodoPago, tipoPago, estado, fechaPago, comprobante, archivoComprobante)
-                     VALUES (:reserva, :monto, 'Transferencia', 'SENA', 'PENDIENTE', CURRENT_DATE, :comprobante, :archivo)"
+                     VALUES (:reserva, :monto, 'Transferencia', 'SENA', 'PENDIENTE', :fechaPago, :comprobante, :archivo)"
                 )->execute($datosPago);
             }
 
             $this->conexion->prepare(
                 "UPDATE pedido_alojamiento
-                    SET estadoPago = 'SENA_INFORMADA', fechaLimiteRevisionSena = DATE_ADD(NOW(), INTERVAL 24 HOUR)
+                    SET estadoPago = 'SENA_INFORMADA', fechaLimiteRevisionSena = DATE_ADD(:momento, INTERVAL 24 HOUR)
                   WHERE idPedido = :pedido"
-            )->execute(['pedido' => $idPedido]);
+            )->execute(['pedido' => $idPedido, 'momento' => RelojDemostracion::ahora($this->conexion)->format('Y-m-d H:i:s')]);
             $this->conexion->commit();
         } catch (Throwable $error) {
             if ($this->conexion->inTransaction()) $this->conexion->rollBack();

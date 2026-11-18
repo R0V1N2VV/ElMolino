@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS `cargo_actividad` (
   KEY `idx_cargo_actividad_inscripcion` (`idInscripcion`),
   KEY `idx_cargo_actividad_pedido` (`idPedido`),
   KEY `idx_cargo_actividad_cliente_estado` (`idCliente`, `estado`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CALL agregar_columna_actividad_si_falta(
     'cargo_actividad', 'idPedido',
     'INT NULL AFTER `idInscripcion`'

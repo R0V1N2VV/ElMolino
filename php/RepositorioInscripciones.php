@@ -9,6 +9,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/GestorCoherenciaActividades.php';
+require_once __DIR__ . '/RelojDemostracion.php';
 
 final class RepositorioInscripciones
 {
@@ -111,24 +112,43 @@ final class RepositorioInscripciones
     }
 
     /** @param int[] $idsAcompanantes */
+    /**
+     * Guarda la inscripción y devuelve false únicamente cuando el cupo se
+     * llenó y el cliente quedó anotado en la lista de espera.
+     */
     public function guardarParticipantes(
         int $idActividad,
         int $idCliente,
         bool $participaTitular,
         array $idsAcompanantes = [],
         string $fechaActividad = ''
-    ): void
+    ): bool
     {
         try {
             $this->conexion->beginTransaction();
             $datosActividad = $this->bloquearActividad($idActividad);
             $this->validarFechaActividad($fechaActividad, (string) ($datosActividad['dias'] ?? ''));
+            $this->validarJornadaAbierta($idActividad, $fechaActividad);
             $this->validarEstadiaConfirmada($idCliente, $fechaActividad);
             $idsValidos = $this->validarAcompanantes($idCliente, $idsAcompanantes, $fechaActividad);
             $lugaresSolicitados = ($participaTitular ? 1 : 0) + count($idsValidos);
             if ($lugaresSolicitados === 0) {
                 throw new InvalidArgumentException('Seleccioná al menos una persona para participar.');
             }
+            if ($participaTitular) {
+                $this->validarSinCruceHorario(
+                    $idCliente,
+                    $idActividad,
+                    $fechaActividad,
+                    (string) ($datosActividad['horario'] ?? '')
+                );
+            }
+            $this->validarAcompanantesSinCruceHorario(
+                $idsValidos,
+                $idActividad,
+                $fechaActividad,
+                (string) ($datosActividad['horario'] ?? '')
+            );
 
             $inscripcion = $this->conexion->prepare(
                 'SELECT idInscripcion, participaTitular, fechaActividad, estado FROM inscripcionActividad
@@ -146,8 +166,14 @@ final class RepositorioInscripciones
             $misLugaresEnLaFecha = $estabaActiva ? $lugaresActuales : 0;
             $cantidadFinal = $this->cantidadInscriptos($idActividad, $fechaActividad) - $misLugaresEnLaFecha + $lugaresSolicitados;
             if ($cantidadFinal > (int) $datosActividad['cupoMax']) {
-                $lugaresNuevos = max(1, $lugaresSolicitados - $lugaresActuales);
-                throw new RuntimeException($this->mensajeCupo($lugaresNuevos));
+                // No se pierde la intención del cliente: queda en espera, pero
+                // no se crea una inscripción activa ni se ocupa un cupo real.
+                if (!$this->listaEsperaDisponible()) {
+                    throw new RuntimeException('La actividad alcanzó su cupo máximo. Podés consultar en recepción si se libera un lugar.');
+                }
+                $this->registrarEnListaDeEspera($idActividad, $idCliente, $fechaActividad, $lugaresSolicitados);
+                $this->conexion->commit();
+                return false;
             }
 
             if ($existeRegistro) {
@@ -168,13 +194,14 @@ final class RepositorioInscripciones
                 $alta = $this->conexion->prepare(
                     'INSERT INTO inscripcionActividad
                         (idCliente, idActividad, participaTitular, fechaActividad, fechaInscripcion, asistencia, estado)
-                     VALUES (:idCliente, :idActividad, :participaTitular, :fechaActividad, CURRENT_DATE, 0, \'ACTIVA\')'
+                     VALUES (:idCliente, :idActividad, :participaTitular, :fechaActividad, :fechaInscripcion, 0, \'ACTIVA\')'
                 );
                 $alta->execute([
                     'idCliente' => $idCliente,
                     'idActividad' => $idActividad,
                     'participaTitular' => $participaTitular ? 1 : 0,
                     'fechaActividad' => $fechaActividad,
+                    'fechaInscripcion' => RelojDemostracion::fecha($this->conexion),
                 ]);
             }
 
@@ -189,7 +216,16 @@ final class RepositorioInscripciones
                 ? (int) $inscripcionActual['idInscripcion']
                 : (int) $this->conexion->lastInsertId();
             GestorCoherenciaActividades::sincronizarCargo($this->conexion, $idInscripcion);
+            // Si la persona consiguió lugar, cualquier espera anterior para la
+            // misma actividad y fecha deja de tener sentido.
+            if ($this->listaEsperaDisponible()) {
+                $this->conexion->prepare(
+                    "DELETE FROM listaEsperaActividad
+                      WHERE idActividad=:actividad AND idCliente=:cliente AND fechaActividad=:fecha"
+                )->execute(['actividad' => $idActividad, 'cliente' => $idCliente, 'fecha' => $fechaActividad]);
+            }
             $this->conexion->commit();
+            return true;
         } catch (Throwable $excepcion) {
             if ($this->conexion->inTransaction()) $this->conexion->rollBack();
             throw $excepcion;
@@ -216,7 +252,7 @@ final class RepositorioInscripciones
             if (!$inscripcion) {
                 throw new InvalidArgumentException('No tenés una inscripción activa en esta actividad.');
             }
-            if ((string) $inscripcion['fechaActividad'] < date('Y-m-d')) {
+            if ((string) $inscripcion['fechaActividad'] < RelojDemostracion::fecha($this->conexion)) {
                 throw new RuntimeException('No se puede cancelar una actividad que ya ocurrió. El registro se conserva como historial.');
             }
             GestorCoherenciaActividades::cancelarInscripcion(
@@ -231,6 +267,21 @@ final class RepositorioInscripciones
         }
     }
 
+    /** Quita una solicitud de la lista de espera que pertenece al cliente. */
+    public function cancelarEspera(int $idActividad, int $idCliente, string $fechaActividad): void
+    {
+        $baja = $this->conexion->prepare(
+            "UPDATE listaEsperaActividad
+                SET estado='CANCELADA', canceladaEn=NOW()
+              WHERE idActividad=:actividad AND idCliente=:cliente AND fechaActividad=:fecha
+                AND estado='PENDIENTE'"
+        );
+        $baja->execute(['actividad' => $idActividad, 'cliente' => $idCliente, 'fecha' => $fechaActividad]);
+        if ($baja->rowCount() === 0) {
+            throw new InvalidArgumentException('No encontramos una solicitud pendiente en la lista de espera.');
+        }
+    }
+
     /**
      * Ejecuta la lógica de “bloquear actividad” en RepositorioInscripciones.php.
      *
@@ -241,7 +292,7 @@ final class RepositorioInscripciones
     private function bloquearActividad(int $idActividad, bool $exigirActiva = true): array
     {
         $actividad = $this->conexion->prepare(
-            'SELECT cupoMax, activa, dias, modalidad, precio FROM Actividad
+            'SELECT cupoMax, activa, dias, horario, modalidad, precio FROM Actividad
               WHERE idActividad = :idActividad FOR UPDATE'
         );
         $actividad->execute(['idActividad' => $idActividad]);
@@ -284,6 +335,146 @@ final class RepositorioInscripciones
     }
 
     /**
+     * Evita que el titular reserve dos propuestas con una franja horaria que
+     * se superpone el mismo día. Solo se evalúan horarios con inicio y fin
+     * explícitos (por ejemplo, “15:00 a 16:00”), para no inventar duraciones.
+     */
+    private function validarSinCruceHorario(
+        int $idCliente,
+        int $idActividad,
+        string $fechaActividad,
+        string $horarioSolicitado
+    ): void {
+        $intervaloSolicitado = $this->intervaloHorario($horarioSolicitado);
+        if ($intervaloSolicitado === null) return;
+
+        $consulta = $this->conexion->prepare(
+            "SELECT a.nombre, a.horario
+               FROM inscripcionActividad ia
+               JOIN Actividad a ON a.idActividad=ia.idActividad
+              WHERE ia.idCliente=:cliente AND ia.fechaActividad=:fecha
+                AND ia.idActividad<>:actividad AND ia.participaTitular=1
+                AND UPPER(ia.estado)='ACTIVA'"
+        );
+        $consulta->execute([
+            'cliente' => $idCliente,
+            'fecha' => $fechaActividad,
+            'actividad' => $idActividad,
+        ]);
+        foreach ($consulta->fetchAll() as $existente) {
+            $intervaloExistente = $this->intervaloHorario((string) $existente['horario']);
+            if ($intervaloExistente === null) continue;
+            [$inicioNuevo, $finNuevo] = $intervaloSolicitado;
+            [$inicioExistente, $finExistente] = $intervaloExistente;
+            if ($inicioNuevo < $finExistente && $inicioExistente < $finNuevo) {
+                throw new RuntimeException(
+                    'El horario se superpone con tu inscripción a “' . $existente['nombre'] . '” ('
+                    . $existente['horario'] . '). Elegí otra fecha u horario.'
+                );
+            }
+        }
+    }
+
+    /**
+     * Aplica la misma regla de horarios a cada acompañante seleccionado.
+     * Un acompañante no puede quedar anotado al mismo tiempo en dos actividades
+     * distintas, aun cuando las reservas hayan sido cargadas por titulares
+     * diferentes.
+     *
+     * @param int[] $idsAcompanantes
+     */
+    private function validarAcompanantesSinCruceHorario(
+        array $idsAcompanantes,
+        int $idActividad,
+        string $fechaActividad,
+        string $horarioSolicitado
+    ): void {
+        $intervaloSolicitado = $this->intervaloHorario($horarioSolicitado);
+        if ($intervaloSolicitado === null || $idsAcompanantes === []) return;
+
+        $consulta = $this->conexion->prepare(
+            "SELECT CONCAT(ac.nombre, ' ', ac.apellido) AS acompanante, a.nombre, a.horario
+               FROM inscripcionActividadAcompanante iaa
+               JOIN inscripcionActividad ia
+                 ON ia.idCliente = iaa.idClienteTitular
+                AND ia.idActividad = iaa.idActividad
+                AND ia.fechaActividad = iaa.fechaActividad
+               JOIN Actividad a ON a.idActividad = iaa.idActividad
+               JOIN acompañante ac ON ac.idAcompañante = iaa.idAcompañante
+              WHERE iaa.idAcompañante = :acompanante
+                AND iaa.fechaActividad = :fecha
+                AND iaa.idActividad <> :actividad
+                AND iaa.activo = 1
+                AND UPPER(ia.estado) = 'ACTIVA'"
+        );
+
+        foreach ($idsAcompanantes as $idAcompanante) {
+            $consulta->execute([
+                'acompanante' => $idAcompanante,
+                'fecha' => $fechaActividad,
+                'actividad' => $idActividad,
+            ]);
+            foreach ($consulta->fetchAll() as $existente) {
+                $intervaloExistente = $this->intervaloHorario((string) $existente['horario']);
+                if ($intervaloExistente === null) continue;
+                [$inicioNuevo, $finNuevo] = $intervaloSolicitado;
+                [$inicioExistente, $finExistente] = $intervaloExistente;
+                if ($inicioNuevo < $finExistente && $inicioExistente < $finNuevo) {
+                    throw new RuntimeException(
+                        '“' . $existente['acompanante'] . '” ya está anotado/a en “'
+                        . $existente['nombre'] . '” (' . $existente['horario']
+                        . ') para ese mismo horario.'
+                    );
+                }
+            }
+        }
+    }
+
+    /** @return array{string,string}|null */
+    private function intervaloHorario(string $horario): ?array
+    {
+        if (!preg_match('/\b([01]?\d|2[0-3]):([0-5]\d)\s*(?:a|hasta|-)\s*([01]?\d|2[0-3]):([0-5]\d)\b/ui', $horario, $coincidencias)) {
+            return null;
+        }
+        $inicio = str_pad($coincidencias[1], 2, '0', STR_PAD_LEFT) . ':' . $coincidencias[2];
+        $fin = str_pad($coincidencias[3], 2, '0', STR_PAD_LEFT) . ':' . $coincidencias[4];
+        return $fin > $inicio ? [$inicio, $fin] : null;
+    }
+
+    /** Guarda una sola solicitud vigente por cliente, actividad y fecha. */
+    private function registrarEnListaDeEspera(
+        int $idActividad,
+        int $idCliente,
+        string $fechaActividad,
+        int $cantidadSolicitada
+    ): void {
+        $alta = $this->conexion->prepare(
+            "INSERT INTO listaEsperaActividad
+                (idActividad,idCliente,fechaActividad,cantidadPersonas,estado,creadoEn,canceladaEn)
+             VALUES (:actividad,:cliente,:fecha,:cantidad,'PENDIENTE',NOW(),NULL)
+             ON DUPLICATE KEY UPDATE cantidadPersonas=VALUES(cantidadPersonas),
+                 estado='PENDIENTE', creadoEn=NOW(), canceladaEn=NULL"
+        );
+        $alta->execute([
+            'actividad' => $idActividad,
+            'cliente' => $idCliente,
+            'fecha' => $fechaActividad,
+            'cantidad' => $cantidadSolicitada,
+        ]);
+    }
+
+    /** Permite que las inscripciones existentes sigan funcionando antes de importar la actualización 12. */
+    private function listaEsperaDisponible(): bool
+    {
+        try {
+            $consulta = $this->conexion->query("SHOW TABLES LIKE 'listaEsperaActividad'");
+            return (bool) $consulta->fetchColumn();
+        } catch (PDOException) {
+            return false;
+        }
+    }
+
+    /**
      * Verifica que la fecha esté dentro del plazo habilitado y coincida con los
      * días semanales configurados por coordinación.
      */
@@ -305,17 +496,67 @@ final class RepositorioInscripciones
     {
         $rangos = $this->estanciasConfirmadas($idCliente);
         if ($rangos === []) return [];
+        $fechasCerradas = $this->fechasCerradas($actividad->id);
 
         return array_values(array_filter(
             $actividad->fechasDisponibles(100),
-            static function (array $fecha) use ($rangos): bool {
+            static function (array $fecha) use ($rangos, $fechasCerradas): bool {
                 $valor = (string) ($fecha['valor'] ?? '');
+                if (isset($fechasCerradas[$valor])) return false;
                 foreach ($rangos as $rango) {
                     if ($valor >= $rango['ingreso'] && $valor < $rango['egreso']) return true;
                 }
                 return false;
             }
         ));
+    }
+
+    /**
+     * Una jornada ya realizada o suspendida no admite altas ni cambios de
+     * participantes. Si todavía no se importó BD/14, se conserva el
+     * comportamiento anterior para no bloquear el resto de las inscripciones.
+     */
+    private function validarJornadaAbierta(int $idActividad, string $fechaActividad): void
+    {
+        if (!$this->cierresDisponibles()) return;
+        $consulta = $this->conexion->prepare(
+            'SELECT estado FROM cierreActividad
+              WHERE idActividad=:actividad AND fechaActividad=:fecha LIMIT 1 FOR UPDATE'
+        );
+        $consulta->execute(['actividad' => $idActividad, 'fecha' => $fechaActividad]);
+        $estado = strtoupper((string) ($consulta->fetchColumn() ?: ''));
+        if ($estado === 'SUSPENDIDA') {
+            throw new RuntimeException('Esta jornada fue suspendida por coordinación y ya no admite inscripciones.');
+        }
+        if ($estado === 'REALIZADA') {
+            throw new RuntimeException('Esta jornada ya fue realizada y quedó cerrada.');
+        }
+    }
+
+    /** @return array<string, true> Fechas ya cerradas para excluir del selector web. */
+    private function fechasCerradas(int $idActividad): array
+    {
+        if (!$this->cierresDisponibles()) return [];
+        $consulta = $this->conexion->prepare(
+            'SELECT fechaActividad FROM cierreActividad WHERE idActividad=:actividad'
+        );
+        $consulta->execute(['actividad' => $idActividad]);
+        $resultado = [];
+        foreach ($consulta->fetchAll(PDO::FETCH_COLUMN) as $fecha) {
+            $resultado[(string) $fecha] = true;
+        }
+        return $resultado;
+    }
+
+    /** Comprueba si ya está instalada la tabla agregada por BD/14. */
+    private function cierresDisponibles(): bool
+    {
+        try {
+            $consulta = $this->conexion->query("SHOW TABLES LIKE 'cierreActividad'");
+            return (bool) $consulta->fetchColumn();
+        } catch (PDOException) {
+            return false;
+        }
     }
 
     public function tieneEstadiaConfirmada(int $idCliente): bool
@@ -334,10 +575,10 @@ final class RepositorioInscripciones
               WHERE r.idCliente = :cliente
                 AND UPPER(r.estadoReserva) = 'CONFIRMADA'
                 AND UPPER(p.estadoPago) IN ('SENA_PAGADA', 'PAGADO')
-                AND r.fechaEgreso >= CURRENT_DATE
+                AND r.fechaEgreso >= :hoy
               ORDER BY r.fechaIngreso"
         );
-        $consulta->execute(['cliente' => $idCliente]);
+        $consulta->execute(['cliente' => $idCliente, 'hoy' => RelojDemostracion::fecha($this->conexion)]);
         return array_map(
             static fn(array $fila): array => [
                 'ingreso' => (string) $fila['ingreso'],
@@ -411,8 +652,8 @@ final class RepositorioInscripciones
         $alta = $this->conexion->prepare(
             'INSERT INTO inscripcionActividadAcompanante
                 (idClienteTitular, idAcompañante, idActividad, fechaActividad, fechaInscripcion, asistencia, activo, canceladaEn)
-             VALUES (:idCliente, :idAcompanante, :idActividad, :fechaActividad, CURRENT_DATE, 0, 1, NULL)
-             ON DUPLICATE KEY UPDATE activo = 1, canceladaEn = NULL, fechaInscripcion = CURRENT_DATE'
+             VALUES (:idCliente, :idAcompanante, :idActividad, :fechaActividad, :fechaInscripcion, 0, 1, NULL)
+             ON DUPLICATE KEY UPDATE activo = 1, canceladaEn = NULL, fechaInscripcion = VALUES(fechaInscripcion)'
         );
         foreach ($idsAcompanantes as $idAcompanante) {
             $alta->execute([
@@ -420,6 +661,7 @@ final class RepositorioInscripciones
                 'idAcompanante' => $idAcompanante,
                 'idActividad' => $idActividad,
                 'fechaActividad' => $fechaActividad,
+                'fechaInscripcion' => RelojDemostracion::fecha($this->conexion),
             ]);
         }
     }

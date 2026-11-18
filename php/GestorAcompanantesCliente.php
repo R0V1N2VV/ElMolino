@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/GestorCoherenciaActividades.php';
+require_once __DIR__ . '/RelojDemostracion.php';
 
 final class GestorAcompanantesCliente
 {
@@ -82,8 +83,8 @@ final class GestorAcompanantesCliente
             $this->conexion->prepare(
                 'DELETE ra FROM `reservaAcompañante` ra
                   JOIN reservas r ON r.idReserva = ra.idReserva
-                 WHERE ra.idAcompañante = :acompanante AND r.fechaIngreso > CURRENT_DATE'
-            )->execute(['acompanante' => $idAcompanante]);
+                 WHERE ra.idAcompañante = :acompanante AND r.fechaIngreso > :hoy'
+            )->execute(['acompanante' => $idAcompanante, 'hoy' => RelojDemostracion::fecha($this->conexion)]);
             $this->conexion->prepare(
                 'UPDATE `acompañante` SET activo = 0
                   WHERE idAcompañante = :acompanante AND idCliente = :cliente'

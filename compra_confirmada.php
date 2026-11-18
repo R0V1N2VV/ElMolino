@@ -21,17 +21,23 @@ if (!$usuario) {
     Utilidades::redirigir('registro/login.php');
 }
 $idPedido = (int) ($_GET['id'] ?? 0);
-$idCliente = (int) ($usuario['id_cliente'] ?? 0);
-if ($idCliente <= 0) {
-    $consultaCliente = Conexion::obtener()->prepare('SELECT idCliente FROM cliente WHERE email = :email LIMIT 1');
-    $consultaCliente->execute(['email' => (string) $usuario['email']]);
-    $idCliente = (int) ($consultaCliente->fetchColumn() ?: 0);
+try {
+    $conexionCompra = Conexion::obtener();
+    $gestor = new GestorCarritoAlojamiento($conexionCompra);
+    $idCliente = $gestor->resolverPerfilCliente($usuario);
+    if ((int) ($usuario['id_cliente'] ?? 0) !== $idCliente) {
+        $usuario['id_cliente'] = $idCliente;
+        Sesion::iniciarUsuario($usuario);
+    }
+    $pedido = $gestor->obtenerPedido($idPedido, $idCliente);
+} catch (Throwable $e) {
+    error_log('No se pudo abrir el pedido de alojamiento: ' . $e->getMessage());
+    Sesion::guardarMensaje('error', 'No pudimos abrir el resumen de la reserva. Volvé a intentarlo.');
+    Utilidades::redirigir('registro/cuenta.php');
 }
-$gestor = new GestorCarritoAlojamiento(Conexion::obtener());
-$pedido = $gestor->obtenerPedido($idPedido, $idCliente);
 if (!$pedido) {
-    http_response_code(404);
-    exit('No encontramos ese pedido en tu cuenta.');
+    Sesion::guardarMensaje('error', 'No encontramos ese pedido en tu cuenta.');
+    Utilidades::redirigir('registro/cuenta.php');
 }
 
 $errores = [];
@@ -48,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (!$configuracionPago['configurada']) {
                     throw new RuntimeException('Los datos bancarios todavía no están configurados. Contactá a recepción.');
                 }
-                (new GestorPagosSena(Conexion::obtener()))->informarTransferencia(
+                (new GestorPagosSena($conexionCompra))->informarTransferencia(
                     $idPedido,
                     $idCliente,
                     (string) ($_POST['referencia_pago'] ?? ''),
@@ -69,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } catch (Throwable $e) {
             error_log('No se pudo procesar el pedido ' . $idPedido . ': ' . $e->getMessage());
             $errores[] = $e instanceof PDOException
-                ? 'No se pudo registrar el pago. Ejecutá la actualización SQL y volvé a intentarlo.'
+                ? 'No pudimos registrar el pago en este momento. Volvé a intentarlo.'
                 : (($e instanceof RuntimeException || $e instanceof InvalidArgumentException)
                     ? $e->getMessage()
                     : 'No se pudo procesar la solicitud. Volvé a intentarlo.');

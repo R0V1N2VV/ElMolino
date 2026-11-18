@@ -12,6 +12,7 @@ final class Autorizacion
 {
     private const ROL_COORDINADOR = 'coordinador_actividades';
     private const ROL_COORDINADOR_APP = 'COORDINADOR';
+    private const ROL_SUPERADMIN = 'SUPERADMIN';
 
     /**
      * Inicializa el objeto y deja preparadas las dependencias que utilizarán sus demás métodos.
@@ -31,6 +32,26 @@ final class Autorizacion
         return $rol === self::ROL_COORDINADOR || $rol === self::ROL_COORDINADOR_APP;
     }
 
+    /** Indica si la sesión pertenece a la cuenta que administra el sistema. */
+    public static function esSuperAdmin(?array $usuario): bool
+    {
+        return is_array($usuario)
+            && strtoupper(trim((string) ($usuario['rol'] ?? ''))) === self::ROL_SUPERADMIN;
+    }
+
+    /** Impide que un cliente o empleado común modifique el reloj de demostración. */
+    public static function exigirSuperAdmin(?array $usuario): void
+    {
+        if (!$usuario) {
+            Sesion::guardarMensaje('error', 'Iniciá sesión para acceder al panel de demostración.');
+            Utilidades::redirigir('registro/login.php');
+        }
+        if (!self::esSuperAdmin($usuario)) {
+            Sesion::guardarMensaje('error', 'No tenés permiso para usar el modo demostración.');
+            Utilidades::redirigir('registro/cuenta.php');
+        }
+    }
+
     /**
      * Ejecuta la lógica de “exigir coordinador” en Autorizacion.php.
      *
@@ -43,8 +64,8 @@ final class Autorizacion
             Utilidades::redirigir('registro/login.php');
         }
         if (!self::esCoordinador($usuario)) {
-            http_response_code(403);
-            exit('No tenés permisos para gestionar actividades.');
+            Sesion::guardarMensaje('error', 'No tenés permiso para gestionar actividades.');
+            Utilidades::redirigir('registro/cuenta.php');
         }
     }
 

@@ -125,16 +125,7 @@ final class Registro
                 return ['errores' => [$error->getMessage()]];
             }
             error_log('Error al crear registro pendiente: ' . $error->getMessage());
-            $diagnostico = null;
-            if ($error instanceof PDOException) {
-                $info = $error->errorInfo ?? [];
-                $sqlState = (string) ($info[0] ?? $error->getCode());
-                $codigoMotor = (string) ($info[1] ?? 'sin código');
-                $diagnostico = "SQLSTATE {$sqlState}; código MySQL {$codigoMotor}";
-            } else {
-                $diagnostico = 'Error PHP: ' . get_class($error) . '; detalle: ' . $error->getMessage();
-            }
-            return ['errores' => ['No se pudo completar el registro. Revisá la configuración de la base de datos y el archivo de registro pendiente.'], 'diagnostico' => $diagnostico];
+            return ['errores' => ['No se pudo completar el registro en este momento. Volvé a intentarlo en unos minutos.']];
         }
     }
 

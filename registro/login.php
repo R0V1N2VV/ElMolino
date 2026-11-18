@@ -33,12 +33,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errores[] = 'La sesión del formulario venció. Volvé a intentarlo.';
     } elseif (!filter_var($correo, FILTER_VALIDATE_EMAIL) || $contrasena === '') {
         $errores[] = 'Ingresá tu correo y contraseña.';
+    } elseif (!LimiteIntentosLogin::puedeIntentar($correo)) {
+        $minutos = (int) ceil(LimiteIntentosLogin::segundosRestantes($correo) / 60);
+        $errores[] = 'Por seguridad, esperá ' . max(1, $minutos) . ' minutos antes de volver a intentar.';
     } else {
         try {
             $usuario = (new Autenticacion(Conexion::obtener()))->iniciarSesion($correo, $contrasena);
             if (!$usuario) {
+                LimiteIntentosLogin::registrarFallo($correo);
                 $errores[] = 'El correo o la contraseña no son correctos.';
             } else {
+                LimiteIntentosLogin::limpiar($correo);
                 Sesion::iniciarUsuario($usuario);
                 if (Sesion::obtener('continuar_compra', false)) {
                     Sesion::eliminar('continuar_compra');
@@ -49,8 +54,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 Utilidades::redirigir(Autorizacion::destinoInicial($usuario));
             }
-        } catch (PDOException $e) {
-            $errores[] = 'No se pudo consultar la base de datos. Verificá la conexión.';
+        } catch (Throwable $e) {
+            error_log('No se pudo iniciar sesión: ' . $e->getMessage());
+            $errores[] = 'No pudimos iniciar sesión en este momento. Volvé a intentarlo.';
         }
     }
 }

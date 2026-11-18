@@ -21,6 +21,9 @@ try {
     $mensaje = (new Registro(Conexion::obtener(), new Correo()))->reenviarCodigo($idPendiente);
     Sesion::guardarMensaje('exito', $mensaje);
 } catch (Throwable $error) {
-    Sesion::guardarMensaje('error', $error->getMessage());
+    error_log('No se pudo reenviar el código de registro: ' . $error->getMessage());
+    Sesion::guardarMensaje('error', $error instanceof RuntimeException
+        ? $error->getMessage()
+        : 'No pudimos reenviar el código en este momento. Volvé a intentarlo.');
 }
 Utilidades::redirigir('verificar.php');

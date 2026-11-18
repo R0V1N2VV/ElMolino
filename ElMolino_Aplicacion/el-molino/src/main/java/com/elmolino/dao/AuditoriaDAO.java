@@ -116,7 +116,9 @@ public final class AuditoriaDAO {
                 + (rol == null || rol.isBlank() ? "" : " (" + etiquetaRol(rol) + ")");
         String verbo = switch (accion == null ? "" : accion) {
             case "CREAR" -> "creó"; case "EDITAR" -> "editó"; case "ELIMINAR" -> "eliminó";
-            case "CANCELAR" -> "canceló"; case "DESHACER" -> "revirtió"; case "COBRAR_SALDO" -> "registró un cobro en";
+            case "CANCELAR" -> "canceló"; case "DESHACER" -> "revirtió";
+            case "COBRAR_SALDO" -> "registró un cobro en";
+            case "CAMBIAR_ESTADO" -> "actualizó el estado de";
             default -> accion == null ? "modificó" : accion.toLowerCase(java.util.Locale.ROOT);
         };
         String referencia = nombreRegistro(conexion, seccion, datos);

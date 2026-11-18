@@ -27,17 +27,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (strlen($codigo) !== 6) {
             $errores[] = 'Ingresá los seis números del código.';
         } else {
-            $resultado = (new Registro(Conexion::obtener(), new Correo()))->verificar($idPendiente, $codigo);
-            $errores = $resultado['errores'];
-            if ($resultado['usuario']) {
-                Sesion::iniciarUsuario($resultado['usuario']);
-                Sesion::eliminar('registro_pendiente_id');
-                if (Sesion::obtener('continuar_compra', false)) {
-                    Sesion::eliminar('continuar_compra');
-                    Utilidades::redirigir('../compra.php');
+            try {
+                $resultado = (new Registro(Conexion::obtener(), new Correo()))->verificar($idPendiente, $codigo);
+                $errores = $resultado['errores'];
+                if ($resultado['usuario']) {
+                    Sesion::iniciarUsuario($resultado['usuario']);
+                    Sesion::eliminar('registro_pendiente_id');
+                    if (Sesion::obtener('continuar_compra', false)) {
+                        Sesion::eliminar('continuar_compra');
+                        Utilidades::redirigir('../compra.php');
+                    }
+                    Sesion::guardarMensaje('exito', 'Tu correo fue verificado. ¡La cuenta ya está activa!');
+                    Utilidades::redirigir('cuenta.php');
                 }
-                Sesion::guardarMensaje('exito', 'Tu correo fue verificado. ¡La cuenta ya está activa!');
-                Utilidades::redirigir('cuenta.php');
+            } catch (Throwable $error) {
+                error_log('No se pudo verificar el código de registro: ' . $error->getMessage());
+                $errores[] = 'No pudimos verificar el código en este momento. Volvé a intentarlo.';
             }
         }
     }

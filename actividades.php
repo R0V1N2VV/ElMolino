@@ -15,7 +15,8 @@ try {
     require_once __DIR__ . '/php/inicio_actividades.php';
     ['categorias' => $categorias, 'tendencias' => $tendencias] = $controladorActividades->portada();
 } catch (Throwable $excepcion) {
-    $error = 'No se pudieron cargar las actividades. Verificá la conexión y la base de datos.';
+    error_log('No se pudieron cargar las actividades: ' . $excepcion->getMessage());
+    $error = 'No pudimos cargar las actividades en este momento. Volvé a intentarlo.';
 }
 $usuario = class_exists('Sesion') ? Sesion::usuario() : null;
 $esCoordinador = class_exists('Autorizacion') && Autorizacion::esCoordinador($usuario);

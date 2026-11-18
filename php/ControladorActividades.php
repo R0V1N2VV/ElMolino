@@ -18,7 +18,8 @@ final class ControladorActividades
      */
     public function __construct(
         private FuenteActividades $repositorio,
-        private GestorImagenActividad $imagenes
+        private GestorImagenActividad $imagenes,
+        private ?GestorAvisosCliente $avisos = null
     ) {}
 
     /**
@@ -126,11 +127,12 @@ final class ControladorActividades
         }
 
         $datos = $this->validarActividad($entrada);
+        $actividadAnterior = null;
         if ($datos['id'] > 0) {
-            $actividadActual = $this->repositorio->buscarPorSlug($datos['slug']);
-            if ($actividadActual && $datos['cupo'] < $actividadActual->cantidadInscriptos) {
+            $actividadAnterior = $this->repositorio->buscarPorSlug($datos['slug']);
+            if ($actividadAnterior && $datos['cupo'] < $actividadAnterior->cantidadInscriptos) {
                 throw new InvalidArgumentException(
-                    'El cupo no puede ser menor que la cantidad de personas ya inscriptas (' . $actividadActual->cantidadInscriptos . ').'
+                    'El cupo no puede ser menor que la cantidad de personas ya inscriptas (' . $actividadAnterior->cantidadInscriptos . ').'
                 );
             }
         }
@@ -142,7 +144,7 @@ final class ControladorActividades
             $idGuardado = $this->repositorio->guardar($datos, isset($usuario['id_usuario']) ? (int) $usuario['id_usuario'] : null);
         } catch (PDOException $excepcion) {
             error_log('No se pudo guardar la actividad: ' . $excepcion->getMessage());
-            throw new RuntimeException('No se pudo guardar la actividad en la base de datos. Verificá que esté instalada la actualización de actividades.');
+            throw new RuntimeException('No pudimos guardar la actividad en este momento. Volvé a intentarlo.');
         }
         if ($idGuardado <= 0) {
             throw new RuntimeException('La actividad no pudo guardarse. Volvé a intentarlo.');
@@ -150,12 +152,28 @@ final class ControladorActividades
         if (!$this->repositorio->buscarPorSlug($datos['slug'])) {
             throw new RuntimeException('La actividad no pudo publicarse. Volvé a intentarlo.');
         }
+        if ($datos['id'] > 0 && $actividadAnterior && $this->cambioOperativo($actividadAnterior, $datos)) {
+            $this->avisos?->avisarCambioActividad(
+                $idGuardado,
+                'Cambio en ' . $datos['nombre'],
+                'La actividad fue actualizada. Revisá el día, horario, sector y responsable antes de asistir.'
+            );
+        }
         return [
             'accion' => 'guardar',
             'mensaje' => $datos['id'] > 0 ? 'Actividad actualizada.' : 'Actividad agregada.',
             'slug' => $datos['slug'],
             'categoria' => $datos['categoria'],
         ];
+    }
+
+    /** Indica si una modificación puede afectar la asistencia de personas ya anotadas. */
+    private function cambioOperativo(Actividad $anterior, array $nueva): bool
+    {
+        return $anterior->dias !== $nueva['dias']
+            || $anterior->horario !== $nueva['horario']
+            || $anterior->sector !== $nueva['sector']
+            || $anterior->responsable !== $nueva['responsable'];
     }
 
     /**

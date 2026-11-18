@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS `registro_pendiente` (
   PRIMARY KEY (`idRegistroPendiente`),
   UNIQUE KEY `uk_registro_pendiente_email` (`email`),
   UNIQUE KEY `uk_registro_pendiente_dni` (`dni`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- CREATE TABLE IF NOT EXISTS no actualiza tablas ya creadas anteriormente.
 ALTER TABLE `registro_pendiente`

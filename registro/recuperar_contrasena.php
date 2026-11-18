@@ -71,8 +71,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         } catch (Throwable $error) {
             if ($conexion->inTransaction()) $conexion->rollBack();
+            error_log('No se pudo completar la recuperación de contraseña: ' . $error->getMessage());
             $errores[] = $error instanceof InvalidArgumentException || $error instanceof RuntimeException
-                ? $error->getMessage() : 'No se pudo completar la recuperación. Verificá que ejecutaste BD/09_RECUPERACION_CONTRASENA.sql.';
+                ? $error->getMessage() : 'No pudimos completar la recuperación en este momento. Volvé a intentarlo.';
         }
     }
 }

@@ -137,6 +137,30 @@
     background: var(--crema);
 }
 
+.formulario-cerrar-sesion-panel {
+    margin: 5px 0 0;
+    padding: 9px 3px 2px;
+    border-top: 1px solid var(--beige);
+}
+
+.formulario-cerrar-sesion-panel button {
+    width: 100%;
+    padding: 8px;
+    color: #7b3b36;
+    background: transparent;
+    border: 0;
+    border-radius: 7px;
+    font: inherit;
+    font-size: .84rem;
+    font-weight: 750;
+    text-align: left;
+    cursor: pointer;
+}
+
+.formulario-cerrar-sesion-panel button:hover {
+    background: #fbefeb;
+}
+
 /* La estadía es una acción principal del perfil, no un enlace escondido. */
 .panel-usuario .enlace-estadia-panel {
     display: flex;

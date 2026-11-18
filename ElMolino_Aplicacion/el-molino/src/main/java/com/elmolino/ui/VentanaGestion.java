@@ -56,6 +56,7 @@ public class VentanaGestion extends JFrame {
     private final JButton botonNuevo = new JButton("Nuevo");
     private final JButton botonEditar = new JButton("Editar");
     private final JButton botonEliminar = new JButton("Eliminar");
+    private final JButton botonCerrarActividad = new JButton("Cerrar jornada");
 
     /**
      * Construye el objeto, guarda sus datos iniciales y deja sus componentes preparados para usarse.
@@ -64,24 +65,20 @@ public class VentanaGestion extends JFrame {
         super("El Molino - " + modulo.titulo());
         this.principal = principal;
         this.modulo = modulo;
-        // Ajusta los botones visibles segun los permisos y las reglas de cada modulo.
+        // Ajusta los botones visibles con las mismas reglas que valida el DAO.
+        // Así no se muestran acciones que el rol actual no puede completar.
         boolean moduloPagos = "pago".equals(modulo.tabla());
         boolean soloAltaInscripcion = "inscripcionActividad".equals(modulo.tabla());
-        boolean altaUsuarioAdmin = "usuarios".equals(modulo.tabla()) && puedeGestionarUsuarios();
-        // Los alojamientos se crean en la web, salvo cuando la sesion es SuperAdmin.
-        botonNuevo.setVisible(esSuperAdmin() || soloAltaInscripcion || altaUsuarioAdmin);
+        botonNuevo.setVisible(GestionDAO.puedeEscribir(modulo, GestionDAO.Operacion.CREAR));
+        botonEditar.setVisible(GestionDAO.puedeEscribir(modulo, GestionDAO.Operacion.EDITAR));
+        botonEliminar.setVisible(GestionDAO.puedeEscribir(modulo, GestionDAO.Operacion.ELIMINAR));
         if (moduloPagos) {
             botonNuevo.setVisible(puedeCobrarSaldo());
             botonEliminar.setVisible(false);
             botonNuevo.setText("Cobrar estadía final");
             botonNuevo.setToolTipText("Calcula y registra el saldo de alojamiento y las actividades pendientes");
         }
-        if (soloAltaInscripcion && esCoordinador()) {
-            botonEditar.setVisible(true);
-            botonEditar.setText("Registrar asistencia");
-            botonEditar.setToolTipText("Marcá si el cliente asistió; los demás datos quedan protegidos.");
-            botonEliminar.setVisible(false);
-        } else if (soloAltaInscripcion && !esSuperAdmin()) {
+        if (soloAltaInscripcion && !esCoordinador() && !esSuperAdmin()) {
             botonEditar.setVisible(false);
             botonEliminar.setVisible(false);
         }
@@ -91,11 +88,6 @@ public class VentanaGestion extends JFrame {
         }
         if ("alojamientos".equals(modulo.tabla()) && esRecepcion()) {
             botonNuevo.setVisible(false);
-            botonEliminar.setVisible(false);
-        }
-        if ("usuarios".equals(modulo.tabla()) && !puedeGestionarUsuarios()) {
-            botonNuevo.setVisible(false);
-            botonEditar.setVisible(false);
             botonEliminar.setVisible(false);
         }
         if ("reservas".equals(modulo.tabla())) botonEliminar.setText("Cancelar reserva");
@@ -146,6 +138,25 @@ public class VentanaGestion extends JFrame {
         JButton botonActualizar = new JButton("Actualizar");
         botonEditar.setText("Editar seleccionado");
         botonEditar.setToolTipText("Seleccioná una fila y abrí el formulario de edición");
+        if ("Actividad".equals(modulo.tabla())) {
+            botonEliminar.setText("Dar de baja");
+            botonEliminar.setToolTipText("Conserva el historial y cancela las inscripciones futuras asociadas.");
+        }
+        if (soloAltaInscripcion && esCoordinador()) {
+            botonEditar.setVisible(true);
+            botonEditar.setText("Registrar asistencia");
+            botonEditar.setToolTipText("Marcá si el cliente asistió; los demás datos quedan protegidos.");
+            botonEliminar.setVisible(false);
+        }
+        if ("alojamientos".equals(modulo.tabla()) && esLimpieza()) {
+            botonEditar.setVisible(true);
+            botonEditar.setText("Finalizar limpieza");
+            botonEditar.setToolTipText("Marcá Disponible solo cuando la unidad esté limpia y lista para ofrecerse.");
+        }
+        if ("alojamientos".equals(modulo.tabla()) && esRecepcion()) {
+            botonEditar.setText("Actualizar estado");
+            botonEditar.setToolTipText("Usá mantenimiento o fuera de servicio cuando la unidad no pueda ofrecerse.");
+        }
         botonVolver.addActionListener(evento -> dispose());
         botonActualizar.addActionListener(evento -> cargar());
         botonNuevo.addActionListener(evento -> {
@@ -191,6 +202,11 @@ public class VentanaGestion extends JFrame {
         JPanel abajo = new JPanel(new BorderLayout());
         abajo.setBorder(BorderFactory.createEmptyBorder(5, 10, 10, 10));
         abajo.add(estado, BorderLayout.WEST);
+        if (esModuloActividades() && (esCoordinador() || esSuperAdmin())) {
+            botonCerrarActividad.setToolTipText("Registrar una fecha de la actividad como realizada o suspendida");
+            botonCerrarActividad.addActionListener(evento -> mostrarCierreActividad());
+            abajo.add(botonCerrarActividad, BorderLayout.EAST);
+        }
         add(arriba, BorderLayout.NORTH);
         add(new JScrollPane(tabla), BorderLayout.CENTER);
         add(abajo, BorderLayout.SOUTH);
@@ -289,10 +305,127 @@ public class VentanaGestion extends JFrame {
                 cargar();
                 return;
             }
+            if ("alojamientos".equals(modulo.tabla()) && (esLimpieza() || esRecepcion())) {
+                mostrarCambioEstadoAlojamiento(identificadorSeleccionado, valores);
+                return;
+            }
             mostrarFormulario(new Registro(identificadorSeleccionado, valores));
         } catch (Exception excepcion) {
             mostrarError("No se pudo abrir " + modulo.titulo().toLowerCase(), excepcion);
         }
+    }
+
+    /**
+     * Abre una acción breve y específica para el flujo físico del alojamiento.
+     * Limpieza termina la tarea; Recepción documenta los motivos de mantenimiento.
+     */
+    private void mostrarCambioEstadoAlojamiento(int idAlojamiento, Map<String, Object> valores) {
+        String numero = String.valueOf(valores.getOrDefault("numero", "Alojamiento"));
+        String estadoActual = String.valueOf(valores.getOrDefault("estado", ""));
+        List<String> estados = esLimpieza()
+                ? List.of("Disponible")
+                : List.of("Disponible", "En mantenimiento", "Fuera de servicio");
+        JComboBox<String> selector = new JComboBox<>(estados.toArray(String[]::new));
+        javax.swing.JTextArea motivo = new javax.swing.JTextArea(3, 28);
+        motivo.setLineWrap(true);
+        motivo.setWrapStyleWord(true);
+
+        JPanel panel = new JPanel(new GridLayout(0, 1, 8, 8));
+        panel.add(new JLabel(numero + " · Estado actual: " + estadoActual));
+        panel.add(new JLabel(esLimpieza()
+                ? "Confirmá que la unidad quedó limpia y lista para recibir huéspedes."
+                : "Elegí el nuevo estado operativo."));
+        panel.add(selector);
+        if (esRecepcion()) {
+            panel.add(new JLabel("Motivo (obligatorio para mantenimiento o fuera de servicio)"));
+            panel.add(new JScrollPane(motivo));
+        }
+
+        String titulo = esLimpieza() ? "Finalizar limpieza" : "Actualizar estado";
+        if (JOptionPane.showConfirmDialog(this, panel, titulo,
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE) != JOptionPane.OK_OPTION) return;
+
+        String nuevoEstado = String.valueOf(selector.getSelectedItem());
+        String detalle = motivo.getText().trim();
+        estado.setText("Guardando estado...");
+        new SwingWorker<Void, Void>() {
+            @Override protected Void doInBackground() throws Exception {
+                GestionDAO.cambiarEstadoAlojamiento(idAlojamiento, nuevoEstado, detalle);
+                return null;
+            }
+
+            @Override protected void done() {
+                try {
+                    get();
+                    cargar();
+                } catch (Exception error) {
+                    mostrarError("No se pudo actualizar el estado", error);
+                }
+            }
+        }.execute();
+    }
+
+    /**
+     * Registra el resultado de una fecha puntual, sin desactivar las próximas
+     * jornadas de una actividad que se repite semanalmente.
+     */
+    private void mostrarCierreActividad() {
+        int filaVista = tabla.getSelectedRow();
+        if (filaVista < 0) {
+            JOptionPane.showMessageDialog(this, "Seleccioná una actividad de la tabla.",
+                    "Cerrar jornada", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        int fila = tabla.convertRowIndexToModel(filaVista);
+        int idActividad = ((Number) modelo.getValueAt(fila, 0)).intValue();
+        String nombre = String.valueOf(modelo.getValueAt(fila, 1));
+        JTextField fecha = new JTextField(LocalDate.now().toString());
+        JComboBox<String> resultado = new JComboBox<>(new String[]{"REALIZADA", "SUSPENDIDA"});
+        javax.swing.JTextArea motivo = new javax.swing.JTextArea(3, 28);
+        motivo.setLineWrap(true);
+        motivo.setWrapStyleWord(true);
+
+        JPanel panel = new JPanel(new GridLayout(0, 1, 8, 8));
+        panel.add(new JLabel(nombre));
+        panel.add(new JLabel("Fecha de esta jornada (AAAA-MM-DD)"));
+        panel.add(fecha);
+        panel.add(new JLabel("Resultado"));
+        panel.add(resultado);
+        panel.add(new JLabel("Motivo (obligatorio si se suspende)"));
+        panel.add(new JScrollPane(motivo));
+        panel.add(new JLabel("Una suspensión cancela las inscripciones activas y cargos pendientes de esa fecha; el historial se conserva."));
+
+        if (JOptionPane.showConfirmDialog(this, panel, "Cerrar jornada de actividad",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE) != JOptionPane.OK_OPTION) return;
+
+        String estadoCierre = String.valueOf(resultado.getSelectedItem());
+        String mensajeConfirmacion = "REALIZADA".equals(estadoCierre)
+                ? "¿Registrás esta jornada como realizada? Después no podrá modificarse."
+                : "¿Suspendés esta jornada? Se anularán las inscripciones y cargos pendientes de esa fecha.";
+        if (JOptionPane.showConfirmDialog(this, mensajeConfirmacion, "Confirmar cierre",
+                JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE) != JOptionPane.YES_OPTION) return;
+
+        botonCerrarActividad.setEnabled(false);
+        estado.setText("Registrando cierre de actividad...");
+        new SwingWorker<Void, Void>() {
+            @Override protected Void doInBackground() throws Exception {
+                GestionDAO.registrarCierreActividad(idActividad, fecha.getText(), estadoCierre, motivo.getText());
+                return null;
+            }
+
+            @Override protected void done() {
+                botonCerrarActividad.setEnabled(true);
+                try {
+                    get();
+                    cargar();
+                    JOptionPane.showMessageDialog(VentanaGestion.this,
+                            "La jornada quedó registrada como " + estadoCierre.toLowerCase() + ".",
+                            "Cierre registrado", JOptionPane.INFORMATION_MESSAGE);
+                } catch (Exception error) {
+                    mostrarError("No se pudo cerrar la jornada", error);
+                }
+            }
+        }.execute();
     }
 
     /**
@@ -501,7 +634,9 @@ public class VentanaGestion extends JFrame {
                     if (!campo.obligatorio() && esEnumActividad(campo.columna())) {
                         selector.addItem(new OpcionEnum("", "— Sin especificar —"));
                     }
-                    List<String> opciones = "rol".equals(campo.columna()) && nuevo
+                    // Un Administrador solo puede crear administradores. Un SuperAdmin
+                    // puede elegir cualquiera de los roles definidos por el sistema.
+                    List<String> opciones = "rol".equals(campo.columna()) && nuevo && !esSuperAdmin()
                             ? List.of("ADMINISTRADOR") : campo.opciones();
                     if ("reservas".equals(modulo.tabla()) && "estadoReserva".equals(campo.columna())) {
                         opciones = opciones.stream().filter(opcion -> !"CANCELADA".equalsIgnoreCase(opcion)
@@ -696,9 +831,12 @@ public class VentanaGestion extends JFrame {
             }
         }
         boolean esReserva = "reservas".equals(modulo.tabla());
+        boolean esActividad = "Actividad".equals(modulo.tabla());
         String pregunta = esReserva
                 ? "¿Cancelar la reserva seleccionada? Se conservará el registro y sus pagos."
-                : "¿Eliminar el registro seleccionado?";
+                : (esActividad
+                    ? "¿Dar de baja esta actividad? Se conservará su historial y se cancelarán las inscripciones futuras."
+                    : "¿Eliminar el registro seleccionado?");
         if (JOptionPane.showConfirmDialog(this, pregunta, "Confirmar acción",
                 JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE) != JOptionPane.YES_OPTION) return;
         new SwingWorker<Void, Void>() {

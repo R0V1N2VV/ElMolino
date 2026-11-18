@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS `acompañante` (
   CONSTRAINT `fk_acompañante_cliente`
     FOREIGN KEY (`idCliente`) REFERENCES `cliente` (`idCliente`)
     ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SET @acompanantes_json_existe := (
   SELECT COUNT(*) FROM information_schema.COLUMNS

@@ -88,3 +88,6 @@
 
 /* 26. Perfil del cliente y adaptación responsive. */
 @import url("./modulos/26-perfil-cliente.css");
+
+/* 27. Panel de reloj para exposiciones del sistema. */
+@import url("./modulos/27-modo-demostracion.css");

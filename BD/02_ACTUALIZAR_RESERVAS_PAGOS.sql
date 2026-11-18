@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS `reembolso` (
   KEY `idx_reembolso_pedido_estado` (`idPedido`, `estado`),
   CONSTRAINT `fk_reembolso_pedido` FOREIGN KEY (`idPedido`)
     REFERENCES `pedido_alojamiento` (`idPedido`) ON DELETE RESTRICT ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Normaliza registros viejos para que el recálculo de la aplicación sea predecible.
 UPDATE `pago` SET `tipoPago`='SENA' WHERE `tipoPago` IS NULL OR TRIM(`tipoPago`)='';

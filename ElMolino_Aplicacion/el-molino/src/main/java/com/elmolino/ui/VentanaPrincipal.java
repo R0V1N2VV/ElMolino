@@ -304,7 +304,7 @@ public class VentanaPrincipal extends JFrame {
                 accesos.add(new Acceso("Registro de auditoría", "Consultar quién realizó cambios en el sistema", () -> abrirAuditoria()));
             }
             case "LIMPIEZA" -> accesos.add(modulo(
-                    "Habitaciones", "Consultar habitaciones y actualizar su estado", GestionDAO.ALOJAMIENTOS));
+                    "Limpieza pendiente", "Finalizar la limpieza de los alojamientos asignados", GestionDAO.ALOJAMIENTOS));
             case "ADMINISTRADOR" -> {
                 accesos.add(modulo("Clientes", "Consultar y editar datos de clientes", null));
                 accesos.add(modulo("Reservas", "Consultar y actualizar reservas", GestionDAO.RESERVAS));

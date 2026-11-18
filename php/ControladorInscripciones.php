@@ -58,13 +58,16 @@ final class ControladorInscripciones
         if ($accion === 'inscribirse' || $accion === 'actualizar_acompanantes') $participaTitular = true;
 
         $yaEstabaInscripto = $this->repositorio->estaInscripto($actividad->id, $idCliente, $fechaActividad);
-        $this->repositorio->guardarParticipantes(
+        $inscripcionConfirmada = $this->repositorio->guardarParticipantes(
             $actividad->id,
             $idCliente,
             $participaTitular,
             $acompanantes,
             $fechaActividad
         );
+        if (!$inscripcionConfirmada) {
+            return 'No había cupos suficientes para esa fecha. Te anotamos en la lista de espera; recepción se comunicará si se libera un lugar.';
+        }
         if ($actividad->modalidad === 'inscripcion' && $actividad->precio > 0) {
             return ($yaEstabaInscripto ? 'Actualizamos las personas que participan.' : 'La inscripción quedó registrada.')
                 . ' El importe se cobrará al finalizar la estadía.';

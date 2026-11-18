@@ -4,7 +4,7 @@
 
 CREATE DATABASE IF NOT EXISTS `s27_El Molino`
   CHARACTER SET utf8mb4
-  COLLATE utf8mb4_0900_ai_ci;
+  COLLATE utf8mb4_unicode_ci;
 
 USE `s27_El Molino`;
 
@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS `cliente` (
   UNIQUE KEY `uk_cliente_dni` (`dni`),
   UNIQUE KEY `uk_cliente_telefono` (`telefono`),
   UNIQUE KEY `uk_cliente_email` (`email`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `recuperacion_contrasena` (
   `idRecuperacion` INT NOT NULL AUTO_INCREMENT,
@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS `recuperacion_contrasena` (
   UNIQUE KEY `uk_recuperacion_cliente` (`idCliente`),
   CONSTRAINT `fk_recuperacion_cliente` FOREIGN KEY (`idCliente`) REFERENCES `cliente` (`idCliente`)
     ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `usuarios` (
   `idUsuario` INT NOT NULL AUTO_INCREMENT,
@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS `usuarios` (
   `rol` VARCHAR(75) NOT NULL DEFAULT 'cliente',
   PRIMARY KEY (`idUsuario`),
   UNIQUE KEY `uk_usuario_email` (`email`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Datos temporales del registro antes de validar el código enviado por correo.
 CREATE TABLE IF NOT EXISTS `registro_pendiente` (
@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS `registro_pendiente` (
   PRIMARY KEY (`idRegistroPendiente`),
   UNIQUE KEY `uk_registro_pendiente_email` (`email`),
   UNIQUE KEY `uk_registro_pendiente_dni` (`dni`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `acompañante` (
   `idAcompañante` INT NOT NULL AUTO_INCREMENT,
@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS `acompañante` (
   CONSTRAINT `fk_acompañante_cliente`
     FOREIGN KEY (`idCliente`) REFERENCES `cliente` (`idCliente`)
     ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `EspacioRecreativo` (
   `idEspacio` INT NOT NULL AUTO_INCREMENT,
@@ -94,7 +94,7 @@ CREATE TABLE IF NOT EXISTS `EspacioRecreativo` (
   `horarioCierre` TIME NOT NULL,
   `requiereReserva` TINYINT(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (`idEspacio`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `alojamientos` (
   `idAlojamiento` INT NOT NULL AUTO_INCREMENT,
@@ -106,7 +106,7 @@ CREATE TABLE IF NOT EXISTS `alojamientos` (
   `estado` VARCHAR(30) NOT NULL,
   PRIMARY KEY (`idAlojamiento`),
   UNIQUE KEY `uk_alojamiento_numero` (`numero`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Cinco unidades por tipo y capacidad. La aplicación y la web leen esta misma tabla.
 -- Los números son internos y no se muestran al huésped.
@@ -131,7 +131,7 @@ CREATE TABLE IF NOT EXISTS `CategoriaActividad` (
   PRIMARY KEY (`idCategoria`),
   UNIQUE KEY `uk_categoria_actividad_slug` (`slug`),
   UNIQUE KEY `uk_categoria_actividad_nombre` (`nombre`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT IGNORE INTO `CategoriaActividad` (`slug`, `nombre`, `descripcion`, `imagen`) VALUES
 ('caminatas', 'Caminatas', 'Senderos y recorridos guiados', 'imgs/caminatas.jpg'),
@@ -180,7 +180,7 @@ CREATE TABLE IF NOT EXISTS `Actividad` (
   CONSTRAINT `fk_actividad_usuario`
     FOREIGN KEY (`idUsuario`) REFERENCES `usuarios` (`idUsuario`)
     ON DELETE RESTRICT ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `reservas` (
   `idReserva` INT NOT NULL AUTO_INCREMENT,
@@ -204,7 +204,7 @@ CREATE TABLE IF NOT EXISTS `reservas` (
   CONSTRAINT `fk_reserva_alojamiento`
     FOREIGN KEY (`idAlojamiento`) REFERENCES `alojamientos` (`idAlojamiento`)
     ON DELETE RESTRICT ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `pedido_alojamiento` (
   `idPedido` INT NOT NULL AUTO_INCREMENT,
@@ -225,7 +225,7 @@ CREATE TABLE IF NOT EXISTS `pedido_alojamiento` (
   CONSTRAINT `fk_pedido_alojamiento_cliente`
     FOREIGN KEY (`idCliente`) REFERENCES `cliente` (`idCliente`)
     ON DELETE RESTRICT ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `detalle_pedido_alojamiento` (
   `idDetalle` INT NOT NULL AUTO_INCREMENT,
@@ -248,7 +248,7 @@ CREATE TABLE IF NOT EXISTS `detalle_pedido_alojamiento` (
   CONSTRAINT `fk_detalle_pedido_alojamiento_reserva`
     FOREIGN KEY (`idReserva`) REFERENCES `reservas` (`idReserva`)
     ON DELETE RESTRICT ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `inscripcionActividad` (
   `idInscripcion` INT NOT NULL AUTO_INCREMENT,
@@ -272,7 +272,7 @@ CREATE TABLE IF NOT EXISTS `inscripcionActividad` (
   CONSTRAINT `fk_inscripcion_actividad`
     FOREIGN KEY (`idActividad`) REFERENCES `Actividad` (`idActividad`)
     ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Cada acompañante seleccionado ocupa un lugar adicional en la actividad.
 CREATE TABLE IF NOT EXISTS inscripcionActividadAcompanante (
@@ -297,7 +297,48 @@ CREATE TABLE IF NOT EXISTS inscripcionActividadAcompanante (
     FOREIGN KEY (idClienteTitular, idActividad, fechaActividad)
         REFERENCES inscripcionActividad(idCliente, idActividad, fechaActividad)
         ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Solicitudes sin cupo: no crean una inscripción activa ni consumen lugares.
+CREATE TABLE IF NOT EXISTS `listaEsperaActividad` (
+  `idListaEspera` INT NOT NULL AUTO_INCREMENT,
+  `idActividad` INT NOT NULL,
+  `idCliente` INT NOT NULL,
+  `fechaActividad` DATE NOT NULL,
+  `cantidadPersonas` INT NOT NULL DEFAULT 1,
+  `estado` VARCHAR(20) NOT NULL DEFAULT 'PENDIENTE',
+  `creadoEn` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `notificadoEn` DATETIME DEFAULT NULL,
+  `canceladaEn` DATETIME DEFAULT NULL,
+  PRIMARY KEY (`idListaEspera`),
+  UNIQUE KEY `uk_lista_espera_cliente_actividad_fecha` (`idCliente`, `idActividad`, `fechaActividad`),
+  KEY `idx_lista_espera_actividad_fecha` (`idActividad`, `fechaActividad`, `estado`),
+  CONSTRAINT `fk_lista_espera_actividad`
+    FOREIGN KEY (`idActividad`) REFERENCES `Actividad` (`idActividad`)
+    ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_lista_espera_cliente`
+    FOREIGN KEY (`idCliente`) REFERENCES `cliente` (`idCliente`)
+    ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `notificacionCliente` (
+  `idNotificacion` INT NOT NULL AUTO_INCREMENT,
+  `idCliente` INT NOT NULL,
+  `idActividad` INT DEFAULT NULL,
+  `tipo` VARCHAR(30) NOT NULL,
+  `titulo` VARCHAR(120) NOT NULL,
+  `mensaje` VARCHAR(500) NOT NULL,
+  `creadoEn` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `leidoEn` DATETIME DEFAULT NULL,
+  PRIMARY KEY (`idNotificacion`),
+  KEY `idx_notificacion_cliente` (`idCliente`, `leidoEn`, `creadoEn`),
+  CONSTRAINT `fk_notificacion_cliente`
+    FOREIGN KEY (`idCliente`) REFERENCES `cliente` (`idCliente`)
+    ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_notificacion_actividad`
+    FOREIGN KEY (`idActividad`) REFERENCES `Actividad` (`idActividad`)
+    ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Conserva el precio aceptado y el total a cobrar al finalizar la estadía.
 CREATE TABLE IF NOT EXISTS `cargo_actividad` (
@@ -330,7 +371,7 @@ CREATE TABLE IF NOT EXISTS `cargo_actividad` (
   CONSTRAINT `fk_cargo_actividad_actividad`
     FOREIGN KEY (`idActividad`) REFERENCES `Actividad` (`idActividad`)
     ON DELETE RESTRICT ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `pago` (
   `idPago` INT NOT NULL AUTO_INCREMENT,
@@ -348,7 +389,7 @@ CREATE TABLE IF NOT EXISTS `pago` (
   CONSTRAINT `fk_pago_reserva`
     FOREIGN KEY (`idReserva`) REFERENCES `reservas` (`idReserva`)
     ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `reembolso` (
   `idReembolso` INT NOT NULL AUTO_INCREMENT,
@@ -364,7 +405,7 @@ CREATE TABLE IF NOT EXISTS `reembolso` (
   KEY `idx_reembolso_pedido_estado` (`idPedido`, `estado`),
   CONSTRAINT `fk_reembolso_pedido` FOREIGN KEY (`idPedido`) REFERENCES `pedido_alojamiento` (`idPedido`)
     ON DELETE RESTRICT ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `reservaAcompañante` (
   `idReserva` INT NOT NULL,
@@ -377,4 +418,4 @@ CREATE TABLE IF NOT EXISTS `reservaAcompañante` (
   CONSTRAINT `fk_ra_acompañante`
     FOREIGN KEY (`idAcompañante`) REFERENCES `acompañante` (`idAcompañante`)
     ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

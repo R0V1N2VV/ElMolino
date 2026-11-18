@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS `registro_pendiente` (
   PRIMARY KEY (`idRegistroPendiente`),
   UNIQUE KEY `uk_registro_pendiente_email` (`email`),
   UNIQUE KEY `uk_registro_pendiente_dni` (`dni`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CALL agregar_columna_si_falta('registro_pendiente', 'acompanantes_json', 'LONGTEXT DEFAULT NULL AFTER `direccion`');
 
 CREATE TABLE IF NOT EXISTS `reservaAcompañante` (
@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS `reservaAcompañante` (
   KEY `idx_ra_acompañante` (`idAcompañante`),
   CONSTRAINT `fk_ra_reserva` FOREIGN KEY (`idReserva`) REFERENCES `reservas` (`idReserva`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `fk_ra_acompañante` FOREIGN KEY (`idAcompañante`) REFERENCES `acompañante` (`idAcompañante`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Actividades completas y selección de fecha --------------------------------
 CREATE TABLE IF NOT EXISTS `CategoriaActividad` (
@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS `CategoriaActividad` (
   PRIMARY KEY (`idCategoria`),
   UNIQUE KEY `uk_categoria_actividad_slug` (`slug`),
   UNIQUE KEY `uk_categoria_actividad_nombre` (`nombre`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT IGNORE INTO `CategoriaActividad` (`slug`, `nombre`, `descripcion`, `imagen`) VALUES
 ('caminatas', 'Caminatas', 'Senderos y recorridos guiados', 'imgs/caminatas.jpg'),
@@ -122,7 +122,7 @@ CREATE TABLE IF NOT EXISTS `inscripcionActividad` (
   `actualizadaEn` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`idInscripcion`),
   UNIQUE KEY `uk_cliente_actividad` (`idCliente`, `idActividad`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CALL agregar_columna_si_falta('inscripcionActividad', 'participaTitular', 'TINYINT(1) NOT NULL DEFAULT 1 AFTER `idActividad`');
 CALL agregar_columna_si_falta('inscripcionActividad', 'fechaActividad', 'DATE NULL AFTER `participaTitular`');
 CALL agregar_columna_si_falta('inscripcionActividad', 'estado', 'VARCHAR(20) NOT NULL DEFAULT ''ACTIVA'' AFTER `asistencia`');
@@ -144,7 +144,7 @@ CREATE TABLE IF NOT EXISTS `inscripcionActividadAcompanante` (
   PRIMARY KEY (`idInscripcionAcompanante`),
   UNIQUE KEY `uk_acompanante_actividad` (`idAcompañante`, `idActividad`),
   KEY `idx_inscripcion_acomp_titular_actividad` (`idClienteTitular`, `idActividad`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CALL agregar_columna_si_falta('inscripcionActividadAcompanante', 'activo', 'TINYINT(1) NOT NULL DEFAULT 1 AFTER `asistencia`');
 CALL agregar_columna_si_falta('inscripcionActividadAcompanante', 'canceladaEn', 'DATETIME NULL AFTER `activo`');
 
@@ -166,7 +166,7 @@ CREATE TABLE IF NOT EXISTS `cargo_actividad` (
   KEY `idx_cargo_actividad_inscripcion` (`idInscripcion`),
   KEY `idx_cargo_actividad_pedido` (`idPedido`),
   KEY `idx_cargo_actividad_cliente_estado` (`idCliente`, `estado`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CALL agregar_columna_si_falta('cargo_actividad', 'idPedido', 'INT NULL AFTER `idInscripcion`');
 
 INSERT INTO `cargo_actividad`
@@ -216,7 +216,7 @@ CREATE TABLE IF NOT EXISTS `pedido_alojamiento` (
   `creadoEn` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`idPedido`),
   KEY `idx_pedido_alojamiento_cliente` (`idCliente`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CALL agregar_columna_si_falta('pedido_alojamiento', 'porcentajeSena', 'DECIMAL(5,2) NOT NULL DEFAULT 30.00 AFTER `estadoPago`');
 CALL agregar_columna_si_falta('pedido_alojamiento', 'montoSena', 'DECIMAL(10,2) NOT NULL DEFAULT 0.00 AFTER `porcentajeSena`');
 CALL agregar_columna_si_falta('pedido_alojamiento', 'fechaLimiteSena', 'DATETIME NULL AFTER `montoSena`');
@@ -247,7 +247,7 @@ CREATE TABLE IF NOT EXISTS `detalle_pedido_alojamiento` (
   PRIMARY KEY (`idDetalle`),
   UNIQUE KEY `uk_detalle_pedido_reserva` (`idReserva`),
   KEY `idx_detalle_pedido_alojamiento` (`idPedido`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `pago` (
   `idPago` INT NOT NULL AUTO_INCREMENT,
@@ -260,7 +260,7 @@ CREATE TABLE IF NOT EXISTS `pago` (
   `comprobante` VARCHAR(150) DEFAULT NULL,
   PRIMARY KEY (`idPago`),
   KEY `idx_pago_reserva` (`idReserva`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CALL agregar_columna_si_falta('pago', 'tipoPago', 'VARCHAR(20) NOT NULL DEFAULT ''SENA'' AFTER `metodoPago`');
 CALL agregar_columna_si_falta('pago', 'estado', 'VARCHAR(20) NOT NULL DEFAULT ''CONFIRMADO'' AFTER `tipoPago`');
 CALL agregar_columna_si_falta('pedido_alojamiento', 'fechaLimiteRevisionSena', 'DATETIME NULL AFTER `fechaLimiteSena`');
@@ -281,7 +281,7 @@ CREATE TABLE IF NOT EXISTS `reembolso` (
   KEY `idx_reembolso_pedido_estado` (`idPedido`, `estado`),
   CONSTRAINT `fk_reembolso_pedido` FOREIGN KEY (`idPedido`) REFERENCES `pedido_alojamiento` (`idPedido`)
     ON DELETE RESTRICT ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 DROP PROCEDURE IF EXISTS agregar_columna_si_falta;
 

@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/registro/inicio.php';
 require_once __DIR__ . '/php/GestorCarritoAlojamiento.php';
+require_once __DIR__ . '/php/RelojDemostracion.php';
 require_once __DIR__ . '/php/Vista.php';
 
 Sesion::iniciar();
@@ -30,7 +31,11 @@ Sesion::tomarMensaje();
 $alojamientos = [];
 
 try {
-    $gestor = new GestorCarritoAlojamiento(Conexion::obtener());
+    $conexionAlojamientos = Conexion::obtener();
+    $manana = RelojDemostracion::ahora($conexionAlojamientos)->setTime(0, 0)->modify('+1 day');
+    $entrada = (string) ($_GET['entrada'] ?? $manana->format('Y-m-d'));
+    $salida = (string) ($_GET['salida'] ?? $manana->modify('+1 day')->format('Y-m-d'));
+    $gestor = new GestorCarritoAlojamiento($conexionAlojamientos);
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!Sesion::validarCsrf($_POST['token_csrf'] ?? null)) {
             $errores[] = 'La sesión del formulario venció. Volvé a intentarlo.';
@@ -55,9 +60,9 @@ try {
         }
     }
     $alojamientos = $gestor->catalogoAgrupado($entrada, $salida);
-} catch (PDOException $e) {
+} catch (Throwable $e) {
     error_log('No se pudo cargar el catálogo de alojamientos: ' . $e->getMessage());
-    $errores[] = 'No se pudieron cargar los alojamientos. Revisá la conexión con la base de datos.';
+    $errores[] = 'No pudimos cargar los alojamientos en este momento. Volvé a intentarlo.';
 }
 $alojamientosVisibles = $tipoSeleccionado === '' ? [] : array_values(array_filter(
     $alojamientos,

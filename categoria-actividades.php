@@ -16,7 +16,8 @@ try {
     require_once __DIR__ . '/php/inicio_actividades.php';
     ['categoria' => $categoria, 'filtros' => $filtros, 'actividades' => $actividades] = $controladorActividades->categoria($_GET);
 } catch (Throwable $excepcion) {
-    $error = 'No se pudo cargar esta categoría. Verificá la conexión y la base de datos.';
+    error_log('No se pudo cargar una categoría de actividades: ' . $excepcion->getMessage());
+    $error = 'No pudimos cargar esta categoría en este momento. Volvé a intentarlo.';
 }
 $usuario = class_exists('Sesion') ? Sesion::usuario() : null;
 $mensaje = class_exists('Sesion') ? Sesion::tomarMensaje() : null;

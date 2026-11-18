@@ -16,15 +16,17 @@ Sesion::iniciar();
 $usuario = Sesion::usuario();
 $errores = [];
 $gestor = null;
+$conexionCompra = null;
 $elementos = [];
 $acompanantesCliente = [];
 $idCliente = 0;
 try {
-    $gestor = new GestorCarritoAlojamiento(Conexion::obtener());
+    $conexionCompra = Conexion::obtener();
+    $gestor = new GestorCarritoAlojamiento($conexionCompra);
     $elementos = $gestor->elementos();
-} catch (PDOException $e) {
+} catch (Throwable $e) {
     error_log('No se pudo cargar el resumen de compra: ' . $e->getMessage());
-    $errores[] = 'No se pudo consultar el resumen de la estadía. Revisá la conexión con la base de datos.';
+    $errores[] = 'No pudimos cargar el resumen de la estadía en este momento. Volvé a intentarlo.';
 }
 if ($gestor && !$elementos) Utilidades::redirigir('carrito.php');
 
@@ -35,13 +37,21 @@ $totalCentavos = GestorCarritoAlojamiento::totalEstimado($elementos);
 if (!$usuario) {
     Sesion::guardar('continuar_compra', true);
 } elseif ($gestor) {
-    $idCliente = (int) ($usuario['id_cliente'] ?? 0);
-    if ($idCliente <= 0) {
-        $consultaCliente = Conexion::obtener()->prepare('SELECT idCliente FROM cliente WHERE email = :email LIMIT 1');
-        $consultaCliente->execute(['email' => (string) $usuario['email']]);
-        $idCliente = (int) ($consultaCliente->fetchColumn() ?: 0);
+    try {
+        $idCliente = $gestor->resolverPerfilCliente($usuario);
+        // El perfil recién creado para personal debe quedar en la sesión para
+        // que el resumen, Mi cuenta y la reserva usen la misma identidad.
+        if ((int) ($usuario['id_cliente'] ?? 0) !== $idCliente) {
+            $usuario['id_cliente'] = $idCliente;
+            Sesion::iniciarUsuario($usuario);
+        }
+        $acompanantesCliente = $gestor->listarAcompanantesCliente($idCliente);
+    } catch (Throwable $e) {
+        error_log('No se pudo resolver el perfil de estadía: ' . $e->getMessage());
+        $errores[] = $e instanceof RuntimeException
+            ? $e->getMessage()
+            : 'No pudimos preparar la cuenta para esta reserva. Volvé a intentarlo.';
     }
-    if ($idCliente > 0) $acompanantesCliente = $gestor->listarAcompanantesCliente($idCliente);
 }
 
 if ($usuario && $gestor && $_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -72,7 +82,7 @@ if ($usuario && $gestor && $_SERVER['REQUEST_METHOD'] === 'POST') {
             $errores[] = $e->getMessage();
         } catch (PDOException $e) {
             error_log('No se pudo registrar el pedido de alojamiento: ' . $e->getMessage());
-            $errores[] = 'No se pudo registrar el pedido. Revisá que esté instalada la actualización de compras de alojamiento.';
+            $errores[] = 'No pudimos registrar el pedido en este momento. Volvé a intentarlo.';
         } catch (Throwable $e) {
             error_log('Error inesperado al registrar el pedido de alojamiento: ' . $e->getMessage());
             $errores[] = 'Ocurrió un error inesperado al registrar el pedido. Volvé a intentarlo.';

@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS inscripcionActividad (
     CONSTRAINT fk_inscripcion_actividad
         FOREIGN KEY (idActividad) REFERENCES Actividad(idActividad)
         ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SET @participa_titular_existe := (
     SELECT COUNT(*) FROM information_schema.COLUMNS
@@ -58,5 +58,5 @@ CREATE TABLE IF NOT EXISTS inscripcionActividadAcompanante (
         FOREIGN KEY (idClienteTitular, idActividad)
         REFERENCES inscripcionActividad(idCliente, idActividad)
         ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

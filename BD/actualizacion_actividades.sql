@@ -13,7 +13,7 @@ CREATE TABLE CategoriaActividad (
     PRIMARY KEY (idCategoria),
     UNIQUE KEY uk_categoria_actividad_slug (slug),
     UNIQUE KEY uk_categoria_actividad_nombre (nombre)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ALTER TABLE Actividad
     MODIFY COLUMN descripcion TEXT NOT NULL,
     MODIFY COLUMN idEspacio INT NULL,
@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS inscripcionActividad (
     CONSTRAINT fk_inscripcion_actividad
         FOREIGN KEY (idActividad) REFERENCES Actividad(idActividad)
         ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Las instalaciones anteriores ya pueden tener la tabla sin esta columna.
 SET @participa_titular_existe := (
@@ -95,7 +95,7 @@ CREATE TABLE IF NOT EXISTS inscripcionActividadAcompanante (
         FOREIGN KEY (idClienteTitular, idActividad)
         REFERENCES inscripcionActividad(idCliente, idActividad)
         ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
 INSERT INTO CategoriaActividad (slug, nombre, descripcion, imagen) VALUES

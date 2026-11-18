@@ -8,6 +8,9 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/GestorCoherenciaActividades.php';
+require_once __DIR__ . '/RelojDemostracion.php';
+
 final class RepositorioActividades implements FuenteActividades
 {
     private const CAMPOS_ACTIVIDAD = <<<'SQL'
@@ -245,8 +248,64 @@ final class RepositorioActividades implements FuenteActividades
      */
     public function eliminar(int $id): void
     {
-        $consulta = $this->conexion->prepare('UPDATE Actividad SET activa = 0 WHERE idActividad = :id');
-        $consulta->execute(['id' => $id]);
+        /*
+         * Una actividad nunca se borra físicamente. Conservamos su historia,
+         * pero damos de baja las inscripciones futuras que ya no se podrán
+         * realizar. Así no quedan cupos ocupados ni cargos pendientes por una
+         * propuesta que coordinación decidió cancelar.
+         */
+        $this->conexion->beginTransaction();
+        try {
+            $actividad = $this->conexion->prepare(
+                'SELECT idActividad FROM Actividad
+                  WHERE idActividad = :id AND activa = 1 FOR UPDATE'
+            );
+            $actividad->execute(['id' => $id]);
+            if (!$actividad->fetchColumn()) {
+                throw new InvalidArgumentException('La actividad seleccionada no existe o ya fue dada de baja.');
+            }
+
+            $inscripciones = $this->conexion->prepare(
+                "SELECT idInscripcion
+                   FROM inscripcionActividad
+                  WHERE idActividad = :id AND UPPER(estado) = 'ACTIVA'
+                    AND fechaActividad >= :hoy
+                  FOR UPDATE"
+            );
+            $inscripciones->execute(['id' => $id, 'hoy' => RelojDemostracion::fecha($this->conexion)]);
+            foreach ($inscripciones->fetchAll(PDO::FETCH_COLUMN) as $idInscripcion) {
+                GestorCoherenciaActividades::cancelarInscripcion(
+                    $this->conexion,
+                    (int) $idInscripcion,
+                    'ACTIVIDAD_CANCELADA_POR_COORDINACION'
+                );
+            }
+
+            // La lista de espera fue agregada después de la primera versión de
+            // la base. Si todavía no se importó esa mejora, la baja igual debe
+            // poder completarse sin mostrar un error técnico.
+            try {
+                $existeEspera = $this->conexion->query("SHOW TABLES LIKE 'listaEsperaActividad'");
+                if ($existeEspera && $existeEspera->fetchColumn()) {
+                    $this->conexion->prepare(
+                        "UPDATE listaEsperaActividad
+                            SET estado = 'CANCELADA', canceladaEn = NOW()
+                          WHERE idActividad = :id AND estado = 'PENDIENTE'"
+                    )->execute(['id' => $id]);
+                }
+            } catch (PDOException) {
+                // La tabla de espera es opcional para instalaciones antiguas.
+            }
+
+            $baja = $this->conexion->prepare(
+                'UPDATE Actividad SET activa = 0 WHERE idActividad = :id'
+            );
+            $baja->execute(['id' => $id]);
+            $this->conexion->commit();
+        } catch (Throwable $error) {
+            if ($this->conexion->inTransaction()) $this->conexion->rollBack();
+            throw $error;
+        }
     }
 
     /**

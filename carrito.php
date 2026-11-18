@@ -29,9 +29,9 @@ try {
     }
     $elementos = $gestor->elementos();
     $totalCentavos = GestorCarritoAlojamiento::totalEstimado($elementos);
-} catch (PDOException $e) {
+} catch (Throwable $e) {
     error_log('No se pudo abrir el carrito de alojamientos: ' . $e->getMessage());
-    $errores[] = 'No se pudo consultar el carrito. Revisá la conexión con la base de datos.';
+    $errores[] = 'No pudimos cargar el carrito en este momento. Volvé a intentarlo.';
 }
 $usuario = Sesion::usuario();
 ?>

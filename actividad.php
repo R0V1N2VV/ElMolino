@@ -35,7 +35,7 @@ $usuario = class_exists('Sesion') ? Sesion::usuario() : null;
 if ($actividad && $_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         if (!$controladorInscripciones) {
-            throw new RuntimeException('Las inscripciones todavía no están habilitadas. Ejecutá BD/04_ACTUALIZAR_LOGICA_ACTIVIDADES.sql en phpMyAdmin.');
+            throw new RuntimeException('Las inscripciones no están disponibles en este momento. Consultá con recepción.');
         }
         $mensajeInscripcion = $controladorInscripciones->procesar($_POST, $usuario, $actividad);
         Sesion::guardarMensaje('exito', $mensajeInscripcion);
@@ -44,7 +44,7 @@ if ($actividad && $_SERVER['REQUEST_METHOD'] === 'POST') {
         error_log('No se pudo procesar la inscripción: ' . $excepcion->getMessage());
         $errorInscripcion = $excepcion instanceof InvalidArgumentException || $excepcion instanceof RuntimeException
             ? $excepcion->getMessage()
-            : 'No se pudo completar la inscripción. Revisá que hayas ejecutado BD/04_ACTUALIZAR_LOGICA_ACTIVIDADES.sql.';
+            : 'No pudimos completar la inscripción en este momento. Volvé a intentarlo.';
     }
 }
 
@@ -65,7 +65,7 @@ if ($actividad && isset($repositorioInscripciones) && $repositorioInscripciones 
         $puedeInscribirsePorEstadia = $repositorioInscripciones->tieneEstadiaConfirmada($idCliente);
     } catch (Throwable $excepcion) {
         error_log('No se pudieron cargar los datos de inscripción de la actividad: ' . $excepcion->getMessage());
-        $errorInscripcion = 'La actividad existe, pero falta actualizar la base para usar las inscripciones. Ejecutá BD/04_ACTUALIZAR_LOGICA_ACTIVIDADES.sql en phpMyAdmin.';
+        $errorInscripcion = 'La actividad existe, pero las inscripciones no están disponibles en este momento. Consultá con recepción.';
         $repositorioInscripciones = null;
         $controladorInscripciones = null;
     }
@@ -130,8 +130,8 @@ $esCoordinador = class_exists('Autorizacion') && Autorizacion::esCoordinador($us
                     <?php if ($usuario && (int) ($usuario['id_cliente'] ?? 0) > 0): ?>
                         <?php if (!$repositorioInscripciones): ?>
                             <div class="requisito-estadia-actividad">
-                                <strong>Falta actualizar la base de datos</strong>
-                                <p>La actividad se puede consultar, pero las inscripciones quedarán deshabilitadas hasta ejecutar <code>BD/04_ACTUALIZAR_LOGICA_ACTIVIDADES.sql</code> en phpMyAdmin.</p>
+                                <strong>Inscripciones no disponibles</strong>
+                                <p>Podés consultar los detalles de la actividad. Para inscribirte, comunicate con recepción.</p>
                             </div>
                         <?php else: ?>
                         <?php if ($estaInscripto): ?>

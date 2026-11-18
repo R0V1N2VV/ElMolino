@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS `pedido_alojamiento` (
   CONSTRAINT `fk_pedido_alojamiento_cliente`
     FOREIGN KEY (`idCliente`) REFERENCES `cliente` (`idCliente`)
     ON DELETE RESTRICT ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `detalle_pedido_alojamiento` (
   `idDetalle` INT NOT NULL AUTO_INCREMENT,
@@ -43,4 +43,4 @@ CREATE TABLE IF NOT EXISTS `detalle_pedido_alojamiento` (
   CONSTRAINT `fk_detalle_pedido_alojamiento_reserva`
     FOREIGN KEY (`idReserva`) REFERENCES `reservas` (`idReserva`)
     ON DELETE RESTRICT ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -21,7 +21,7 @@ $accionSolicitada = (string) ($_POST['accion'] ?? '');
 try {
     require_once __DIR__ . '/php/inicio_actividades.php';
     if ($modoCatalogoPredeterminado && $_SERVER['REQUEST_METHOD'] === 'POST') {
-        throw new RuntimeException('La base de actividades tiene actualizaciones pendientes. Ejecutá BD/00_ACTUALIZAR_BASE_EXISTENTE.sql.');
+        throw new RuntimeException('La gestión de actividades no está disponible en este momento. Volvé a intentarlo más tarde.');
     }
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $resultadoGestion = $controladorActividades->procesarGestion($_POST, $_FILES, $usuario);
@@ -35,12 +35,12 @@ try {
     }
     ['categorias' => $categorias, 'actividades' => $actividades] = $controladorActividades->administracion();
     if ($modoCatalogoPredeterminado) {
-        $error = 'Se está mostrando el catálogo predeterminado. Ejecutá las actualizaciones SQL pendientes para poder agregar, editar o eliminar actividades.';
+        $error = 'Se muestra un catálogo de respaldo. Por ahora no se pueden modificar actividades.';
     }
 } catch (Throwable $excepcion) {
     $error = $excepcion instanceof InvalidArgumentException || $excepcion instanceof RuntimeException
         ? $excepcion->getMessage()
-        : 'No se pudo completar la operación en la base de datos.';
+        : 'No pudimos completar la operación en este momento. Volvé a intentarlo.';
     if (isset($controladorActividades)) {
         try {
             ['categorias' => $categorias, 'actividades' => $actividades] = $controladorActividades->administracion();
@@ -167,7 +167,7 @@ $tendenciaFormulario = $_SERVER['REQUEST_METHOD'] === 'POST' ? isset($_POST['ten
         </div></div></section>
 
         <section class="seccion listado-administracion"><div class="contenedor"><div class="encabezado-listado-admin"><div><p class="texto-destacado">Contenido publicado</p><h2>Actividades cargadas</h2></div></div><div class="lista-administracion">
-            <?php foreach ($actividades as $actividad): ?><article class="fila-actividad-admin"><span class="miniatura-admin"><img src="<?= Vista::escapar($actividad->imagen) ?>" alt=""></span><span><strong><?= Vista::escapar($actividad->nombre) ?></strong><small><?= Vista::escapar($actividad->categoriaNombre) ?> · máximo <?= $actividad->cantidadInscriptos ?>/<?= $actividad->cupo ?> en una fecha · <?= Vista::escapar(Vista::precio($actividad)) ?></small></span><span class="acciones-admin"><a class="boton-accion-admin boton-modificar" href="administrar-actividades.php?editar=<?= $actividad->id ?>#formulario"><span class="icono-lapiz" aria-hidden="true"></span>Modificar</a><form method="post" onsubmit="return confirm('¿Eliminar esta actividad?')"><input type="hidden" name="token_csrf" value="<?= Vista::escapar(Sesion::tokenCsrf()) ?>"><input type="hidden" name="accion" value="eliminar"><input type="hidden" name="id" value="<?= $actividad->id ?>"><button type="submit" class="boton-accion-admin boton-eliminar"><span class="icono-papelera" aria-hidden="true"></span>Eliminar</button></form></span></article><?php endforeach; ?>
+            <?php foreach ($actividades as $actividad): ?><article class="fila-actividad-admin"><span class="miniatura-admin"><img src="<?= Vista::escapar($actividad->imagen) ?>" alt=""></span><span><strong><?= Vista::escapar($actividad->nombre) ?></strong><small><?= Vista::escapar($actividad->categoriaNombre) ?> · máximo <?= $actividad->cantidadInscriptos ?>/<?= $actividad->cupo ?> en una fecha · <?= Vista::escapar(Vista::precio($actividad)) ?></small></span><span class="acciones-admin"><a class="boton-accion-admin boton-modificar" href="administrar-actividades.php?editar=<?= $actividad->id ?>#formulario"><span class="icono-lapiz" aria-hidden="true"></span>Modificar</a><form method="post" onsubmit="return confirm('¿Dar de baja esta actividad? Se cancelarán sus inscripciones futuras y los cargos pendientes relacionados.')"><input type="hidden" name="token_csrf" value="<?= Vista::escapar(Sesion::tokenCsrf()) ?>"><input type="hidden" name="accion" value="eliminar"><input type="hidden" name="id" value="<?= $actividad->id ?>"><button type="submit" class="boton-accion-admin boton-eliminar"><span class="icono-papelera" aria-hidden="true"></span>Dar de baja</button></form></span></article><?php endforeach; ?>
         </div></div></section>
         <?php endif; ?>
     </main>

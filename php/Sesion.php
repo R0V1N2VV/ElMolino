@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 final class Sesion
 {
+    private const INACTIVIDAD_MAXIMA_SEGUNDOS = 1800;
     /**
      * Inicializa el objeto y deja preparadas las dependencias que utilizarán sus demás métodos.
      */
@@ -17,7 +18,20 @@ final class Sesion
     /**
      * Prepara e inicia el proceso o recurso necesario para continuar.
      */
-    public static function iniciar(): void { if (session_status() === PHP_SESSION_NONE) { session_name('el_molino_sesion'); session_start(); } }
+    public static function iniciar(): void {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_name('el_molino_sesion');
+            session_start();
+        }
+        $ahora = time();
+        $ultimaActividad = (int) ($_SESSION['ultima_actividad'] ?? $ahora);
+        if (isset($_SESSION['usuario']) && $ultimaActividad < $ahora - self::INACTIVIDAD_MAXIMA_SEGUNDOS) {
+            // Una sesión abandonada no conserva privilegios indefinidamente.
+            $_SESSION = [];
+            session_regenerate_id(true);
+        }
+        $_SESSION['ultima_actividad'] = $ahora;
+    }
     /**
      * Obtiene o crea el token CSRF usado para comprobar que un formulario salió de esta sesión.
      *
@@ -77,7 +91,7 @@ final class Sesion
      * @param mixed $usuario Valor de usuario que recibe la función.
      * @param mixed $_SESSION Valor de  session que recibe la función.
      */
-    public static function iniciarUsuario(array $usuario): void { self::iniciar(); session_regenerate_id(true); $_SESSION['usuario'] = $usuario; }
+    public static function iniciarUsuario(array $usuario): void { self::iniciar(); session_regenerate_id(true); $_SESSION['usuario'] = $usuario; $_SESSION['ultima_actividad'] = time(); }
     /**
      * Ejecuta la lógica de “usuario” en Sesion.php.
      *

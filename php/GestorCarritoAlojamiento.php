@@ -8,6 +8,7 @@
 
 declare(strict_types=1);
 require_once __DIR__ . '/GestorEstadoFinanciero.php';
+require_once __DIR__ . '/RelojDemostracion.php';
 
 final class GestorCarritoAlojamiento
 {
@@ -17,6 +18,7 @@ final class GestorCarritoAlojamiento
     public const METODOS_PAGO = [
         'Transferencia bancaria',
     ];
+    private ?bool $columnaPasswordHashCliente = null;
 
     /**
      * Inicializa el objeto y deja preparadas las dependencias que utilizarán sus demás métodos.
@@ -419,6 +421,112 @@ final class GestorCarritoAlojamiento
     }
 
     /**
+     * Devuelve el perfil de cliente asociado a la cuenta autenticada.
+     *
+     * El personal puede preparar reservas para demostrar el sistema o atender
+     * a una persona. Si todavía no posee una fila en cliente, se crea un perfil
+     * de estadía con datos numéricos de demostración: nunca se copia el código
+     * interno del empleado en el campo DNI.
+     */
+    public function resolverPerfilCliente(array $usuario): int
+    {
+        $email = strtolower(trim((string) ($usuario['email'] ?? '')));
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            throw new RuntimeException('La cuenta iniciada no tiene un correo válido para crear la reserva.');
+        }
+
+        $idSesion = (int) ($usuario['id_cliente'] ?? 0);
+        if ($idSesion > 0) {
+            $porSesion = $this->conexion->prepare(
+                'SELECT idCliente FROM cliente WHERE idCliente=:cliente AND LOWER(email)=LOWER(:email) LIMIT 1'
+            );
+            $porSesion->execute(['cliente' => $idSesion, 'email' => $email]);
+            $idCliente = (int) ($porSesion->fetchColumn() ?: 0);
+            if ($idCliente > 0) return $idCliente;
+        }
+
+        $porCorreo = $this->conexion->prepare(
+            'SELECT idCliente FROM cliente WHERE LOWER(email)=LOWER(:email) LIMIT 1'
+        );
+        $porCorreo->execute(['email' => $email]);
+        $idCliente = (int) ($porCorreo->fetchColumn() ?: 0);
+        if ($idCliente > 0) return $idCliente;
+
+        // Una cuenta de cliente sin perfil no se inventa: debe registrarse por
+        // el circuito normal. Las cuentas de personal sí pueden atender o
+        // preparar una estadía sin modificar su rol.
+        if (empty($usuario['id_usuario'])) {
+            throw new RuntimeException('No encontramos el perfil de estadía de esta cuenta. Iniciá sesión nuevamente o contactá al complejo.');
+        }
+
+        $datosUsuario = $this->conexion->prepare(
+            'SELECT nombre, apellido, email FROM usuarios WHERE LOWER(email)=LOWER(:email) LIMIT 1'
+        );
+        $datosUsuario->execute(['email' => $email]);
+        $datos = $datosUsuario->fetch() ?: [];
+        $nombre = trim((string) ($datos['nombre'] ?? $usuario['nombre'] ?? 'Personal'));
+        $apellido = trim((string) ($datos['apellido'] ?? 'El Molino'));
+        if ($nombre === '') $nombre = 'Personal';
+        if ($apellido === '') $apellido = 'El Molino';
+
+        // Se deriva una base numérica del correo para que también funcione si
+        // el identificador del empleado contiene letras, por ejemplo EMP000001.
+        $secuencia = (int) (sprintf('%u', crc32($email)) % 10000000);
+        for ($intento = 0; $intento < 30; $intento++) {
+            $dni = 80000000 + (($secuencia + $intento) % 10000000);
+            $telefono = 1100000000 + (($secuencia + $intento) % 90000000);
+            $campos = ['dni', 'nombre', 'apellido', 'telefono', 'email', 'direccion'];
+            $marcadores = [':dni', ':nombre', ':apellido', ':telefono', ':email', ':direccion'];
+            $parametros = [
+                'dni' => (string) $dni,
+                'nombre' => substr($nombre, 0, 50),
+                'apellido' => substr($apellido, 0, 50),
+                'telefono' => (string) $telefono,
+                'email' => $email,
+                'direccion' => 'Perfil de estadía creado para atención interna',
+            ];
+            if ($this->clienteTienePasswordHash()) {
+                $campos[] = 'password_hash';
+                $marcadores[] = ':password_hash';
+                // No cambia la contraseña de personal: este hash aleatorio solo
+                // satisface esquemas antiguos que exigen el campo en cliente.
+                $parametros['password_hash'] = password_hash(bin2hex(random_bytes(16)), PASSWORD_DEFAULT);
+            }
+
+            try {
+                $insertar = $this->conexion->prepare(
+                    'INSERT INTO cliente (' . implode(',', $campos) . ') VALUES (' . implode(',', $marcadores) . ')'
+                );
+                $insertar->execute($parametros);
+                return (int) $this->conexion->lastInsertId();
+            } catch (PDOException $error) {
+                // Si la reserva fue creada por otra solicitud al mismo tiempo,
+                // recuperar ese perfil antes de probar el siguiente número.
+                $porCorreo->execute(['email' => $email]);
+                $idCliente = (int) ($porCorreo->fetchColumn() ?: 0);
+                if ($idCliente > 0) return $idCliente;
+                $codigoMotor = (int) (($error->errorInfo ?? [])[1] ?? 0);
+                if ($codigoMotor !== 1062) throw $error;
+            }
+        }
+
+        throw new RuntimeException('No pudimos preparar el perfil de estadía para esta cuenta. Volvé a intentarlo.');
+    }
+
+    /** Indica si la base actual posee la columna usada por las cuentas cliente nuevas. */
+    private function clienteTienePasswordHash(): bool
+    {
+        if ($this->columnaPasswordHashCliente !== null) return $this->columnaPasswordHashCliente;
+        $consulta = $this->conexion->prepare(
+            "SELECT 1 FROM information_schema.COLUMNS
+              WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='cliente' AND COLUMN_NAME='password_hash'
+              LIMIT 1"
+        );
+        $consulta->execute();
+        return $this->columnaPasswordHashCliente = (bool) $consulta->fetchColumn();
+    }
+
+    /**
      * Crea pedido a partir de los datos recibidos.
      *
      * @param mixed $usuario Valor de usuario que recibe la función.
@@ -434,13 +542,7 @@ final class GestorCarritoAlojamiento
         $carrito = $this->carrito();
         if (!$carrito) throw new RuntimeException('El carrito está vacío.');
 
-        $idCliente = (int) ($usuario['id_cliente'] ?? 0);
-        if ($idCliente <= 0) {
-            $consultaCliente = $this->conexion->prepare('SELECT idCliente FROM cliente WHERE email = :email LIMIT 1');
-            $consultaCliente->execute(['email' => (string) ($usuario['email'] ?? '')]);
-            $idCliente = (int) ($consultaCliente->fetchColumn() ?: 0);
-        }
-        if ($idCliente <= 0) throw new RuntimeException('La cuenta no está vinculada a un perfil de cliente. Contactá al complejo para continuar.');
+        $idCliente = $this->resolverPerfilCliente($usuario);
 
         // Esta función anónima procesa cada elemento recibido sin crear un método público adicional.
         uasort($carrito, static function (array $a, array $b): int {
@@ -502,7 +604,7 @@ final class GestorCarritoAlojamiento
             }
 
             $senaCentavos = (int) round($totalCentavos * self::PORCENTAJE_SENA / 100);
-            $ahora = new DateTimeImmutable('now', new DateTimeZone(self::ZONA_HORARIA));
+            $ahora = RelojDemostracion::ahora($this->conexion);
             // Una pre-reserva sin seña no puede inmovilizar un alojamiento por horas o días.
             $fechaLimiteSena = $ahora->modify('+30 minutes');
             $crearPedido = $this->conexion->prepare(
@@ -846,7 +948,7 @@ final class GestorCarritoAlojamiento
         if (!$entradaValida || !$salidaValida || !$fechaEntrada || !$fechaSalida) {
             throw new RuntimeException('Ingresá fechas válidas para la estadía.');
         }
-        $hoy = new DateTimeImmutable('today', $zona);
+        $hoy = RelojDemostracion::ahora($this->conexion)->setTime(0, 0);
         if ($fechaEntrada < $hoy || $fechaSalida <= $fechaEntrada) {
             throw new RuntimeException('La salida debe ser posterior al ingreso y las fechas no pueden ser pasadas.');
         }

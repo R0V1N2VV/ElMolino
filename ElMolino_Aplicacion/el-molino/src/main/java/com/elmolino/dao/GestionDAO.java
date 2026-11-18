@@ -2,6 +2,7 @@ package com.elmolino.dao;
 
 import com.elmolino.util.Conexion;
 import com.elmolino.util.Config;
+import com.elmolino.util.RelojDemostracion;
 import com.elmolino.util.SeguridadPassword;
 import com.elmolino.util.SesionActual;
 
@@ -17,20 +18,29 @@ import java.sql.Time;
 import java.sql.Timestamp;
 import java.text.NumberFormat;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /** Reune las consultas y reglas para los modulos de gestion. */
 public final class GestionDAO {
 
     private static final LocalTime HORA_INGRESO = LocalTime.of(14, 0);
     private static final LocalTime HORA_EGRESO = LocalTime.of(10, 0);
+    private static final Pattern HORARIO_CON_FIN = Pattern.compile(
+            "\\b([01]?\\d|2[0-3]):([0-5]\\d)\\s*(?:a|hasta|-)\\s*([01]?\\d|2[0-3]):([0-5]\\d)\\b",
+            Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
 
     public enum Operacion { CREAR, EDITAR, ELIMINAR }
 
@@ -146,7 +156,7 @@ public final class GestionDAO {
             texto("descripcionCorta", "Descripción breve", false),
             texto("descripcion", "Descripción completa", true), texto("requisitos", "Requisitos", false),
             texto("informacionImportante", "Información importante", false),
-            texto("horario", "Horario", true), texto("dias", "Días", false),
+            texto("horario", "Horario", true), texto("dias", "Días", true),
             opcionOpcional("momentoDia", "Momento del día", List.of("manana", "tarde", "noche")),
             texto("Duracion", "Duración", true), texto("sector", "Sector", false),
             texto("responsable", "Responsable", false),
@@ -154,7 +164,7 @@ public final class GestionDAO {
             opcion("modalidad", "Modalidad", List.of("incluida", "inscripcion")),
             booleano("activa", "Actividad activa"),
             relacionOpcional("idEspacio", "Espacio (opcional)", "SELECT idEspacio, nombre FROM `EspacioRecreativo` ORDER BY nombre"),
-            entero("cupoMax", "Cupo máximo"), decimal("precio", "Precio"), texto("pago", "Forma de pago", true)));
+            entero("cupoMax", "Cupo máximo"), decimal("precio", "Precio")));
 
     public static final Modulo RESERVAS = new Modulo("Reservas", "reservas", "idReserva", List.of(
             relacion("idCliente", "Cliente", "SELECT idCliente, CONCAT(apellido, ', ', nombre, ' - DNI ', dni) FROM `cliente` ORDER BY apellido, nombre"),
@@ -222,7 +232,9 @@ public final class GestionDAO {
             case CREAR -> switch (rol) {
                 case "SUPERADMIN" -> tieneAccesoTabla(tabla, rol) && !"cliente".equals(tabla);
                 case "ADMINISTRADOR" -> "usuarios".equals(tabla) || "pago".equals(tabla);
-                case "COORDINADOR" -> "inscripcionActividad".equals(tabla);
+                // Coordinación crea y organiza las actividades, además de
+                // poder cargar inscripciones manuales cuando corresponde.
+                case "COORDINADOR" -> List.of("Actividad", "inscripcionActividad").contains(tabla);
                 case "ADMINISTRACION" -> "reservaAcompañante".equals(tabla) || "pago".equals(tabla);
                 case "RECEPCION", "GERENCIA" -> "pago".equals(tabla);
                 default -> false;
@@ -242,12 +254,88 @@ public final class GestionDAO {
                 + " registros de " + seccion + ".");
     }
 
+    /**
+     * Indica si la sesión actual puede mostrar una acción de alta, edición o baja.
+     * La ventana usa esta misma regla que protege el DAO, para no ofrecer botones
+     * que de todas maneras serían rechazados al intentar usarlos.
+     */
+    public static boolean puedeEscribir(Modulo modulo, Operacion operacion) {
+        try {
+            validarAcceso(modulo);
+            validarPermisoEscritura(modulo.tabla(), modulo.titulo(), operacion);
+            return true;
+        } catch (SQLException error) {
+            return false;
+        }
+    }
+
+    /**
+     * Cambia el estado operativo de una unidad desde Recepción o Limpieza.
+     * El motivo no altera la tabla de alojamientos: se guarda junto al cambio
+     * en la auditoría para saber quién lo realizó, cuándo y por qué.
+     */
+    public static void cambiarEstadoAlojamiento(int idAlojamiento, String nuevoEstado, String motivo) throws SQLException {
+        validarAcceso(ALOJAMIENTOS);
+        validarPermisoEscritura("alojamientos", ALOJAMIENTOS.titulo(), Operacion.EDITAR);
+        boolean limpieza = esLimpieza();
+        boolean recepcion = esRecepcion();
+        if (!limpieza && !recepcion && !esSuperAdmin()) {
+            throw new SQLException("Solo Recepción, Limpieza o SuperAdmin pueden actualizar el estado operativo.");
+        }
+        motivo = motivo == null ? "" : motivo.trim();
+        try (Connection conexion = Conexion.obtener()) {
+            conexion.setAutoCommit(false);
+            try {
+                String numero;
+                String estadoAnterior;
+                try (PreparedStatement consulta = conexion.prepareStatement(
+                        "SELECT numero,estado FROM alojamientos WHERE idAlojamiento=? FOR UPDATE")) {
+                    consulta.setInt(1, idAlojamiento);
+                    try (ResultSet resultados = consulta.executeQuery()) {
+                        if (!resultados.next()) throw new IllegalArgumentException("El alojamiento seleccionado no existe.");
+                        numero = resultados.getString("numero");
+                        estadoAnterior = resultados.getString("estado");
+                    }
+                }
+                validarEstadoOperativo(nuevoEstado, limpieza, recepcion);
+                if (recepcion && List.of("En mantenimiento", "Fuera de servicio").contains(nuevoEstado) && motivo.isBlank()) {
+                    throw new IllegalArgumentException("Indicá el motivo antes de dejar un alojamiento fuera de servicio.");
+                }
+                if (!Objects.equals(estadoAnterior, nuevoEstado)) {
+                    try (PreparedStatement actualizar = conexion.prepareStatement(
+                            "UPDATE alojamientos SET estado=? WHERE idAlojamiento=?")) {
+                        actualizar.setString(1, nuevoEstado);
+                        actualizar.setInt(2, idAlojamiento);
+                        actualizar.executeUpdate();
+                    }
+                    Map<String, Object> anterior = new LinkedHashMap<>();
+                    anterior.put("numero", numero);
+                    anterior.put("estado", estadoAnterior);
+                    Map<String, Object> nuevo = new LinkedHashMap<>();
+                    nuevo.put("numero", numero);
+                    nuevo.put("estado", nuevoEstado);
+                    if (!motivo.isBlank()) nuevo.put("motivo", motivo);
+                    AuditoriaDAO.registrar(conexion, "CAMBIAR_ESTADO", "Alojamientos",
+                            Integer.toString(idAlojamiento), anterior, nuevo);
+                }
+                conexion.commit();
+            } catch (Exception error) {
+                conexion.rollback();
+                if (error instanceof SQLException sql) throw sql;
+                if (error instanceof IllegalArgumentException argumento) throw argumento;
+                throw new SQLException("No se pudo actualizar el estado del alojamiento", error);
+            } finally {
+                conexion.setAutoCommit(true);
+            }
+        }
+    }
+
     /** Cuenta las transferencias informadas que todavía requieren revisión humana. */
     public static int contarSeniasPorConfirmar() throws SQLException {
         try (Connection conexion = Conexion.obtener(); PreparedStatement sentencia = conexion.prepareStatement(
                 "SELECT COUNT(DISTINCT d.idPedido) FROM pago p JOIN detalle_pedido_alojamiento d ON d.idReserva=p.idReserva "
-                        + "JOIN pedido_alojamiento pa ON pa.idPedido=d.idPedido WHERE p.tipoPago='SENA' AND p.estado='PENDIENTE' "
-                        + "AND pa.estadoPago='SENA_INFORMADA'" ); ResultSet resultados = sentencia.executeQuery()) {
+                        + "WHERE UPPER(p.tipoPago)='SENA' AND UPPER(p.estado)='PENDIENTE'" );
+             ResultSet resultados = sentencia.executeQuery()) {
             return resultados.next() ? resultados.getInt(1) : 0;
         }
     }
@@ -366,16 +454,19 @@ public final class GestionDAO {
             try {
                 ResumenCobroFinal resumen = leerResumenCobroFinal(conexion, idReserva, true);
                 int idPedido = pedidoDeReserva(conexion, idReserva);
+                List<Map<String, Object>> estadosAntesDeLimpieza = estadosAlojamientoPedido(conexion, idPedido);
                 try (PreparedStatement insertar = conexion.prepareStatement(
-                        "INSERT INTO pago(idReserva,montoTotal,metodoPago,tipoPago,estado,fechaPago,comprobante) VALUES (?,?,? ,?, 'CONFIRMADO',CURRENT_DATE,?)")) {
+                        "INSERT INTO pago(idReserva,montoTotal,metodoPago,tipoPago,estado,fechaPago,comprobante) VALUES (?,?,? ,?, 'CONFIRMADO',?,?)")) {
                     if (resumen.saldoAlojamiento().signum() > 0) {
                         insertar.setInt(1, idReserva); insertar.setBigDecimal(2, resumen.saldoAlojamiento());
-                        insertar.setString(3, metodoPago); insertar.setString(4, "SALDO"); insertar.setString(5, comprobante);
+                        insertar.setString(3, metodoPago); insertar.setString(4, "SALDO");
+                        insertar.setDate(5, Date.valueOf(fechaOperativa())); insertar.setString(6, comprobante);
                         insertar.executeUpdate();
                     }
                     if (resumen.actividadesPendientes().signum() > 0) {
                         insertar.setInt(1, idReserva); insertar.setBigDecimal(2, resumen.actividadesPendientes());
-                        insertar.setString(3, metodoPago); insertar.setString(4, "ACTIVIDAD"); insertar.setString(5, comprobante);
+                        insertar.setString(3, metodoPago); insertar.setString(4, "ACTIVIDAD");
+                        insertar.setDate(5, Date.valueOf(fechaOperativa())); insertar.setString(6, comprobante);
                         insertar.executeUpdate();
                     }
                 }
@@ -388,17 +479,29 @@ public final class GestionDAO {
                 try (PreparedStatement finalizar = conexion.prepareStatement(
                         "UPDATE reservas r JOIN detalle_pedido_alojamiento d ON d.idReserva=r.idReserva "
                         + "SET r.estadoReserva='FINALIZADA', r.estadoLlegada='FINALIZADA', "
-                        + "r.checkOutReal=COALESCE(r.checkOutReal,NOW()) "
+                        + "r.checkOutReal=COALESCE(r.checkOutReal,?) "
                         + "WHERE d.idPedido=? AND UPPER(r.estadoReserva)='CONFIRMADA'")) {
-                    finalizar.setInt(1, idPedido); finalizar.executeUpdate();
+                    finalizar.setTimestamp(1, momentoOperativo());
+                    finalizar.setInt(2, idPedido);
+                    finalizar.executeUpdate();
                 }
                 // Al cerrar la estadía, el alojamiento deja de estar ocupado y pasa a limpieza.
                 // No se lo libera automáticamente: el personal de limpieza debe marcarlo como Disponible.
                 try (PreparedStatement limpieza = conexion.prepareStatement(
                         "UPDATE alojamientos a JOIN reservas r ON r.idAlojamiento=a.idAlojamiento "
                         + "JOIN detalle_pedido_alojamiento d ON d.idReserva=r.idReserva "
-                        + "SET a.estado='En limpieza' WHERE d.idPedido=?")) {
+                        + "SET a.estado='En limpieza' WHERE d.idPedido=? "
+                        + "AND a.estado NOT IN ('En mantenimiento','Fuera de servicio')")) {
                     limpieza.setInt(1, idPedido); limpieza.executeUpdate();
+                }
+                for (Map<String, Object> anterior : estadosAntesDeLimpieza) {
+                    String estadoAnterior = String.valueOf(anterior.get("estado"));
+                    if (List.of("En limpieza", "En mantenimiento", "Fuera de servicio").contains(estadoAnterior)) continue;
+                    Map<String, Object> nuevo = new LinkedHashMap<>(anterior);
+                    nuevo.put("estado", "En limpieza");
+                    nuevo.put("motivo", "Check-out registrado");
+                    AuditoriaDAO.registrar(conexion, "CAMBIAR_ESTADO", "Alojamientos",
+                            String.valueOf(anterior.get("idAlojamiento")), anterior, nuevo);
                 }
                 sincronizarPedidoPorId(conexion, idPedido);
                 AuditoriaDAO.registrar(conexion, "COBRAR_SALDO", "Pagos", Integer.toString(idReserva), Map.of(),
@@ -427,6 +530,9 @@ public final class GestionDAO {
                 + " FROM " + q(modulo.tabla());
         if ("usuarios".equals(modulo.tabla())) {
             consultaSql += " WHERE UPPER(rol) IN (" + String.join(",", java.util.Collections.nCopies(UsuarioDAO.ROLES_EMPLEADO.size(), "?")) + ")";
+        } else if ("alojamientos".equals(modulo.tabla()) && esLimpieza()) {
+            // Limpieza solo ve las unidades pendientes después de un check-out.
+            consultaSql += " WHERE estado='En limpieza'";
         }
         consultaSql += " ORDER BY " + q(modulo.id()) + " DESC";
         List<Object[]> filas = new ArrayList<>();
@@ -663,7 +769,7 @@ public final class GestionDAO {
                     if (esRecepcion()) validarEstadoLlegada(conexion, id, String.valueOf(datos.get("estadoLlegada")));
                     else validarReserva(conexion, datos, id);
                 }
-                if ("Actividad".equals(modulo.tabla())) validarActividad(datos);
+                if ("Actividad".equals(modulo.tabla())) validarActividad(conexion, datos, id);
                 if ("inscripcionActividad".equals(modulo.tabla()) && id == null) validarCupo(conexion, datos);
                 if (rolCoordinador && "inscripcionActividad".equals(modulo.tabla()) && id != null) {
                     validarRegistroAsistencia(conexion, id);
@@ -758,6 +864,10 @@ public final class GestionDAO {
             cancelarInscripcionActividad(id);
             return;
         }
+        if ("Actividad".equals(modulo.tabla())) {
+            darDeBajaActividad(id);
+            return;
+        }
         if (esRecepcion() && "alojamientos".equals(modulo.tabla())) {
             throw new SQLException("Recepción no puede eliminar alojamientos.");
         }
@@ -774,18 +884,6 @@ public final class GestionDAO {
         }
         if (esLimpieza() && "alojamientos".equals(modulo.tabla())) {
             throw new SQLException("El rol Limpieza no puede eliminar habitaciones.");
-        }
-        if ("Actividad".equals(modulo.tabla())) {
-            try (Connection conexion = Conexion.obtener();
-                 PreparedStatement sentencia = conexion.prepareStatement(
-                         "SELECT COUNT(*) FROM inscripcionActividad WHERE idActividad = ?")) {
-                sentencia.setInt(1, id);
-                try (ResultSet resultados = sentencia.executeQuery()) {
-                    if (resultados.next() && resultados.getInt(1) > 0) {
-                        throw new SQLException("No se puede eliminar una actividad que tiene inscripciones.");
-                    }
-                }
-            }
         }
         String consultaSql = "DELETE FROM " + q(modulo.tabla()) + " WHERE " + q(modulo.id()) + " = ?";
         try (Connection conexion = Conexion.obtener()) {
@@ -825,6 +923,87 @@ public final class GestionDAO {
                         || !UsuarioDAO.ROLES_EMPLEADO.contains(resultados.getString(1).toUpperCase(Locale.ROOT))) {
                     throw new SQLException("Solo se pueden editar o eliminar cuentas del personal de la aplicación.");
                 }
+            }
+        }
+    }
+
+    /**
+     * Da de baja una actividad sin borrar su historial. Las inscripciones de
+     * fechas futuras, sus acompañantes y sus cargos pendientes se anulan en la
+     * misma transacción para que un cupo no quede bloqueado por error.
+     */
+    private static void darDeBajaActividad(int idActividad) throws SQLException {
+        try (Connection conexion = Conexion.obtener()) {
+            conexion.setAutoCommit(false);
+            try {
+                Map<String, Object> anterior = AuditoriaDAO.capturar(
+                        conexion, "Actividad", "idActividad", idActividad);
+                try (PreparedStatement actividad = conexion.prepareStatement(
+                        "SELECT idActividad FROM Actividad WHERE idActividad=? AND activa=1 FOR UPDATE")) {
+                    actividad.setInt(1, idActividad);
+                    try (ResultSet resultado = actividad.executeQuery()) {
+                        if (!resultado.next()) {
+                            throw new SQLException("La actividad no existe o ya fue dada de baja.");
+                        }
+                    }
+                }
+
+                Date hoy = Date.valueOf(fechaOperativa());
+                try (PreparedStatement cargos = conexion.prepareStatement(
+                        "UPDATE cargo_actividad ca JOIN inscripcionActividad ia ON ia.idInscripcion=ca.idInscripcion "
+                                + "SET ca.estado='ANULADO',ca.anuladoEn=NOW(),ca.actualizadoEn=NOW() "
+                                + "WHERE ia.idActividad=? AND ia.fechaActividad>=? "
+                                + "AND UPPER(ia.estado)='ACTIVA' AND UPPER(ca.estado)='PENDIENTE'")) {
+                    cargos.setInt(1, idActividad);
+                    cargos.setDate(2, hoy);
+                    cargos.executeUpdate();
+                }
+                try (PreparedStatement acompanantes = conexion.prepareStatement(
+                        "UPDATE inscripcionActividadAcompanante iaa JOIN inscripcionActividad ia "
+                                + "ON ia.idCliente=iaa.idClienteTitular AND ia.idActividad=iaa.idActividad "
+                                + "AND ia.fechaActividad=iaa.fechaActividad "
+                                + "SET iaa.activo=0,iaa.canceladaEn=NOW() WHERE ia.idActividad=? "
+                                + "AND ia.fechaActividad>=? AND UPPER(ia.estado)='ACTIVA' AND iaa.activo=1")) {
+                    acompanantes.setInt(1, idActividad);
+                    acompanantes.setDate(2, hoy);
+                    acompanantes.executeUpdate();
+                }
+                try (PreparedStatement inscripciones = conexion.prepareStatement(
+                        "UPDATE inscripcionActividad SET estado='CANCELADA',canceladaEn=NOW(),"
+                                + "motivoCancelacion='ACTIVIDAD_CANCELADA_POR_COORDINACION' "
+                                + "WHERE idActividad=? AND fechaActividad>=? AND UPPER(estado)='ACTIVA'")) {
+                    inscripciones.setInt(1, idActividad);
+                    inscripciones.setDate(2, hoy);
+                    inscripciones.executeUpdate();
+                }
+
+                // La tabla de espera pertenece a una actualización posterior;
+                // una instalación antigua no debe impedir la baja de la actividad.
+                try (Statement tablas = conexion.createStatement();
+                     ResultSet existe = tablas.executeQuery("SHOW TABLES LIKE 'listaEsperaActividad'")) {
+                    if (existe.next()) {
+                        try (PreparedStatement espera = conexion.prepareStatement(
+                                "UPDATE listaEsperaActividad SET estado='CANCELADA',canceladaEn=NOW() "
+                                        + "WHERE idActividad=? AND estado='PENDIENTE'")) {
+                            espera.setInt(1, idActividad);
+                            espera.executeUpdate();
+                        }
+                    }
+                }
+                try (PreparedStatement baja = conexion.prepareStatement(
+                        "UPDATE Actividad SET activa=0 WHERE idActividad=?")) {
+                    baja.setInt(1, idActividad);
+                    baja.executeUpdate();
+                }
+                AuditoriaDAO.registrar(conexion, "BAJA", "Actividades", Integer.toString(idActividad),
+                        anterior, AuditoriaDAO.capturar(conexion, "Actividad", "idActividad", idActividad));
+                conexion.commit();
+            } catch (Exception error) {
+                conexion.rollback();
+                if (error instanceof SQLException sql) throw sql;
+                throw new SQLException("No se pudo dar de baja la actividad", error);
+            } finally {
+                conexion.setAutoCommit(true);
             }
         }
     }
@@ -904,16 +1083,69 @@ public final class GestionDAO {
     public static void vencerPedidosPendientes() throws SQLException {
         try(Connection conexion=Conexion.obtener()){
             conexion.setAutoCommit(false);
-            try(PreparedStatement s=conexion.prepareStatement(
-                    "UPDATE pedido_alojamiento pa LEFT JOIN (SELECT d.idPedido,SUM(CASE WHEN p.estado='CONFIRMADO' AND p.tipoPago IN ('SENA','SALDO') THEN p.montoTotal ELSE 0 END) pagado FROM detalle_pedido_alojamiento d LEFT JOIN pago p ON p.idReserva=d.idReserva GROUP BY d.idPedido) x ON x.idPedido=pa.idPedido "
-                            + "SET pa.estadoPedido='VENCIDO',pa.estadoPago='VENCIDO',pa.canceladoEn=NOW() WHERE pa.fechaLimiteSena<NOW() AND pa.estadoPedido IN ('ESPERANDO_SENA','PENDIENTE') AND pa.estadoPago='SENA_PENDIENTE' AND COALESCE(x.pagado,0)<pa.montoSena")){
-                s.executeUpdate();
+            try {
+                Set<Integer> clientesAfectados = new LinkedHashSet<>();
+                Timestamp momento = momentoOperativo();
+                try (PreparedStatement s = conexion.prepareStatement(
+                        "SELECT pa.idCliente FROM pedido_alojamiento pa WHERE "
+                                + "((pa.fechaLimiteSena<? AND pa.estadoPedido IN ('ESPERANDO_SENA','PENDIENTE') "
+                                + "AND pa.estadoPago='SENA_PENDIENTE' AND (SELECT COALESCE(SUM(p.montoTotal),0) "
+                                + "FROM detalle_pedido_alojamiento d JOIN pago p ON p.idReserva=d.idReserva "
+                                + "WHERE d.idPedido=pa.idPedido AND p.estado='CONFIRMADO' AND p.tipoPago IN ('SENA','SALDO'))<pa.montoSena) "
+                                + "OR (pa.estadoPago='SENA_INFORMADA' AND pa.fechaLimiteRevisionSena IS NOT NULL "
+                                + "AND pa.fechaLimiteRevisionSena<?)) FOR UPDATE")) {
+                    s.setTimestamp(1, momento);
+                    s.setTimestamp(2, momento);
+                    try (ResultSet r = s.executeQuery()) {
+                        while (r.next()) clientesAfectados.add(r.getInt(1));
+                    }
+                }
+                try(PreparedStatement s=conexion.prepareStatement(
+                        "UPDATE pedido_alojamiento pa LEFT JOIN (SELECT d.idPedido,SUM(CASE WHEN p.estado='CONFIRMADO' AND p.tipoPago IN ('SENA','SALDO') THEN p.montoTotal ELSE 0 END) pagado FROM detalle_pedido_alojamiento d LEFT JOIN pago p ON p.idReserva=d.idReserva GROUP BY d.idPedido) x ON x.idPedido=pa.idPedido "
+                                + "SET pa.estadoPedido='VENCIDO',pa.estadoPago='VENCIDO',pa.canceladoEn=? WHERE pa.fechaLimiteSena<? AND pa.estadoPedido IN ('ESPERANDO_SENA','PENDIENTE') AND pa.estadoPago='SENA_PENDIENTE' AND COALESCE(x.pagado,0)<pa.montoSena")){
+                    s.setTimestamp(1, momento);
+                    s.setTimestamp(2, momento);
+                    s.executeUpdate();
+                }
+                try(PreparedStatement s=conexion.prepareStatement("UPDATE reservas r JOIN detalle_pedido_alojamiento d ON d.idReserva=r.idReserva JOIN pedido_alojamiento pa ON pa.idPedido=d.idPedido SET r.estadoReserva='CANCELADA' WHERE pa.estadoPedido='VENCIDO' AND UPPER(r.estadoReserva) NOT IN ('CANCELADA','CANCELADO','FINALIZADA')")){s.executeUpdate();}
+                try(PreparedStatement s=conexion.prepareStatement("UPDATE pedido_alojamiento SET estadoPedido='VENCIDO',estadoPago='PAGO_RECHAZADO',fechaLimiteRevisionSena=NULL,canceladoEn=? WHERE estadoPago='SENA_INFORMADA' AND fechaLimiteRevisionSena<?")){
+                    s.setTimestamp(1, momento);
+                    s.setTimestamp(2, momento);
+                    s.executeUpdate();
+                }
+                try(PreparedStatement s=conexion.prepareStatement("UPDATE pago p JOIN detalle_pedido_alojamiento d ON d.idReserva=p.idReserva JOIN pedido_alojamiento pa ON pa.idPedido=d.idPedido SET p.estado='ANULADO',p.observacion='La recepción no pudo confirmar la transferencia dentro de las 24 horas.' WHERE pa.estadoPago='PAGO_RECHAZADO' AND p.estado='PENDIENTE'")){s.executeUpdate();}
+                try(PreparedStatement s=conexion.prepareStatement("UPDATE reservas r JOIN detalle_pedido_alojamiento d ON d.idReserva=r.idReserva JOIN pedido_alojamiento pa ON pa.idPedido=d.idPedido SET r.estadoReserva='CANCELADA' WHERE pa.estadoPago='PAGO_RECHAZADO' AND UPPER(r.estadoReserva) NOT IN ('CANCELADA','CANCELADO','FINALIZADA')")){s.executeUpdate();}
+
+                // Si venció la estadía que habilitaba actividades, también se
+                // liberan sus cupos y se anulan los cargos aún pendientes.
+                for (int idCliente : clientesAfectados) {
+                    sincronizarActividadesCliente(conexion, idCliente);
+                }
+                repararAlojamientosPendientesDeLimpieza(conexion, momento);
+                conexion.commit();
+            } catch (Exception error) {
+                conexion.rollback();
+                if (error instanceof SQLException sql) throw sql;
+                throw new SQLException("No se pudieron vencer los pedidos pendientes", error);
+            } finally {
+                conexion.setAutoCommit(true);
             }
-            try(PreparedStatement s=conexion.prepareStatement("UPDATE reservas r JOIN detalle_pedido_alojamiento d ON d.idReserva=r.idReserva JOIN pedido_alojamiento pa ON pa.idPedido=d.idPedido SET r.estadoReserva='CANCELADA' WHERE pa.estadoPedido='VENCIDO' AND UPPER(r.estadoReserva) NOT IN ('CANCELADA','CANCELADO','FINALIZADA')")){s.executeUpdate();}
-            try(PreparedStatement s=conexion.prepareStatement("UPDATE pedido_alojamiento SET estadoPedido='VENCIDO',estadoPago='PAGO_RECHAZADO',fechaLimiteRevisionSena=NULL,canceladoEn=NOW() WHERE estadoPago='SENA_INFORMADA' AND fechaLimiteRevisionSena<NOW()")){s.executeUpdate();}
-            try(PreparedStatement s=conexion.prepareStatement("UPDATE pago p JOIN detalle_pedido_alojamiento d ON d.idReserva=p.idReserva JOIN pedido_alojamiento pa ON pa.idPedido=d.idPedido SET p.estado='ANULADO',p.observacion='La recepción no pudo confirmar la transferencia dentro de las 24 horas.' WHERE pa.estadoPago='PAGO_RECHAZADO' AND p.estado='PENDIENTE'")){s.executeUpdate();}
-            try(PreparedStatement s=conexion.prepareStatement("UPDATE reservas r JOIN detalle_pedido_alojamiento d ON d.idReserva=r.idReserva JOIN pedido_alojamiento pa ON pa.idPedido=d.idPedido SET r.estadoReserva='CANCELADA' WHERE pa.estadoPago='PAGO_RECHAZADO' AND UPPER(r.estadoReserva) NOT IN ('CANCELADA','CANCELADO','FINALIZADA')")){s.executeUpdate();}
-            conexion.commit();
+        }
+    }
+
+    /**
+     * Respaldo para reservas que ya fueron cerradas: si la aplicación se abrió
+     * luego del check-out, deja el alojamiento en limpieza sin liberarlo por
+     * accidente. Limpieza conserva la tarea de cambiarlo a Disponible.
+     */
+    private static void repararAlojamientosPendientesDeLimpieza(Connection conexion, Timestamp momento) throws SQLException {
+        try (PreparedStatement sentencia = conexion.prepareStatement(
+                "UPDATE alojamientos a JOIN reservas r ON r.idAlojamiento=a.idAlojamiento "
+                        + "SET a.estado='En limpieza' WHERE a.estado='Ocupado' "
+                        + "AND UPPER(r.estadoReserva)='FINALIZADA' "
+                        + "AND (r.checkOutReal IS NOT NULL OR r.fechaEgreso<=?)")) {
+            sentencia.setDate(1, Date.valueOf(momento.toLocalDateTime().toLocalDate()));
+            sentencia.executeUpdate();
         }
     }
 
@@ -1220,6 +1452,10 @@ public final class GestionDAO {
      * fecha de demostración. Nunca modifica el reloj de la computadora ni la base.
      */
     private static LocalDate fechaOperativa() {
+        // El reloj definido por Superadmin en la web tiene prioridad porque es
+        // compartido por los dos sistemas durante una exposición.
+        var demostracion = RelojDemostracion.obtenerActivo();
+        if (demostracion.isPresent()) return demostracion.get().fecha();
         String configurada = Config.getOrDefault("app.fecha_prueba", "");
         if (configurada.isBlank()) return LocalDate.now();
         try {
@@ -1231,6 +1467,8 @@ public final class GestionDAO {
 
     /** Devuelve la hora real o la hora de demostración indicada en la configuración local. */
     private static LocalTime horaOperativa() {
+        var demostracion = RelojDemostracion.obtenerActivo();
+        if (demostracion.isPresent()) return demostracion.get().hora();
         String configurada = Config.getOrDefault("app.hora_prueba", "");
         if (configurada.isBlank()) return LocalTime.now().withSecond(0).withNano(0);
         try {
@@ -1238,6 +1476,11 @@ public final class GestionDAO {
         } catch (java.time.format.DateTimeParseException error) {
             throw new IllegalStateException("app.hora_prueba debe tener el formato HH:MM.", error);
         }
+    }
+
+    /** Forma una marca de tiempo coherente con el reloj de demostración activo. */
+    private static Timestamp momentoOperativo() {
+        return Timestamp.valueOf(LocalDateTime.of(fechaOperativa(), horaOperativa()));
     }
 
     /**
@@ -1253,31 +1496,191 @@ public final class GestionDAO {
                 if (resultados.next() && nuevoEstado.equals(resultados.getString(1))) return;
             }
         }
-        List<String> estadosPermitidos = rolLimpieza
-                ? List.of("En limpieza", "Disponible")
-                : List.of("Disponible", "Reservado", "Ocupado", "En mantenimiento", "Fuera de servicio");
-        if (!estadosPermitidos.contains(nuevoEstado)) {
-            throw new SQLException(rolLimpieza
-                    ? "Limpieza solo puede marcar un alojamiento como En limpieza o Disponible."
-                    : "Recepción solo puede elegir Disponible, Reservado, Ocupado, En mantenimiento o Fuera de servicio.");
+        validarEstadoOperativo(nuevoEstado, rolLimpieza, !rolLimpieza);
+    }
+
+    /** Centraliza los estados que cada equipo puede establecer manualmente. */
+    private static void validarEstadoOperativo(String nuevoEstado, boolean rolLimpieza, boolean rolRecepcion) {
+        if (rolLimpieza && !"Disponible".equals(nuevoEstado)) {
+            throw new IllegalArgumentException("Limpieza solo puede finalizar una unidad y marcarla como Disponible.");
+        }
+        if (rolRecepcion && !List.of("Disponible", "En mantenimiento", "Fuera de servicio").contains(nuevoEstado)) {
+            throw new IllegalArgumentException("Recepción solo puede habilitar una unidad o ponerla en mantenimiento/fuera de servicio.");
+        }
+    }
+
+    /**
+     * Registra el resultado de una fecha concreta de una actividad recurrente.
+     * No desactiva la actividad completa: por ejemplo, una clase de los lunes
+     * puede suspenderse hoy y continuar disponible el lunes siguiente.
+     *
+     * Al suspender, las inscripciones quedan conservadas como historial, se
+     * liberan los acompañantes y se anulan solamente los cargos pendientes.
+     */
+    public static void registrarCierreActividad(
+            int idActividad, String fechaTexto, String estadoCierre, String motivo
+    ) throws SQLException {
+        if (!esCoordinador() && !esSuperAdmin()) {
+            throw new SQLException("Solo Coordinación o SuperAdmin pueden cerrar una actividad.");
+        }
+        final LocalDate fecha;
+        try {
+            fecha = LocalDate.parse(fechaTexto == null ? "" : fechaTexto.trim());
+        } catch (java.time.format.DateTimeParseException error) {
+            throw new IllegalArgumentException("Ingresá una fecha válida con el formato AAAA-MM-DD.", error);
+        }
+        String cierre = estadoCierre == null ? "" : estadoCierre.trim().toUpperCase(Locale.ROOT);
+        if (!List.of("REALIZADA", "SUSPENDIDA").contains(cierre)) {
+            throw new IllegalArgumentException("Elegí si la actividad fue realizada o suspendida.");
+        }
+        if ("REALIZADA".equals(cierre) && fecha.isAfter(fechaOperativa())) {
+            throw new IllegalArgumentException("Una actividad solo puede marcarse como realizada el día en que ocurre o después.");
+        }
+        motivo = motivo == null ? "" : motivo.trim();
+        if ("SUSPENDIDA".equals(cierre) && motivo.isBlank()) {
+            throw new IllegalArgumentException("Indicá el motivo de la suspensión.");
+        }
+        if (motivo.length() > 500) {
+            throw new IllegalArgumentException("El motivo no puede superar los 500 caracteres.");
+        }
+
+        try (Connection conexion = Conexion.obtener()) {
+            conexion.setAutoCommit(false);
+            try {
+                String nombre;
+                try (PreparedStatement actividad = conexion.prepareStatement(
+                        "SELECT nombre,activa FROM Actividad WHERE idActividad=? FOR UPDATE")) {
+                    actividad.setInt(1, idActividad);
+                    try (ResultSet resultado = actividad.executeQuery()) {
+                        if (!resultado.next() || !resultado.getBoolean("activa")) {
+                            throw new IllegalArgumentException("La actividad seleccionada no existe o fue dada de baja.");
+                        }
+                        nombre = resultado.getString("nombre");
+                    }
+                }
+                try (PreparedStatement existente = conexion.prepareStatement(
+                        "SELECT estado FROM cierreActividad WHERE idActividad=? AND fechaActividad=? FOR UPDATE")) {
+                    existente.setInt(1, idActividad);
+                    existente.setDate(2, Date.valueOf(fecha));
+                    try (ResultSet resultado = existente.executeQuery()) {
+                        if (resultado.next()) {
+                            throw new IllegalArgumentException("Ya se registró esa jornada como "
+                                    + resultado.getString("estado").toLowerCase(Locale.ROOT) + ".");
+                        }
+                    }
+                }
+
+                if ("SUSPENDIDA".equals(cierre)) {
+                    try (PreparedStatement cargos = conexion.prepareStatement(
+                            "UPDATE cargo_actividad ca JOIN inscripcionActividad ia ON ia.idInscripcion=ca.idInscripcion "
+                                    + "SET ca.estado='ANULADO',ca.anuladoEn=?,ca.actualizadoEn=? "
+                                    + "WHERE ia.idActividad=? AND ia.fechaActividad=? "
+                                    + "AND UPPER(ia.estado)='ACTIVA' AND UPPER(ca.estado)='PENDIENTE'")) {
+                        Timestamp momento = momentoOperativo();
+                        cargos.setTimestamp(1, momento);
+                        cargos.setTimestamp(2, momento);
+                        cargos.setInt(3, idActividad);
+                        cargos.setDate(4, Date.valueOf(fecha));
+                        cargos.executeUpdate();
+                    }
+                    try (PreparedStatement acompanantes = conexion.prepareStatement(
+                            "UPDATE inscripcionActividadAcompanante iaa JOIN inscripcionActividad ia "
+                                    + "ON ia.idCliente=iaa.idClienteTitular AND ia.idActividad=iaa.idActividad "
+                                    + "AND ia.fechaActividad=iaa.fechaActividad "
+                                    + "SET iaa.activo=0,iaa.canceladaEn=? WHERE ia.idActividad=? "
+                                    + "AND ia.fechaActividad=? AND UPPER(ia.estado)='ACTIVA' AND iaa.activo=1")) {
+                        acompanantes.setTimestamp(1, momentoOperativo());
+                        acompanantes.setInt(2, idActividad);
+                        acompanantes.setDate(3, Date.valueOf(fecha));
+                        acompanantes.executeUpdate();
+                    }
+                    try (PreparedStatement inscripciones = conexion.prepareStatement(
+                            "UPDATE inscripcionActividad SET estado='CANCELADA',canceladaEn=?,"
+                                    + "motivoCancelacion='ACTIVIDAD_SUSPENDIDA_POR_COORDINACION' "
+                                    + "WHERE idActividad=? AND fechaActividad=? AND UPPER(estado)='ACTIVA'")) {
+                        inscripciones.setTimestamp(1, momentoOperativo());
+                        inscripciones.setInt(2, idActividad);
+                        inscripciones.setDate(3, Date.valueOf(fecha));
+                        inscripciones.executeUpdate();
+                    }
+                    try (Statement tablas = conexion.createStatement();
+                         ResultSet existe = tablas.executeQuery("SHOW TABLES LIKE 'listaEsperaActividad'")) {
+                        if (existe.next()) {
+                            try (PreparedStatement espera = conexion.prepareStatement(
+                                    "UPDATE listaEsperaActividad SET estado='CANCELADA',canceladaEn=? "
+                                            + "WHERE idActividad=? AND fechaActividad=? AND estado='PENDIENTE'")) {
+                                espera.setTimestamp(1, momentoOperativo());
+                                espera.setInt(2, idActividad);
+                                espera.setDate(3, Date.valueOf(fecha));
+                                espera.executeUpdate();
+                            }
+                        }
+                    }
+                }
+
+                try (PreparedStatement cierreNuevo = conexion.prepareStatement(
+                        "INSERT INTO cierreActividad (idActividad,fechaActividad,estado,motivo,cerradoEn,cerradoPor) "
+                                + "VALUES (?,?,?,?,?,?)")) {
+                    cierreNuevo.setInt(1, idActividad);
+                    cierreNuevo.setDate(2, Date.valueOf(fecha));
+                    cierreNuevo.setString(3, cierre);
+                    cierreNuevo.setString(4, motivo.isBlank() ? null : motivo);
+                    cierreNuevo.setTimestamp(5, momentoOperativo());
+                    cierreNuevo.setInt(6, SesionActual.get().getIdUsuario());
+                    cierreNuevo.executeUpdate();
+                }
+                AuditoriaDAO.registrar(conexion, "CERRAR_JORNADA", "Actividades",
+                        idActividad + ":" + fecha, Map.of(), Map.of(
+                                "actividad", nombre, "fecha", fecha.toString(), "estado", cierre,
+                                "motivo", motivo
+                        ));
+                conexion.commit();
+            } catch (Exception error) {
+                conexion.rollback();
+                if (error instanceof SQLException sql) throw sql;
+                if (error instanceof IllegalArgumentException argumento) throw argumento;
+                throw new SQLException("No se pudo registrar el cierre de la actividad", error);
+            } finally {
+                conexion.setAutoCommit(true);
+            }
         }
     }
 
     /** Evita marcar asistencia de una actividad que aún no ocurrió o fue cancelada. */
     private static void validarRegistroAsistencia(Connection conexion, int idInscripcion) throws SQLException {
         try (PreparedStatement sentencia = conexion.prepareStatement(
-                "SELECT ia.fechaActividad,ia.estado,a.activa FROM inscripcionActividad ia "
+                "SELECT ia.idActividad,ia.fechaActividad,ia.estado,a.activa FROM inscripcionActividad ia "
                         + "JOIN Actividad a ON a.idActividad=ia.idActividad WHERE ia.idInscripcion=? FOR UPDATE")) {
             sentencia.setInt(1, idInscripcion);
             try (ResultSet resultados = sentencia.executeQuery()) {
                 if (!resultados.next()) throw new IllegalArgumentException("La inscripción seleccionada no existe.");
-                Date fecha = resultados.getDate(1);
-                if (!"ACTIVA".equalsIgnoreCase(resultados.getString(2)) || !resultados.getBoolean(3)) {
+                int idActividad = resultados.getInt("idActividad");
+                Date fecha = resultados.getDate("fechaActividad");
+                if (!"ACTIVA".equalsIgnoreCase(resultados.getString("estado")) || !resultados.getBoolean("activa")) {
                     throw new IllegalArgumentException("No se puede registrar asistencia de una actividad cancelada.");
                 }
                 if (fecha != null && fecha.toLocalDate().isAfter(fechaOperativa())) {
                     throw new IllegalArgumentException("La asistencia se registra el día de la actividad o después.");
                 }
+                if (fecha != null && jornadaYaCerrada(conexion, idActividad, fecha)) {
+                    throw new IllegalArgumentException("La jornada ya fue cerrada. Registrá la asistencia antes de marcarla realizada.");
+                }
+            }
+        }
+    }
+
+    /** Comprueba si Coordinación ya registró el resultado de esa fecha. */
+    private static boolean jornadaYaCerrada(Connection conexion, int idActividad, Date fecha) throws SQLException {
+        try (Statement tablas = conexion.createStatement();
+             ResultSet existe = tablas.executeQuery("SHOW TABLES LIKE 'cierreActividad'")) {
+            if (!existe.next()) return false;
+        }
+        try (PreparedStatement consulta = conexion.prepareStatement(
+                "SELECT 1 FROM cierreActividad WHERE idActividad=? AND fechaActividad=? LIMIT 1")) {
+            consulta.setInt(1, idActividad);
+            consulta.setDate(2, fecha);
+            try (ResultSet resultado = consulta.executeQuery()) {
+                return resultado.next();
             }
         }
     }
@@ -1336,6 +1739,27 @@ public final class GestionDAO {
                 return resultados.getInt(1);
             }
         }
+    }
+
+    /** Obtiene los estados físicos afectados por un pedido antes de modificarlo. */
+    private static List<Map<String, Object>> estadosAlojamientoPedido(Connection conexion, int idPedido) throws SQLException {
+        List<Map<String, Object>> alojamientos = new ArrayList<>();
+        try (PreparedStatement consulta = conexion.prepareStatement(
+                "SELECT DISTINCT a.idAlojamiento,a.numero,a.estado FROM alojamientos a "
+                        + "JOIN reservas r ON r.idAlojamiento=a.idAlojamiento "
+                        + "JOIN detalle_pedido_alojamiento d ON d.idReserva=r.idReserva WHERE d.idPedido=? FOR UPDATE")) {
+            consulta.setInt(1, idPedido);
+            try (ResultSet resultados = consulta.executeQuery()) {
+                while (resultados.next()) {
+                    Map<String, Object> alojamiento = new LinkedHashMap<>();
+                    alojamiento.put("idAlojamiento", resultados.getInt("idAlojamiento"));
+                    alojamiento.put("numero", resultados.getString("numero"));
+                    alojamiento.put("estado", resultados.getString("estado"));
+                    alojamientos.add(alojamiento);
+                }
+            }
+        }
+        return alojamientos;
     }
 
     /** Lee el importe pendiente sin permitir que se cobre una estadía que aún no terminó. */
@@ -1415,28 +1839,37 @@ public final class GestionDAO {
         BigDecimal pagado = BigDecimal.ZERO;
         BigDecimal devuelto = BigDecimal.ZERO;
         BigDecimal reintegroPendiente = BigDecimal.ZERO;
+        int pagosPendientes = 0;
         try (PreparedStatement sentencia = conexion.prepareStatement(
                 "SELECT COALESCE(SUM(CASE WHEN p.estado='CONFIRMADO' AND p.tipoPago IN ('SENA','SALDO') THEN p.montoTotal ELSE 0 END),0), "
                         + "COALESCE((SELECT SUM(monto) FROM reembolso WHERE idPedido=? AND estado='CONFIRMADO'),0), "
-                        + "COALESCE((SELECT SUM(monto) FROM reembolso WHERE idPedido=? AND estado='PENDIENTE'),0) "
+                        + "COALESCE((SELECT SUM(monto) FROM reembolso WHERE idPedido=? AND estado='PENDIENTE'),0), "
+                        + "COALESCE(SUM(CASE WHEN p.estado='PENDIENTE' AND p.tipoPago='SENA' THEN 1 ELSE 0 END),0) "
                         + "FROM detalle_pedido_alojamiento d LEFT JOIN pago p ON p.idReserva=d.idReserva WHERE d.idPedido=?")) {
             sentencia.setInt(1,idPedido); sentencia.setInt(2,idPedido); sentencia.setInt(3,idPedido);
-            try (ResultSet resultados=sentencia.executeQuery()) { resultados.next(); pagado=resultados.getBigDecimal(1); devuelto=resultados.getBigDecimal(2); reintegroPendiente=resultados.getBigDecimal(3); }
+            try (ResultSet resultados=sentencia.executeQuery()) {
+                resultados.next();
+                pagado=resultados.getBigDecimal(1);
+                devuelto=resultados.getBigDecimal(2);
+                reintegroPendiente=resultados.getBigDecimal(3);
+                pagosPendientes=resultados.getInt(4);
+            }
         }
         BigDecimal neto = pagado.subtract(devuelto).max(BigDecimal.ZERO);
         boolean senaCompleta = activas > 0 && neto.compareTo(montoSena) >= 0;
         String nuevoEstadoPedido = activas == 0 ? "CANCELADO" : (senaCompleta ? "CONFIRMADO" : "ESPERANDO_SENA");
         String nuevoEstadoPago = activas == 0 ? (reintegroPendiente.signum()>0 || neto.signum()>0 ? "REEMBOLSO_PENDIENTE" : "CANCELADO")
-                : (reintegroPendiente.signum()>0 ? "REEMBOLSO_PENDIENTE" : (neto.compareTo(total)>=0 ? "PAGADO" : (senaCompleta ? "SENA_PAGADA" : "SENA_PENDIENTE")));
+                : (reintegroPendiente.signum()>0 ? "REEMBOLSO_PENDIENTE" : (neto.compareTo(total)>=0 ? "PAGADO" : (senaCompleta ? "SENA_PAGADA" : (pagosPendientes > 0 ? "SENA_INFORMADA" : "SENA_PENDIENTE"))));
 
         try (PreparedStatement sentencia = conexion.prepareStatement(
                 "UPDATE pedido_alojamiento SET total=?, montoSena=?, estadoPedido=?, estadoPago=?, "
-                        + "senaPagadaEn=CASE WHEN ? THEN COALESCE(senaPagadaEn, NOW()) ELSE NULL END, "
+                        + "senaPagadaEn=CASE WHEN ? THEN COALESCE(senaPagadaEn, ?) ELSE NULL END, "
                         + "fechaLimiteRevisionSena=CASE WHEN ?='SENA_INFORMADA' THEN fechaLimiteRevisionSena ELSE NULL END "
                         + "WHERE idPedido=?")) {
             sentencia.setBigDecimal(1,total); sentencia.setBigDecimal(2,montoSena);
             sentencia.setString(3, nuevoEstadoPedido); sentencia.setString(4, nuevoEstadoPago);
-            sentencia.setBoolean(5, senaCompleta); sentencia.setString(6, nuevoEstadoPago); sentencia.setInt(7, idPedido);
+            sentencia.setBoolean(5, senaCompleta); sentencia.setTimestamp(6, momentoOperativo());
+            sentencia.setString(7, nuevoEstadoPago); sentencia.setInt(8, idPedido);
             sentencia.executeUpdate();
         }
         if (activas == 0) return;
@@ -1459,23 +1892,11 @@ public final class GestionDAO {
             throw new SQLException("Solo un administrador puede gestionar usuarios.");
         }
         Object rolNuevo = datos.get("rol");
-        if (id == null && !"ADMINISTRADOR".equals(rolNuevo)) {
+        if (id == null && !esSuperAdmin() && !"ADMINISTRADOR".equals(rolNuevo)) {
             throw new SQLException("Desde la aplicación solo se pueden crear usuarios con rol ADMINISTRADOR.");
         }
-        if ("SUPERADMIN".equals(rolNuevo)) {
-            boolean yaEsSuperAdmin = false;
-            if (id != null) {
-                try (Connection conexion = Conexion.obtener(); PreparedStatement sentencia = conexion.prepareStatement(
-                        "SELECT rol FROM usuarios WHERE idUsuario = ?")) {
-                    sentencia.setInt(1, id);
-                    try (ResultSet resultados = sentencia.executeQuery()) {
-                        yaEsSuperAdmin = resultados.next() && "SUPERADMIN".equals(resultados.getString(1));
-                    }
-                }
-            }
-            if (!yaEsSuperAdmin) {
-                throw new SQLException("El rol SUPERADMIN solo se asigna directamente en la base de datos.");
-            }
+        if ("SUPERADMIN".equals(rolNuevo) && !esSuperAdmin()) {
+            throw new SQLException("Solo un SuperAdmin puede asignar el rol SUPERADMIN.");
         }
         if (id != null && !esSuperAdmin()) {
             try (Connection conexion = Conexion.obtener(); PreparedStatement sentencia = conexion.prepareStatement(
@@ -1625,8 +2046,9 @@ public final class GestionDAO {
                 throw new IllegalArgumentException("No se puede registrar una llegada después de las 10:00 del día de egreso.");
             }
             try (PreparedStatement marcarLlegada = conexion.prepareStatement(
-                    "UPDATE reservas SET checkInReal=COALESCE(checkInReal,NOW()) WHERE idReserva=?")) {
-                marcarLlegada.setInt(1, id);
+                    "UPDATE reservas SET checkInReal=COALESCE(checkInReal,?) WHERE idReserva=?")) {
+                marcarLlegada.setTimestamp(1, momentoOperativo());
+                marcarLlegada.setInt(2, id);
                 marcarLlegada.executeUpdate();
             }
             // El estado físico se actualiza al registrar la llegada. Al cobrar el
@@ -1642,6 +2064,9 @@ public final class GestionDAO {
         if ("NO_SE_PRESENTO".equals(nuevoEstado)) {
             if (hoy.isBefore(ingreso)) {
                 throw new IllegalArgumentException("La no presentación se puede registrar desde la fecha de ingreso.");
+            }
+            if (hoy.equals(ingreso) && hora.isBefore(HORA_INGRESO)) {
+                throw new IllegalArgumentException("La no presentación se puede registrar desde las 14:00 del día de ingreso.");
             }
             if (checkIn != null) {
                 throw new IllegalArgumentException("No se puede marcar ausencia después de haber registrado el check-in.");
@@ -1663,17 +2088,21 @@ public final class GestionDAO {
         }
         int cupoMax;
         String diasHabilitados;
+        String horario;
         try (PreparedStatement sentencia = conexion.prepareStatement(
-                "SELECT cupoMax, activa, dias FROM Actividad WHERE idActividad = ? FOR UPDATE")) {
+                "SELECT cupoMax, activa, dias, horario FROM Actividad WHERE idActividad = ? FOR UPDATE")) {
             sentencia.setInt(1, (Integer) datos.get("idActividad"));
             try (ResultSet resultados = sentencia.executeQuery()) {
                 if (!resultados.next()) throw new IllegalArgumentException("La actividad seleccionada no existe.");
                 cupoMax = resultados.getInt(1);
                 if (!resultados.getBoolean(2)) throw new IllegalArgumentException("La actividad no está habilitada para inscripciones.");
                 diasHabilitados = resultados.getString(3);
+                horario = resultados.getString(4);
             }
         }
         validarFechaActividad(fechaActividad, diasHabilitados);
+        validarCruceHorarioActividad(conexion, (Integer) datos.get("idCliente"),
+                (Integer) datos.get("idActividad"), fechaActividad, horario);
         try (PreparedStatement sentencia = conexion.prepareStatement(
                 "SELECT 1 FROM inscripcionActividad WHERE idCliente=? AND idActividad=? "
                         + "AND fechaActividad=? AND UPPER(estado)='ACTIVA' LIMIT 1")) {
@@ -1724,7 +2153,9 @@ public final class GestionDAO {
      * configurados por coordinación para esa actividad.
      */
     private static void validarFechaActividad(LocalDate fecha, String diasConfigurados) {
-        LocalDate hoy = LocalDate.now();
+        // En una demostración la fecha puede configurarse localmente; en uso
+        // normal fechaOperativa() devuelve la fecha real del equipo.
+        LocalDate hoy = fechaOperativa();
         if (fecha.isBefore(hoy) || fecha.isAfter(hoy.plusDays(90))) {
             throw new IllegalArgumentException("La fecha debe estar entre hoy y los próximos 90 días.");
         }
@@ -1745,6 +2176,40 @@ public final class GestionDAO {
         }
     }
 
+    /** Evita dos actividades con inicio y fin explícitos que se superpongan para el mismo cliente. */
+    private static void validarCruceHorarioActividad(Connection conexion, int idCliente, int idActividad,
+                                                     LocalDate fechaActividad, String horarioSolicitado) throws SQLException {
+        LocalTime[] solicitado = intervaloHorario(horarioSolicitado);
+        if (solicitado == null) return;
+        try (PreparedStatement consulta = conexion.prepareStatement(
+                "SELECT a.nombre,a.horario FROM inscripcionActividad ia JOIN Actividad a ON a.idActividad=ia.idActividad "
+                        + "WHERE ia.idCliente=? AND ia.idActividad<>? AND ia.fechaActividad=? "
+                        + "AND UPPER(ia.estado)='ACTIVA'")) {
+            consulta.setInt(1, idCliente);
+            consulta.setInt(2, idActividad);
+            consulta.setDate(3, Date.valueOf(fechaActividad));
+            try (ResultSet resultados = consulta.executeQuery()) {
+                while (resultados.next()) {
+                    LocalTime[] existente = intervaloHorario(resultados.getString("horario"));
+                    if (existente != null && solicitado[0].isBefore(existente[1]) && existente[0].isBefore(solicitado[1])) {
+                        throw new IllegalArgumentException("El horario se superpone con la actividad “"
+                                + resultados.getString("nombre") + "” (" + resultados.getString("horario") + ").");
+                    }
+                }
+            }
+        }
+    }
+
+    /** Convierte un horario “HH:MM a HH:MM” en un intervalo; los demás formatos no se inventan. */
+    private static LocalTime[] intervaloHorario(String horario) {
+        if (horario == null) return null;
+        Matcher coincidencia = HORARIO_CON_FIN.matcher(horario);
+        if (!coincidencia.find()) return null;
+        LocalTime inicio = LocalTime.of(Integer.parseInt(coincidencia.group(1)), Integer.parseInt(coincidencia.group(2)));
+        LocalTime fin = LocalTime.of(Integer.parseInt(coincidencia.group(3)), Integer.parseInt(coincidencia.group(4)));
+        return fin.isAfter(inicio) ? new LocalTime[]{inicio, fin} : null;
+    }
+
     /** Quita acentos y pasa un texto a minúsculas para compararlo con seguridad. */
     private static String normalizarTexto(String texto) {
         String sinAcentos = Normalizer.normalize(texto, Normalizer.Form.NFD)
@@ -1755,13 +2220,56 @@ public final class GestionDAO {
     /**
      * Comprueba actividad y evita continuar cuando hay información inválida.
      */
-    private static void validarActividad(Map<String, Object> datos) {
-        // Aplica limites basicos antes de guardar los datos de la actividad.
-        if (((Integer) datos.get("cupoMax")) < 1) {
+    private static void validarActividad(Connection conexion, Map<String, Object> datos, Integer idActividad)
+            throws SQLException {
+        // Aplica límites básicos antes de guardar los datos de la actividad.
+        int cupo = (Integer) datos.get("cupoMax");
+        if (cupo < 1) {
             throw new IllegalArgumentException("El cupo máximo debe ser al menos 1.");
         }
-        if (((BigDecimal) datos.get("precio")).signum() < 0) {
+        BigDecimal precio = (BigDecimal) datos.get("precio");
+        if (precio.signum() < 0) {
             throw new IllegalArgumentException("El precio no puede ser negativo.");
+        }
+        if (intervaloHorario(String.valueOf(datos.get("horario"))) == null) {
+            throw new IllegalArgumentException("El horario debe indicar inicio y fin, por ejemplo: 15:00 a 16:00.");
+        }
+        if (String.valueOf(datos.get("dias")).isBlank()) {
+            throw new IllegalArgumentException("Indicá los días en que se realiza la actividad.");
+        }
+        String modalidad = String.valueOf(datos.get("modalidad"));
+        if ("incluida".equals(modalidad)) {
+            datos.put("precio", BigDecimal.ZERO);
+            datos.put("pago", "Incluida");
+        } else if (precio.signum() <= 0) {
+            throw new IllegalArgumentException("Una actividad con inscripción debe tener un precio mayor que cero.");
+        } else {
+            datos.put("pago", "Con inscripción");
+        }
+
+        // No se permite bajar el cupo por debajo de las personas ya anotadas
+        // en una misma fecha. Así no quedan sobrecupos al editar desde Java.
+        if (idActividad != null) {
+            try (PreparedStatement sentencia = conexion.prepareStatement(
+                    "SELECT COALESCE(MAX(porFecha.total),0) FROM ("
+                            + "SELECT ia.fechaActividad, "
+                            + "COUNT(DISTINCT CASE WHEN ia.participaTitular=1 AND UPPER(ia.estado)='ACTIVA' THEN ia.idInscripcion END) "
+                            + "+ COUNT(iaa.idInscripcionAcompanante) AS total "
+                            + "FROM inscripcionActividad ia LEFT JOIN inscripcionActividadAcompanante iaa "
+                            + "ON iaa.idClienteTitular=ia.idCliente AND iaa.idActividad=ia.idActividad "
+                            + "AND iaa.fechaActividad=ia.fechaActividad AND iaa.activo=1 "
+                            + "WHERE ia.idActividad=? AND UPPER(ia.estado)='ACTIVA' "
+                            + "GROUP BY ia.fechaActividad) porFecha")) {
+                sentencia.setInt(1, idActividad);
+                try (ResultSet resultados = sentencia.executeQuery()) {
+                    resultados.next();
+                    int mayorCantidadInscripta = resultados.getInt(1);
+                    if (cupo < mayorCantidadInscripta) {
+                        throw new IllegalArgumentException("El cupo no puede ser menor que las "
+                                + mayorCantidadInscripta + " personas ya anotadas en una fecha.");
+                    }
+                }
+            }
         }
     }
 

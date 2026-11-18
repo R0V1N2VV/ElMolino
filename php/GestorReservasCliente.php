@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/GestorCoherenciaActividades.php';
 require_once __DIR__ . '/GestorEstadoFinanciero.php';
+require_once __DIR__ . '/RelojDemostracion.php';
 
 /**
  * Gestiona cambios que el cliente puede hacer sobre una reserva ya creada.
@@ -23,7 +24,7 @@ final class GestorReservasCliente
         $this->conexion->beginTransaction();
         try {
             $reserva = $this->bloquearReserva($idReserva, $idCliente);
-            if ((string) $reserva['fechaIngreso'] <= date('Y-m-d')) {
+            if ((string) $reserva['fechaIngreso'] <= RelojDemostracion::fecha($this->conexion)) {
                 throw new RuntimeException('Los acompañantes solo se pueden modificar antes del inicio de la estadía.');
             }
             if (in_array(strtoupper((string) $reserva['estadoReserva']), ['CANCELADA', 'CANCELADO', 'FINALIZADA'], true)) {
@@ -68,7 +69,7 @@ final class GestorReservasCliente
                 || in_array(strtoupper((string) ($reserva['estadoPago'] ?? '')), ['SENA_PENDIENTE', 'SENA_INFORMADA'], true);
             // Si la seña todavía no fue acreditada, el cliente puede liberar la
             // pre-reserva incluso si la fecha de llegada coincide con hoy.
-            if ((string) $reserva['fechaIngreso'] <= date('Y-m-d') && !$esPreReserva) {
+            if ((string) $reserva['fechaIngreso'] <= RelojDemostracion::fecha($this->conexion) && !$esPreReserva) {
                 throw new RuntimeException('La estadía ya comenzó o comienza hoy y no se puede cancelar desde la web.');
             }
             if (in_array(strtoupper((string) $reserva['estadoReserva']), ['CANCELADA', 'CANCELADO'], true)) {

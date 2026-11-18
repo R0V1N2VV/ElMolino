@@ -11,6 +11,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/inicio.php';
 require_once __DIR__ . '/../php/Vista.php';
 require_once __DIR__ . '/../php/GestorEstadoFinanciero.php';
+require_once __DIR__ . '/../php/RelojDemostracion.php';
 
 Sesion::iniciar();
 $usuario = Sesion::usuario();
@@ -40,15 +41,29 @@ if ($idCliente <= 0) {
     try {
         $conexion = Conexion::obtener();
         GestorEstadoFinanciero::vencerPedidosPendientes($conexion);
+        $fechaOperativa = RelojDemostracion::fecha($conexion);
         // El acceso desde el menú no necesita un identificador: abre primero la
         // estadía vigente o próxima del cliente.
         if ($idReserva <= 0) {
             $buscarPrincipal = $conexion->prepare(
-                "SELECT idReserva FROM reservas WHERE idCliente=:cliente
-                   AND UPPER(estadoReserva) NOT IN ('CANCELADA','CANCELADO')
-                 ORDER BY (fechaEgreso >= CURRENT_DATE) DESC, fechaIngreso ASC LIMIT 1"
+                "SELECT idReserva
+                   FROM reservas
+                  WHERE idCliente=:cliente
+                    AND UPPER(COALESCE(estadoReserva,'')) NOT IN ('CANCELADA','CANCELADO','FINALIZADA')
+                  ORDER BY CASE
+                    WHEN UPPER(COALESCE(estadoLlegada,''))='EN_ESTADIA' THEN 0
+                    WHEN fechaIngreso<=:fechaDurante AND fechaEgreso>:fechaHasta THEN 1
+                    WHEN fechaIngreso>=:fechaProxima THEN 2
+                    ELSE 3
+                  END, fechaIngreso ASC, idReserva DESC
+                  LIMIT 1"
             );
-            $buscarPrincipal->execute(['cliente' => $idCliente]);
+            $buscarPrincipal->execute([
+                'cliente' => $idCliente,
+                'fechaDurante' => $fechaOperativa,
+                'fechaHasta' => $fechaOperativa,
+                'fechaProxima' => $fechaOperativa,
+            ]);
             $idReserva = (int) ($buscarPrincipal->fetchColumn() ?: 0);
         }
         if ($idReserva <= 0) throw new RuntimeException('Todavía no tenés una estadía reservada.');
@@ -102,11 +117,11 @@ if ($idCliente <= 0) {
             ]);
             $actividades = $consultaActividades->fetchAll();
         }
-    } catch (PDOException|RuntimeException $excepcion) {
+    } catch (Throwable $excepcion) {
         error_log('No se pudo cargar el detalle de estadía: ' . $excepcion->getMessage());
         $error = $excepcion instanceof RuntimeException
             ? $excepcion->getMessage()
-            : 'No pudimos cargar el detalle. Verificá que la actualización de base de datos esté aplicada.';
+            : 'No pudimos cargar el detalle de la estadía en este momento. Volvé a intentarlo.';
     }
 }
 

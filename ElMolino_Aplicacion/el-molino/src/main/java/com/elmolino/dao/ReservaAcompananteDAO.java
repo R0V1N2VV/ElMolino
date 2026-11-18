@@ -1,6 +1,7 @@
 package com.elmolino.dao;
 
 import com.elmolino.dao.GestionDAO;
+import com.elmolino.util.Conexion;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;

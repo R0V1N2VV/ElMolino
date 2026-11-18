@@ -1,6 +1,9 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/GestorCoherenciaActividades.php';
+require_once __DIR__ . '/RelojDemostracion.php';
+
 /**
  * Mantiene sincronizados el pedido, sus reservas, pagos y reintegros.
  * Todas las funciones reciben una conexión existente para poder participar
@@ -11,43 +14,84 @@ final class GestorEstadoFinanciero
     /** Libera reservas cuya seña venció y nunca llegó a completarse. */
     public static function vencerPedidosPendientes(PDO $conexion): int
     {
-        $consulta = $conexion->query(
-            "SELECT pa.idPedido, UPPER(pa.estadoPedido) AS estadoPedido, UPPER(pa.estadoPago) AS estadoPago
-               FROM pedido_alojamiento pa
-              WHERE ((UPPER(pa.estadoPedido) IN ('ESPERANDO_SENA','PENDIENTE')
-                     AND UPPER(pa.estadoPago)='SENA_PENDIENTE'
-                     AND pa.fechaLimiteSena IS NOT NULL AND pa.fechaLimiteSena < NOW()
-                     AND (SELECT COALESCE(SUM(pg.montoTotal),0)
-                            FROM pago pg JOIN detalle_pedido_alojamiento dpg ON dpg.idReserva=pg.idReserva
-                           WHERE dpg.idPedido=pa.idPedido AND UPPER(pg.estado)='CONFIRMADO'
-                             AND UPPER(pg.tipoPago) IN ('SENA','SALDO')) < pa.montoSena)
-                  OR (UPPER(pa.estadoPago)='SENA_INFORMADA' AND pa.fechaLimiteRevisionSena < NOW()))"
-        );
-        $pedidos = $consulta->fetchAll();
-        foreach ($pedidos as $pedido) {
-            $idPedido = (int) $pedido['idPedido'];
-            $enRevision = strtoupper((string) $pedido['estadoPago']) === 'SENA_INFORMADA';
-            $conexion->prepare(
-                "UPDATE pedido_alojamiento SET estadoPedido='VENCIDO', estadoPago=:estadoPago, fechaLimiteRevisionSena=NULL, canceladoEn=NOW()
-                  WHERE idPedido=:pedido"
-            )->execute(['pedido' => $idPedido, 'estadoPago' => $enRevision ? 'PAGO_RECHAZADO' : 'VENCIDO']);
-            $conexion->prepare(
-                "UPDATE reservas r JOIN detalle_pedido_alojamiento d ON d.idReserva=r.idReserva
-                    SET r.estadoReserva='CANCELADA'
-                  WHERE d.idPedido=:pedido AND UPPER(r.estadoReserva) NOT IN ('CANCELADA','CANCELADO','FINALIZADA')"
-            )->execute(['pedido' => $idPedido]);
-            $conexion->prepare(
-                "UPDATE pago pg JOIN detalle_pedido_alojamiento d ON d.idReserva=pg.idReserva
-                    SET pg.estado='ANULADO', pg.observacion=:motivo
-                  WHERE d.idPedido=:pedido AND UPPER(pg.estado)='PENDIENTE'"
-            )->execute(['pedido' => $idPedido, 'motivo' => $enRevision ? 'La recepción no pudo confirmar la transferencia dentro de las 24 horas.' : 'Venció el plazo de 30 minutos para informar la seña.']);
+        $momentoOperativo = RelojDemostracion::ahora($conexion)->format('Y-m-d H:i:s');
+        $iniciarTransaccion = !$conexion->inTransaction();
+        if ($iniciarTransaccion) $conexion->beginTransaction();
+        try {
+            $consulta = $conexion->prepare(
+                "SELECT pa.idPedido, pa.idCliente, UPPER(pa.estadoPago) AS estadoPago
+                   FROM pedido_alojamiento pa
+                  WHERE ((UPPER(pa.estadoPedido) IN ('ESPERANDO_SENA','PENDIENTE')
+                         AND UPPER(pa.estadoPago)='SENA_PENDIENTE'
+                         AND pa.fechaLimiteSena IS NOT NULL AND pa.fechaLimiteSena < :momentoSena
+                         AND (SELECT COALESCE(SUM(pg.montoTotal),0)
+                                FROM pago pg JOIN detalle_pedido_alojamiento dpg ON dpg.idReserva=pg.idReserva
+                               WHERE dpg.idPedido=pa.idPedido AND UPPER(pg.estado)='CONFIRMADO'
+                                 AND UPPER(pg.tipoPago) IN ('SENA','SALDO')) < pa.montoSena)
+                      OR (UPPER(pa.estadoPago)='SENA_INFORMADA'
+                          AND pa.fechaLimiteRevisionSena IS NOT NULL
+                          AND pa.fechaLimiteRevisionSena < :momentoRevision))
+                  FOR UPDATE"
+            );
+            $consulta->execute([
+                'momentoSena' => $momentoOperativo,
+                'momentoRevision' => $momentoOperativo,
+            ]);
+            $pedidos = $consulta->fetchAll();
+            foreach ($pedidos as $pedido) {
+                $idPedido = (int) $pedido['idPedido'];
+                $idCliente = (int) $pedido['idCliente'];
+                $enRevision = strtoupper((string) $pedido['estadoPago']) === 'SENA_INFORMADA';
+                $conexion->prepare(
+                    "UPDATE pedido_alojamiento
+                        SET estadoPedido='VENCIDO', estadoPago=:estadoPago,
+                            fechaLimiteRevisionSena=NULL, canceladoEn=:momentoCancelado
+                      WHERE idPedido=:pedido"
+                )->execute([
+                    'pedido' => $idPedido,
+                    'estadoPago' => $enRevision ? 'PAGO_RECHAZADO' : 'VENCIDO',
+                    'momentoCancelado' => $momentoOperativo,
+                ]);
+                $conexion->prepare(
+                    "UPDATE reservas r JOIN detalle_pedido_alojamiento d ON d.idReserva=r.idReserva
+                        SET r.estadoReserva='CANCELADA'
+                      WHERE d.idPedido=:pedido
+                        AND UPPER(r.estadoReserva) NOT IN ('CANCELADA','CANCELADO','FINALIZADA')"
+                )->execute(['pedido' => $idPedido]);
+                $conexion->prepare(
+                    "UPDATE pago pg JOIN detalle_pedido_alojamiento d ON d.idReserva=pg.idReserva
+                        SET pg.estado='ANULADO', pg.observacion=:motivo
+                      WHERE d.idPedido=:pedido AND UPPER(pg.estado)='PENDIENTE'"
+                )->execute([
+                    'pedido' => $idPedido,
+                    'motivo' => $enRevision
+                        ? 'La recepción no pudo confirmar la transferencia dentro de las 24 horas.'
+                        : 'Venció el plazo de 30 minutos para informar la seña.',
+                ]);
+
+                // No puede sobrevivir una inscripción a una actividad si la
+                // estadía que la habilitaba venció. Este paso también anula el
+                // cargo pendiente de la actividad y libera sus cupos.
+                if ($idCliente > 0) {
+                    GestorCoherenciaActividades::sincronizarCliente(
+                        $conexion,
+                        $idCliente,
+                        'ESTADIA_VENCIDA_SIN_SENA'
+                    );
+                }
+            }
+            if ($iniciarTransaccion) $conexion->commit();
+            return count($pedidos);
+        } catch (Throwable $error) {
+            if ($iniciarTransaccion && $conexion->inTransaction()) $conexion->rollBack();
+            throw $error;
         }
-        return count($pedidos);
     }
 
     /** Recalcula importes y estados usando únicamente reservas vigentes y dinero confirmado. */
     public static function sincronizarPedido(PDO $conexion, int $idPedido): array
     {
+        $momentoOperativo = RelojDemostracion::ahora($conexion)->format('Y-m-d H:i:s');
         $consulta = $conexion->prepare('SELECT * FROM pedido_alojamiento WHERE idPedido=:pedido FOR UPDATE');
         $consulta->execute(['pedido' => $idPedido]);
         $pedido = $consulta->fetch();
@@ -93,13 +137,17 @@ final class GestorEstadoFinanciero
 
         $conexion->prepare(
             'UPDATE pedido_alojamiento SET total=:total, montoSena=:sena, estadoPedido=:pedidoEstado,
-                    estadoPago=:pagoEstado, senaPagadaEn=CASE WHEN :confirmada=1 THEN COALESCE(senaPagadaEn,NOW()) ELSE NULL END,
-                    canceladoEn=CASE WHEN :cancelado=1 THEN COALESCE(canceladoEn,NOW()) ELSE NULL END
+                    estadoPago=:pagoEstado,
+                    senaPagadaEn=CASE WHEN :confirmada=1 THEN COALESCE(senaPagadaEn,:momentoConfirmacion) ELSE NULL END,
+                    canceladoEn=CASE WHEN :cancelado=1 THEN COALESCE(canceladoEn,:momentoCancelacion) ELSE NULL END
               WHERE idPedido=:pedido'
         )->execute([
             'total' => $total, 'sena' => $montoSena, 'pedidoEstado' => $estadoPedido,
             'pagoEstado' => $estadoPago, 'confirmada' => $pagadoNeto >= $montoSena && $montoSena > 0 ? 1 : 0,
-            'cancelado' => $activas === 0 ? 1 : 0, 'pedido' => $idPedido,
+            'cancelado' => $activas === 0 ? 1 : 0,
+            'momentoConfirmacion' => $momentoOperativo,
+            'momentoCancelacion' => $momentoOperativo,
+            'pedido' => $idPedido,
         ]);
         if ($activas > 0) {
             $conexion->prepare(
